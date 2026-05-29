@@ -10,6 +10,7 @@
 	let sessionId = $state<string | null>(null);
 	let currentAssistant = $state<UIMessage | null>(null);
 	let frontendConfirms = new Map<string, () => void>();
+	let focusTrigger = $state(0);
 
 	let messagesEl = $state<HTMLDivElement>();
 
@@ -47,6 +48,7 @@
 		const text = input.trim();
 		if (!text || streaming) return;
 		input = '';
+		focusTrigger++;
 
 		messages.push({
 			id: crypto.randomUUID(),
@@ -73,9 +75,10 @@
 					blocks: [{ type: 'text', content: err.error || '请求失败' }],
 					done: true
 				});
-				streaming = false;
-				return;
-			}
+			streaming = false;
+			focusTrigger++;
+			return;
+		}
 
 			const newSid = res.headers.get('X-Session-Id');
 			if (newSid) sessionId = newSid;
@@ -111,6 +114,7 @@
 				currentAssistant = null;
 			}
 			streaming = false;
+			focusTrigger++;
 			scrollToBottom();
 		} catch (e) {
 			messages.push({
@@ -120,6 +124,7 @@
 				done: true
 			});
 			streaming = false;
+			focusTrigger++;
 		}
 	}
 
@@ -238,7 +243,7 @@
 		{/each}
 	</div>
 
-	<ChatInput bind:value={input} disabled={streaming} onsend={sendMessage} />
+	<ChatInput bind:value={input} disabled={streaming} onsend={sendMessage} focusTrigger={focusTrigger} />
 </div>
 
 <style>

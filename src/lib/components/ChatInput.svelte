@@ -1,5 +1,17 @@
 <script lang="ts">
-	let { value = $bindable(''), disabled = false, onsend }: { value: string; disabled: boolean; onsend: () => void } = $props();
+	let { value = $bindable(''), disabled = false, onsend, focusTrigger = 0 }: {
+		value: string;
+		disabled: boolean;
+		onsend: () => void;
+		focusTrigger?: number;
+	} = $props();
+
+	let textareaEl = $state<HTMLTextAreaElement>();
+
+	$effect(() => {
+		void focusTrigger;
+		textareaEl?.focus();
+	});
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
@@ -13,6 +25,7 @@
 	<textarea
 		class="chat-input"
 		bind:value
+		bind:this={textareaEl}
 		onkeydown={handleKeydown}
 		placeholder="输入消息..."
 		rows={1}
