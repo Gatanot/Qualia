@@ -1,9 +1,14 @@
 import type { ToolCallDelta, StreamChunk, Usage } from './types';
 
+/**
+ * 供应商请求错误
+ */
 export class ProviderError extends Error {
 	constructor(
 		message: string,
+		/** HTTP 状态码 */
 		public status: number,
+		/** 响应体 */
 		public body: unknown
 	) {
 		super(message);
@@ -11,10 +16,26 @@ export class ProviderError extends Error {
 	}
 }
 
+/**
+ * 异步延时
+ * @param ms - 毫秒
+ */
 export function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * 带自动重试的 fetch 封装
+ *
+ * 仅对 5xx 错误和网络错误进行指数退避重试。
+ * 4xx 错误直接抛出 ProviderError，不重试。
+ *
+ * @param fetchFn - fetch 调用工厂函数
+ * @param maxRetries - 最大重试次数
+ * @param baseDelayMs - 基础延迟（毫秒），每次重试延迟加倍
+ * @returns Response
+ * @throws ProviderError
+ */
 export async function fetchWithRetry(
 	fetchFn: () => Promise<Response>,
 	maxRetries: number,
@@ -51,6 +72,12 @@ export async function fetchWithRetry(
 	throw lastError;
 }
 
+/**
+ * 解析 SSE (Server-Sent Events) 流为 StreamChunk 异步生成器
+ *
+ * @param reader - ReadableStream reader
+ * @returns AsyncGenerator<StreamChunk>
+ */
 export async function* parseSSEStream(
 	reader: ReadableStreamDefaultReader<Uint8Array>
 ): AsyncGenerator<StreamChunk> {
@@ -113,6 +140,11 @@ function extractToolCalls(raw: unknown): ToolCallDelta[] {
 	}));
 }
 
+/**
+ * 将 API 返回的原始 usage 对象解析为类型化的 Usage
+ *
+ * @param raw - API 响应的 usage 字段
+ */
 export function parseUsage(raw: Record<string, unknown>): Usage {
 	return {
 		prompt_tokens: (raw.prompt_tokens as number) ?? 0,

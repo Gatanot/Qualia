@@ -1,15 +1,33 @@
 import type { AIProvider } from './base';
-import type { ChatRequest, ChatResponse, ToolCall, StreamChunk, Usage } from './types';
+import type { ChatRequest, ChatResponse, ToolCall, Usage } from './types';
 import { fetchWithRetry, parseSSEStream, ProviderError, parseUsage } from './utils';
 
+/**
+ * OpenAIProvider 初始化参数
+ */
 export interface OpenAIConfig {
+	/** API 密钥 */
 	apiKey: string;
+	/** API 基础地址，例如 https://api.openai.com/v1 */
 	baseURL: string;
+	/** 默认模型名称 */
 	model: string;
+	/** 请求超时（毫秒），默认 60000 */
 	timeout?: number;
+	/** 最大重试次数，默认 2 */
 	maxRetries?: number;
 }
 
+/**
+ * OpenAI 兼容格式的 AI 供应商实现
+ *
+ * 封装 fetch 调用 /v1/chat/completions 端点，支持：
+ * - 非流式调用（chat）
+ * - SSE 流式调用（chatStream）
+ * - 自动重试（仅 5xx 错误 + 网络错误，指数退避）
+ * - 超时控制（AbortController）
+ * - usage / reasoning_content 透传
+ */
 export class OpenAIProvider implements AIProvider {
 	private apiKey: string;
 	private baseURL: string;
@@ -37,7 +55,7 @@ export class OpenAIProvider implements AIProvider {
 		return this.parseResponse(json);
 	}
 
-	async *chatStream(request: ChatRequest): AsyncGenerator<StreamChunk> {
+	async *chatStream(request: ChatRequest): AsyncGenerator<import('./types').StreamChunk> {
 		const body = this.buildBody({ ...request, stream: true });
 
 		const response = await fetchWithRetry(

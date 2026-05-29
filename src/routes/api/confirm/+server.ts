@@ -1,6 +1,6 @@
 import { pendingConfirms } from '$lib/chat-confirm';
 
-export async function POST({ request }) {
+export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
 		const { confirmId, approved } = body as { confirmId: string; approved: boolean };

@@ -1,0 +1,8 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"entryPoints": ["src/lib/provider/index.ts"],
+	"out": "docs",
+	"tsconfig": "./tsconfig.json",
+	"readme": "none",
+	"name": "Qualia"
+}

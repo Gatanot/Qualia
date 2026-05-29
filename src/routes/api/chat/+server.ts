@@ -7,7 +7,7 @@ import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
 import { pendingConfirms } from '$lib/chat-confirm';
 
-export async function POST({ request }) {
+export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
 		let { sessionId, message } = body as { sessionId?: string; message: string };

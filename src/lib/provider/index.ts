@@ -1,3 +1,32 @@
+/**
+ * Provider 模块
+ *
+ * 管理不同来源的 AI API 接入，向上层暴露统一的流式/非流式调用接口。
+ * 当前支持 OpenAI 兼容格式。
+ *
+ * @module provider
+ *
+ * @example 基本用法
+ * ```ts
+ * import { createProvider } from '$lib/provider';
+ *
+ * const ai = createProvider({
+ *   type: 'openai',
+ *   apiKey: 'sk-xxx',
+ *   baseURL: 'https://api.openai.com/v1',
+ *   model: 'gpt-4o'
+ * });
+ *
+ * // 非流式
+ * const result = await ai.chat({ messages: [{ role: 'user', content: 'Hello' }] });
+ *
+ * // 流式
+ * for await (const chunk of ai.chatStream({ messages: [...] })) {
+ *   process.stdout.write(chunk.content);
+ * }
+ * ```
+ */
+
 export type { AIProvider } from './base';
 export type {
 	Message,

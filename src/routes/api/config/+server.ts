@@ -13,7 +13,7 @@ export async function GET() {
 	return json(config);
 }
 
-export async function PUT({ request }) {
+export async function PUT({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
 
