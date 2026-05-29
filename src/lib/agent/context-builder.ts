@@ -10,8 +10,20 @@ import {
 } from './prompts';
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
+
+/** 剩余窗口低于此阈值（20K token）触发自动分叉 */
 const FORK_THRESHOLD = 20_000;
 
+/**
+ * ContextBuilder — 上下文构建器
+ *
+ * 负责拼装发给 LLM 的 messages 数组：
+ * 1. 系统提示词（用户自定义 + 工具描述注入）
+ * 2. 会话历史消息
+ * 3. 当前用户输入
+ *
+ * 当剩余上下文窗口低于 20K token 时自动分叉会话。
+ */
 export class ContextBuilder {
 	async build(
 		sessionId: string,
@@ -25,12 +37,10 @@ export class ContextBuilder {
 		const sessionTokenCount = await storage.getTokenCount(sessionId);
 		const remaining = contextWindow - sessionTokenCount;
 
-		// 窗口不足，触发分叉
 		if (remaining < FORK_THRESHOLD) {
 			return this.handleFork(sessionId, userMessage, storage, registry, providerConfig, systemPrompt);
 		}
 
-		// 正常构建
 		const messages = await this.buildMessages(sessionId, userMessage, storage, registry, systemPrompt);
 		return { messages };
 	}
@@ -71,7 +81,6 @@ export class ContextBuilder {
 	): Promise<Message[]> {
 		const messages: Message[] = [];
 
-		// 1. System prompt
 		const tools = registry.getDefinitions();
 		let systemContent = systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
@@ -85,7 +94,6 @@ export class ContextBuilder {
 
 		messages.push({ role: 'system', content: systemContent });
 
-		// 2. History
 		const history = await storage.getMessages(sessionId, { limit: 50 });
 		for (const msg of history) {
 			const m: Message = {
@@ -93,20 +101,13 @@ export class ContextBuilder {
 				content: msg.content
 			};
 
-			if (msg.tool_calls) {
-				m.tool_calls = msg.tool_calls;
-			}
-			if (msg.tool_call_id) {
-				m.tool_call_id = msg.tool_call_id;
-			}
-			if (msg.name) {
-				m.name = msg.name;
-			}
+			if (msg.tool_calls) m.tool_calls = msg.tool_calls;
+			if (msg.tool_call_id) m.tool_call_id = msg.tool_call_id;
+			if (msg.name) m.name = msg.name;
 
 			messages.push(m);
 		}
 
-		// 3. Current user message
 		messages.push({ role: 'user', content: userMessage });
 
 		return messages;

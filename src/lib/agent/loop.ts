@@ -4,6 +4,20 @@ import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn } from './types';
 
+/**
+ * AgentLoop — Agent 主循环
+ *
+ * AsyncGenerator 形式的对话主循环，流程：
+ * 1. 保存用户消息到 Storage
+ * 2. 调用 LLM (chatStream)
+ * 3. 流式 yield 'content' 事件
+ * 4. 如 LLM 返回 tool_calls：
+ *    - 执行工具
+ *    - 遇 PendingConfirmation 则 yield 'confirm_required' 并 await onConfirm
+ *    - yield 'tool_result'
+ *    - 结果拼入 messages 继续循环
+ * 5. 无 tool_calls 时保存 assistant 消息，yield 'done' 结束
+ */
 export class AgentLoop {
 	private provider: AIProvider;
 	private storage: Storage;
@@ -25,7 +39,6 @@ export class AgentLoop {
 	async *run(sessionId: string, userMessage: string, buildResult: BuildResult): AsyncGenerator<AgentEvent> {
 		const effectiveSessionId = buildResult.forked?.newSessionId || sessionId;
 
-		// Notify fork
 		if (buildResult.forked) {
 			yield {
 				type: 'forked',
@@ -34,34 +47,20 @@ export class AgentLoop {
 			};
 		}
 
-		// Save user message
 		await this.storage.addMessage(effectiveSessionId, {
 			session_id: effectiveSessionId,
 			role: 'user',
 			content: userMessage
 		});
 
-		// Track session for title update
-		const session = await this.storage.getSession(effectiveSessionId);
-		if (session && !session.title) {
-			const title = userMessage.slice(0, 30).replace(/\n/g, ' ');
-			const s = await this.storage.getSession(effectiveSessionId);
-			if (s) {
-				await this.storage.updateTokenCount(effectiveSessionId, s.token_count);
-			}
-		}
-
-		// Main agent loop
 		const messages: Message[] = [...buildResult.messages];
 		const tools = this.registry.getDefinitions();
 		let totalUsage: Usage | undefined;
 
 		try {
 			while (true) {
-				// Call LLM
 				let fullContent = '';
 				let collectedToolCalls: Map<number, ToolCall> = new Map();
-				let finishReason: string | null = null;
 				let chunkUsage: Usage | undefined;
 
 				const stream = this.provider.chatStream({
@@ -96,22 +95,14 @@ export class AgentLoop {
 						}
 					}
 
-					if (chunk.finish_reason) {
-						finishReason = chunk.finish_reason;
-					}
-					if (chunk.usage) {
-						chunkUsage = chunk.usage;
-					}
+					if (chunk.usage) chunkUsage = chunk.usage;
 				}
 
-				if (chunkUsage) {
-					totalUsage = chunkUsage;
-				}
+				if (chunkUsage) totalUsage = chunkUsage;
 
 				const resolvedToolCalls = Array.from(collectedToolCalls.values());
 
-				// No tool calls — assistant message complete
-				if (resolvedToolCalls.length === 0 || finishReason === 'stop') {
+				if (resolvedToolCalls.length === 0) {
 					const assistantMsg = await this.storage.addMessage(effectiveSessionId, {
 						session_id: effectiveSessionId,
 						role: 'assistant',
@@ -119,20 +110,14 @@ export class AgentLoop {
 						usage: totalUsage
 					});
 
-					// Update session token count
 					if (totalUsage) {
 						await this.storage.updateTokenCount(effectiveSessionId, totalUsage.total_tokens);
 					}
 
-					yield {
-						type: 'done',
-						messageId: assistantMsg.id,
-						usage: totalUsage
-					};
+					yield { type: 'done', messageId: assistantMsg.id, usage: totalUsage };
 					return;
 				}
 
-				// Save assistant message with tool_calls
 				await this.storage.addMessage(effectiveSessionId, {
 					session_id: effectiveSessionId,
 					role: 'assistant',
@@ -141,43 +126,23 @@ export class AgentLoop {
 					usage: totalUsage
 				});
 
-				// Add assistant with tool_calls to messages array for next round
 				messages.push({
 					role: 'assistant',
 					content: fullContent || '',
 					tool_calls: resolvedToolCalls
 				});
 
-				// Execute each tool call
 				for (const tc of resolvedToolCalls) {
 					let args: Record<string, unknown> = {};
-					try {
-						args = JSON.parse(tc.function.arguments);
-					} catch {
-						// invalid JSON, treat as empty
-					}
+					try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
 
-					yield {
-						type: 'tool_call',
-						name: tc.function.name,
-						args
-					};
+					yield { type: 'tool_call', name: tc.function.name, args };
 
 					try {
-						const result = await this.registry.execute(
-							tc.function.name,
-							args,
-							process.cwd()
-						);
+						const result = await this.registry.execute(tc.function.name, args, process.cwd());
 
-						yield {
-							type: 'tool_result',
-							name: tc.function.name,
-							success: result.success,
-							output: result.output
-						};
+						yield { type: 'tool_result', name: tc.function.name, success: result.success, output: result.output };
 
-						// Save tool result
 						await this.storage.addMessage(effectiveSessionId, {
 							session_id: effectiveSessionId,
 							role: 'tool',
@@ -195,13 +160,7 @@ export class AgentLoop {
 					} catch (error) {
 						if (error instanceof PendingConfirmation) {
 							const confirmId = crypto.randomUUID();
-
-							yield {
-								type: 'confirm_required',
-								confirmId,
-								confirmation: error
-							};
-
+							yield { type: 'confirm_required', confirmId, confirmation: error };
 							const approved = await this.onConfirm(error, confirmId);
 
 							if (approved) {
@@ -211,14 +170,7 @@ export class AgentLoop {
 										{ ...error.args, __confirmed: true },
 										process.cwd()
 									);
-
-									yield {
-										type: 'tool_result',
-										name: error.toolName,
-										success: retryResult.success,
-										output: retryResult.output
-									};
-
+									yield { type: 'tool_result', name: error.toolName, success: retryResult.success, output: retryResult.output };
 									await this.storage.addMessage(effectiveSessionId, {
 										session_id: effectiveSessionId,
 										role: 'tool',
@@ -226,7 +178,6 @@ export class AgentLoop {
 										tool_call_id: tc.id,
 										name: error.toolName
 									});
-
 									messages.push({
 										role: 'tool',
 										content: retryResult.output || retryResult.error || '',
@@ -235,63 +186,24 @@ export class AgentLoop {
 									});
 								} catch (retryError) {
 									const errMsg = (retryError as Error).message;
-
-									yield {
-										type: 'tool_result',
-										name: error.toolName,
-										success: false,
-										output: errMsg
-									};
-
-									messages.push({
-										role: 'tool',
-										content: `执行失败: ${errMsg}`,
-										tool_call_id: tc.id,
-										name: error.toolName
-									});
+									yield { type: 'tool_result', name: error.toolName, success: false, output: errMsg };
+									messages.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
 								}
 							} else {
 								const cancelMsg = '用户取消了此操作';
-
-								yield {
-									type: 'tool_result',
-									name: error.toolName,
-									success: false,
-									output: cancelMsg
-								};
-
-								messages.push({
-									role: 'tool',
-									content: cancelMsg,
-									tool_call_id: tc.id,
-									name: error.toolName
-								});
+								yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
+								messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
 							}
 						} else {
 							const errMsg = (error as Error).message;
-
-							yield {
-								type: 'tool_result',
-								name: tc.function.name,
-								success: false,
-								output: errMsg
-							};
-
-							messages.push({
-								role: 'tool',
-								content: `工具执行异常: ${errMsg}`,
-								tool_call_id: tc.id,
-								name: tc.function.name
-							});
+							yield { type: 'tool_result', name: tc.function.name, success: false, output: errMsg };
+							messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
 						}
 					}
 				}
 			}
 		} catch (error) {
-			yield {
-				type: 'error',
-				message: (error as Error).message || '未知错误'
-			};
+			yield { type: 'error', message: (error as Error).message || '未知错误' };
 		}
 	}
 }

@@ -1,3 +1,9 @@
+/**
+ * 默认系统提示词
+ *
+ * 定义 Qualia 的角色和行为准则。
+ * 用户可在设置页面自定义覆盖。
+ */
 export const DEFAULT_SYSTEM_PROMPT = `你是 Qualia，一个运行在用户本地环境中的虚拟 AI 伙伴。你陪伴用户完成开发工作，可以：
 
 - 阅读和分析代码文件
@@ -14,5 +20,8 @@ export const DEFAULT_SYSTEM_PROMPT = `你是 Qualia，一个运行在用户本�
 5. 遇到需要用户确认的操作时等待确认后再执行
 6. 回复简洁直接，避免不必要的前言后语`;
 
+/** 工具描述注入的前缀文本 */
 export const TOOL_PROMPT_PREFIX = '\n\n## 可用工具\n\n你可以使用以下工具来完成用户的请求。当需要获取信息或执行操作时，直接调用对应的工具。\n\n';
+
+/** 工具描述注入的后缀文本 */
 export const TOOL_PROMPT_SUFFIX = '\n\n调用工具后，系统会将工具的输出返回给你，你可以根据结果继续操作或回复用户。';
