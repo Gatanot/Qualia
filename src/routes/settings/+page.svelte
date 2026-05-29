@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '' });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: true });
 	let loading = $state(true);
 	let error = $state('');
 	let editingProvider: ProviderConfig | null = $state(null);
@@ -86,6 +86,19 @@
 		}
 	}
 
+	async function toggleStorage() {
+		const updated = { ...config, storageEnabled: !config.storageEnabled };
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config: updated })
+		});
+
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
+
 	function editProvider(p: ProviderConfig) {
 		editingProvider = p;
 		showForm = true;
@@ -109,6 +122,30 @@
 
 <div class="settings">
 	<h1>设置</h1>
+
+	<section class="section">
+		<h2>常规</h2>
+		<div class="setting-row">
+			<div class="setting-label">
+				<div class="setting-title">对话存储</div>
+				<div class="setting-desc">
+					{#if config.storageEnabled}
+						已开启 — 对话历史持久化到本地数据库
+					{:else}
+						已关闭 — 数据仅保存在内存，重启后丢失（适合开发测试）
+					{/if}
+				</div>
+			</div>
+			<button
+				class="toggle"
+				class:on={config.storageEnabled}
+				onclick={toggleStorage}
+				aria-label="切换存储开关"
+			>
+				<span class="toggle-knob"></span>
+			</button>
+		</div>
+	</section>
 
 	<section class="section">
 		<div class="section-header">
@@ -403,5 +440,55 @@
 		justify-content: flex-end;
 		gap: 0.75rem;
 		margin-top: 1.5rem;
+	}
+
+	.setting-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		border: 1px solid #e0e0e0;
+		border-radius: 8px;
+	}
+
+	.setting-title {
+		font-weight: 600;
+		margin-bottom: 0.15rem;
+	}
+
+	.setting-desc {
+		font-size: 0.8rem;
+		color: #888;
+	}
+
+	.toggle {
+		position: relative;
+		width: 44px;
+		height: 24px;
+		border-radius: 12px;
+		border: none;
+		background: #ccc;
+		cursor: pointer;
+		transition: background 0.2s;
+		flex-shrink: 0;
+	}
+
+	.toggle.on {
+		background: #1976d2;
+	}
+
+	.toggle-knob {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: #fff;
+		transition: transform 0.2s;
+	}
+
+	.toggle.on .toggle-knob {
+		transform: translateX(20px);
 	}
 </style>

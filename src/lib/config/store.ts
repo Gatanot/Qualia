@@ -8,7 +8,8 @@ function getConfigPath(): string {
 
 const defaultConfig: AppConfig = {
 	providers: [],
-	activeProvider: ''
+	activeProvider: '',
+	storageEnabled: true
 };
 
 export function readConfig(): AppConfig {
@@ -23,7 +24,8 @@ export function readConfig(): AppConfig {
 		const parsed = JSON.parse(raw) as Partial<AppConfig>;
 		return {
 			providers: Array.isArray(parsed.providers) ? parsed.providers : [],
-			activeProvider: parsed.activeProvider || ''
+			activeProvider: parsed.activeProvider || '',
+			storageEnabled: parsed.storageEnabled !== false
 		};
 	} catch {
 		return { ...defaultConfig };

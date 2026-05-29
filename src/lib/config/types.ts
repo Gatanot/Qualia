@@ -11,4 +11,5 @@ export interface ProviderConfig {
 export interface AppConfig {
 	providers: ProviderConfig[];
 	activeProvider: string;
+	storageEnabled: boolean;
 }
