@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { UIMessage, ContentBlock } from '$lib/components/types';
+	import type { UIMessage } from '$lib/components/types';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
@@ -11,6 +11,8 @@
 	let currentAssistant = $state<UIMessage | null>(null);
 	let frontendConfirms = new Map<string, () => void>();
 	let focusTrigger = $state(0);
+	let inputQueue: string[] = $state([]);
+	let abortController: AbortController | null = null;
 
 	let messagesEl = $state<HTMLDivElement>();
 
@@ -20,6 +22,26 @@
 				messagesEl!.scrollTop = messagesEl!.scrollHeight;
 			}, 16);
 		}
+	}
+
+	function finishStreaming() {
+		if (currentAssistant) {
+			currentAssistant.done = true;
+			currentAssistant = null;
+		}
+		abortController = null;
+		streaming = false;
+		focusTrigger++;
+		scrollToBottom();
+
+		if (inputQueue.length > 0) {
+			const next = inputQueue.shift()!;
+			sendMessage(next);
+		}
+	}
+
+	function stopAI() {
+		abortController?.abort();
 	}
 
 	function handleConfirm(confirmId: string, approved: boolean) {
@@ -44,11 +66,17 @@
 		}
 	}
 
-	async function sendMessage() {
-		const text = input.trim();
-		if (!text || streaming) return;
-		input = '';
-		focusTrigger++;
+	async function sendMessage(queuedText?: string) {
+		const text = (queuedText ?? input).trim();
+		if (!text) return;
+
+		if (streaming) {
+			inputQueue.push(text);
+			if (!queuedText) { input = ''; focusTrigger++; }
+			return;
+		}
+
+		if (!queuedText) { input = ''; focusTrigger++; }
 
 		messages.push({
 			id: crypto.randomUUID(),
@@ -59,12 +87,15 @@
 		scrollToBottom();
 
 		streaming = true;
+		const controller = new AbortController();
+		abortController = controller;
 
 		try {
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sessionId, message: text })
+				body: JSON.stringify({ sessionId, message: text }),
+				signal: controller.signal
 			});
 
 			if (!res.ok) {
@@ -75,10 +106,9 @@
 					blocks: [{ type: 'text', content: err.error || '请求失败' }],
 					done: true
 				});
-			streaming = false;
-			focusTrigger++;
-			return;
-		}
+				finishStreaming();
+				return;
+			}
 
 			const newSid = res.headers.get('X-Session-Id');
 			if (newSid) sessionId = newSid;
@@ -109,22 +139,27 @@
 				}
 			}
 
-			if (currentAssistant) {
-				currentAssistant.done = true;
-				currentAssistant = null;
-			}
-			streaming = false;
-			focusTrigger++;
-			scrollToBottom();
+			finishStreaming();
 		} catch (e) {
+			if ((e as Error).name === 'AbortError') {
+				if (currentAssistant) {
+					currentAssistant.done = true;
+					currentAssistant = null;
+				}
+				abortController = null;
+				streaming = false;
+				focusTrigger++;
+				if (inputQueue.length > 0) sendMessage(inputQueue.shift());
+				return;
+			}
+
 			messages.push({
 				id: crypto.randomUUID(),
 				role: 'error',
 				blocks: [{ type: 'text', content: (e as Error).message || '连接失败' }],
 				done: true
 			});
-			streaming = false;
-			focusTrigger++;
+			finishStreaming();
 		}
 	}
 
@@ -153,59 +188,59 @@
 				break;
 			}
 
-		case 'tool_call': {
-			if (!currentAssistant) {
-				currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
-				messages.push(currentAssistant);
-			}
-			currentAssistant.blocks.push({
-				type: 'tool',
-				name: event.name as string,
-				args: event.args as Record<string, unknown>
-			});
-			break;
-		}
-
-		case 'tool_result': {
-			if (!currentAssistant) {
-				currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
-				messages.push(currentAssistant);
-			}
-			const blocks = currentAssistant.blocks;
-			for (let i = blocks.length - 1; i >= 0; i--) {
-				const block = blocks[i];
-				if (block.type === 'tool' && !block.result && block.name === (event.name as string)) {
-					block.result = {
-						success: event.success as boolean,
-						output: event.output as string
-					};
-					break;
+			case 'tool_call': {
+				if (!currentAssistant) {
+					currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
+					messages.push(currentAssistant);
 				}
+				currentAssistant.blocks.push({
+					type: 'tool',
+					name: event.name as string,
+					args: event.args as Record<string, unknown>
+				});
+				break;
 			}
-			scrollToBottom();
-			break;
-		}
 
-		case 'confirm_required': {
-			const confirmId = event.confirmId as string;
-			const confirmation = event.confirmation as Record<string, unknown>;
-			const reason = (confirmation?.reason as string) || '需要确认此操作';
-
-			if (!currentAssistant) {
-				currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
-				messages.push(currentAssistant);
+			case 'tool_result': {
+				if (!currentAssistant) {
+					currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
+					messages.push(currentAssistant);
+				}
+				const blocks = currentAssistant.blocks;
+				for (let i = blocks.length - 1; i >= 0; i--) {
+					const block = blocks[i];
+					if (block.type === 'tool' && !block.result && block.name === (event.name as string)) {
+						block.result = {
+							success: event.success as boolean,
+							output: event.output as string
+						};
+						break;
+					}
+				}
+				scrollToBottom();
+				break;
 			}
-		currentAssistant.blocks.push({
-			type: 'confirm',
-			confirmId,
-			message: reason
-		});
 
-			await new Promise<void>((resolve) => {
-				frontendConfirms.set(confirmId, resolve);
-			});
-			break;
-		}
+			case 'confirm_required': {
+				const confirmId = event.confirmId as string;
+				const confirmation = event.confirmation as Record<string, unknown>;
+				const reason = (confirmation?.reason as string) || '需要确认此操作';
+
+				if (!currentAssistant) {
+					currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };
+					messages.push(currentAssistant);
+				}
+				currentAssistant.blocks.push({
+					type: 'confirm',
+					confirmId,
+					message: reason
+				});
+
+				await new Promise<void>((resolve) => {
+					frontendConfirms.set(confirmId, resolve);
+				});
+				break;
+			}
 
 			case 'error': {
 				messages.push({
@@ -243,7 +278,14 @@
 		{/each}
 	</div>
 
-	<ChatInput bind:value={input} disabled={streaming} onsend={sendMessage} focusTrigger={focusTrigger} />
+	<ChatInput
+		bind:value={input}
+		streaming={streaming}
+		queueCount={inputQueue.length}
+		onsend={() => sendMessage()}
+		onstop={stopAI}
+		focusTrigger={focusTrigger}
+	/>
 </div>
 
 <style>
