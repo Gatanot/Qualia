@@ -32,11 +32,13 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 
 ```
 src/lib/
-├── provider/     # LLM API client (OpenAI-compatible). AIProvider interface
-├── config/       # AppConfig JSON file read/write
-├── tool/         # ToolRegistry + 4 built-in tools (read/write/delete file, exec)
-├── storage/      # Storage interface + MemoryStorage + SQLiteStorage
 ├── agent/        # ContextBuilder (messages assembly) + AgentLoop (AsyncGenerator)
+├── assets/       # Static assets (favicon.svg)
+├── components/   # Svelte UI components + UIMessage block type defs
+├── config/       # AppConfig JSON file read/write
+├── provider/     # OpenAI + DeepSeek API clients, factory: createProvider({ type })
+├── storage/      # Storage interface + MemoryStorage + SQLiteStorage
+├── tool/         # ToolRegistry + 4 built-in tools (read/write/delete file, exec)
 └── chat-confirm.ts  # Shared Map for pending confirmations across API routes
 ```
 
@@ -85,5 +87,5 @@ When `contextWindow - token_count < 20000`, ContextBuilder triggers `forkSession
 - `data/` and `docs/` directories are gitignored, auto-created at runtime
 - `.svelte-kit/` contains auto-generated types — never edit manually
 - `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
-- `better-sqlite3` has a warning on install about `prebuild-install` — safe to ignore
 - `process.cwd()` is used as the workspace root for tool path safety checks
+- `ProviderConfig.contextWindow` is optional — the chat API route backfills it from the active model's `contextWindow` (via `getContextWindow()`) before passing to `ContextBuilder`

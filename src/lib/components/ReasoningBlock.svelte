@@ -27,34 +27,35 @@
 
 <style>
 	.reasoning {
-		background: #F8F4EC;
-		border: 1px solid #E8E0D4;
-		border-radius: 12px;
-		font-size: 0.82rem;
+		background: #F4F1EA; /* Softer secondary container */
+		border: 1px solid rgba(230, 226, 216, 0.6);
+		border-radius: 16px; /* M3 standard */
+		font-size: 0.85rem;
 		transition: border-color 0.2s, background 0.2s;
+		overflow: hidden;
 	}
 
 	.reasoning.done {
-		background: #F4EFE6;
+		background: #F0EBE1;
 	}
 
 	.reasoning-header {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.5rem 0.75rem;
+		gap: 0.5rem;
+		padding: 0.6rem 0.85rem;
 		cursor: pointer;
 		user-select: none;
 	}
 
 	.reasoning-icon {
 		font-size: 18px;
-		color: #C4A265;
+		color: #A48956;
 	}
 
 	.reasoning-label {
 		font-weight: 500;
-		color: #6D645D;
+		color: #706862;
 	}
 
 	.reasoning-dot {
@@ -70,17 +71,25 @@
 
 	.expand-icon {
 		font-size: 18px;
-		color: #A69E96;
+		color: #A39B93;
 		margin-left: auto;
 	}
 
 	.reasoning-content {
-		padding: 0 0.75rem 0.75rem;
-		color: #8C847D;
+		padding: 0 0.85rem 0.85rem;
+		color: #706862;
 		white-space: pre-wrap;
-		line-height: 1.5;
+		line-height: 1.6;
 		font-style: italic;
 		max-height: 300px;
 		overflow-y: auto;
+	}
+	
+	.reasoning-content::-webkit-scrollbar {
+		width: 4px;
+	}
+	.reasoning-content::-webkit-scrollbar-thumb {
+		background-color: rgba(166, 155, 147, 0.3);
+		border-radius: 10px;
 	}
 </style>

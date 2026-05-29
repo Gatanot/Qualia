@@ -59,8 +59,9 @@
 <style>
 	.message-row {
 		display: flex;
-		gap: 0.75rem;
+		gap: 1rem;
 		max-width: 100%;
+		margin-bottom: 0.5rem;
 	}
 
 	.message-row.user {
@@ -75,22 +76,23 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 22px;
+		font-size: 20px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 	}
 
 	.message-row:not(.user) .message-avatar {
-		background: #F4EFE6;
-		color: #6B7F72;
+		background: #F0EBE1; /* Softer neutral background */
+		color: #5E7163;      /* Darker sage for contrast */
 	}
 
 	.message-row.user .message-avatar {
-		background: #6B7F72;
-		color: #fff;
+		background: #5E7163;
+		color: #FFFFFF;
 	}
 
 	.message-row.error .message-avatar {
-		background: #FDECEA;
-		color: #D32F2F;
+		background: #FCE8E6;
+		color: #C62828;
 	}
 
 	.message-body {
@@ -106,40 +108,42 @@
 	}
 
 	.message-role {
-		font-size: 0.8rem;
+		font-size: 0.85rem;
 		font-weight: 500;
-		color: #8C847D;
+		color: #706862;
 		padding: 0 0.25rem;
+		margin-bottom: -0.25rem;
 	}
 
 	.message-content {
-		background: #fff;
-		border-radius: 4px 24px 24px 24px;
-		padding: 0.85rem 1.25rem;
-		font-size: 0.95rem;
-		line-height: 1.6;
+		background: #FFFFFF;
+		border-radius: 4px 20px 20px 20px; /* Softer corners */
+		padding: 1rem 1.25rem;
+		font-size: 1rem; /* Slightly larger for readability */
+		line-height: 1.65;
 		white-space: pre-wrap;
 		word-break: break-word;
-		box-shadow: 0 2px 12px rgba(74, 67, 62, 0.04);
-		color: #4A433E;
+		box-shadow: 0 1px 3px rgba(61, 56, 52, 0.05), 0 4px 12px rgba(61, 56, 52, 0.03); /* M3 elevated feel */
+		color: #3D3834;
 	}
 
 	.message-row.user .message-content {
-		background: #6B7F72;
-		color: #fff;
-		border-radius: 24px 4px 24px 24px;
+		background: #5E7163;
+		color: #FFFFFF;
+		border-radius: 20px 4px 20px 20px;
+		box-shadow: 0 1px 3px rgba(94, 113, 99, 0.2), 0 4px 12px rgba(94, 113, 99, 0.1);
 	}
 
 	.message-row.error .message-content {
-		background: #FDECEA;
-		color: #C62828;
-		border-radius: 4px 24px 24px 24px;
+		background: #FCE8E6;
+		color: #B71C1C;
+		border-radius: 4px 20px 20px 20px;
 	}
 
 	.cursor {
 		animation: blink 0.7s infinite;
 		font-weight: 700;
-		color: #6B7F72;
+		color: #5E7163;
 	}
 
 	@keyframes blink {

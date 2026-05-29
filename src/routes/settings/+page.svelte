@@ -342,22 +342,23 @@
 
 <style>
 	.settings {
-		max-width: 720px;
+		max-width: 760px;
 		margin: 0 auto;
-		padding: 2rem 1.5rem;
+		padding: 2.5rem 2rem;
 	}
 
 	h1 {
-		font-size: 1.75rem;
-		margin-bottom: 2rem;
-		color: #4A433E;
+		font-size: 2rem;
+		margin-bottom: 2.5rem;
+		color: #3D3834;
 		font-weight: 500;
+		letter-spacing: -0.02em;
 	}
 
 	h2 {
 		font-size: 1.25rem;
 		margin: 0;
-		color: #4A433E;
+		color: #3D3834;
 		font-weight: 500;
 	}
 
@@ -365,117 +366,126 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 1rem;
+		margin-bottom: 1.25rem;
 	}
 
 	.section {
-		margin-bottom: 2.5rem;
+		margin-bottom: 3rem;
 	}
 
 	.msg {
-		color: #8C847D;
+		color: #706862;
 		padding: 1rem 0;
 	}
 
 	.msg-error {
-		color: #D32F2F;
-		background: #FDECEA;
-		padding: 0.75rem 1rem;
+		color: #B71C1C;
+		background: #FCE8E6;
+		padding: 1rem 1.25rem;
 		border-radius: 12px;
 		margin-bottom: 1rem;
-		font-size: 0.9rem;
+		font-size: 0.95rem;
 	}
 
 	.btn {
 		padding: 0.5rem 1.25rem;
-		border: 1px solid #EAE4DC;
+		border: 1px solid rgba(230, 226, 216, 0.8);
 		border-radius: 100px;
-		background: #fff;
-		color: #4A433E;
+		background: #FFFFFF;
+		color: #3D3834;
 		cursor: pointer;
-		font-size: 0.875rem;
+		font-size: 0.9rem;
 		font-weight: 500;
-		transition: all 0.2s;
+		transition: transform 0.15s, background-color 0.2s, border-color 0.2s;
 	}
 
 	.btn:hover {
-		background: #F4EFE6;
+		background: #F0EBE1;
+		border-color: #E6E2D8;
+	}
+	
+	.btn:active {
+		transform: scale(0.98);
 	}
 
 	.btn-primary {
-		background: #6B7F72;
-		color: #fff;
-		border-color: #6B7F72;
+		background: #5E7163;
+		color: #FFFFFF;
+		border-color: #5E7163;
+		box-shadow: 0 2px 4px rgba(94, 113, 99, 0.2);
 	}
 
 	.btn-primary:hover {
-		background: #5A6B60;
+		background: #4A594E;
+		border-color: #4A594E;
+		box-shadow: 0 4px 8px rgba(94, 113, 99, 0.3);
 	}
 
 	.btn-danger {
 		color: #D32F2F;
-		border-color: #FDECEA;
-		background: #fff;
+		border-color: rgba(211, 47, 47, 0.2);
+		background: #FFFFFF;
 	}
 
 	.btn-danger:hover {
-		background: #FDECEA;
-		border-color: #FDECEA;
+		background: #FCE8E6;
+		border-color: rgba(211, 47, 47, 0.3);
 	}
 
 	.btn-sm {
-		padding: 0.35rem 0.85rem;
-		font-size: 0.8rem;
+		padding: 0.4rem 1rem;
+		font-size: 0.85rem;
 	}
 
 	.provider-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.85rem;
+		gap: 1rem;
 	}
 
 	.provider-card {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1.25rem;
-		border: 1px solid #EAE4DC;
-		border-radius: 16px;
-		background: #fff;
-		transition: all 0.2s;
-		box-shadow: 0 2px 8px rgba(74, 67, 62, 0.02);
+		padding: 1.5rem;
+		border: 1px solid rgba(230, 226, 216, 0.6);
+		border-radius: 20px;
+		background: #FFFFFF;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.02);
 	}
 
 	.provider-card.active {
-		border-color: #6B7F72;
+		border-color: #5E7163;
 		background: #F8FAF8;
-		box-shadow: 0 4px 12px rgba(107, 127, 114, 0.08);
+		box-shadow: 0 4px 16px rgba(94, 113, 99, 0.08);
 	}
 
 	.provider-name {
 		font-weight: 500;
-		color: #4A433E;
+		color: #3D3834;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.4rem;
+		gap: 0.6rem;
+		margin-bottom: 0.5rem;
+		font-size: 1.05rem;
 	}
 
 	.badge {
-		font-size: 0.7rem;
-		background: #6B7F72;
-		color: #fff;
-		padding: 0.15rem 0.6rem;
+		font-size: 0.75rem;
+		background: #5E7163;
+		color: #FFFFFF;
+		padding: 0.2rem 0.75rem;
 		border-radius: 100px;
 		font-weight: 500;
 	}
 
 	.provider-meta {
-		font-size: 0.85rem;
-		color: #8C847D;
+		font-size: 0.9rem;
+		color: #706862;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.85rem;
+		gap: 1rem;
 	}
 
 	.provider-actions {
@@ -487,8 +497,8 @@
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(74, 67, 62, 0.4);
-		backdrop-filter: blur(2px);
+		background: rgba(61, 56, 52, 0.4);
+		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -496,85 +506,92 @@
 	}
 
 	.modal {
-		background: #fff;
+		background: #FFFFFF;
 		border-radius: 28px;
 		padding: 2.5rem;
 		width: 100%;
-		max-width: 440px;
-		box-shadow: 0 12px 40px rgba(74, 67, 62, 0.15);
+		max-width: 480px;
+		box-shadow: 0 12px 48px rgba(61, 56, 52, 0.15);
+		animation: modalScale 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+	}
+	
+	@keyframes modalScale {
+		from { opacity: 0; transform: scale(0.95) translateY(10px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
 	.modal h3 {
-		margin: 0 0 1.5rem;
-		font-size: 1.25rem;
+		margin: 0 0 1.75rem;
+		font-size: 1.5rem;
 		font-weight: 500;
-		color: #4A433E;
+		color: #3D3834;
 	}
 
 	form label {
 		display: block;
-		margin-bottom: 1rem;
-		font-size: 0.9rem;
-		color: #6D645D;
+		margin-bottom: 1.25rem;
+		font-size: 0.95rem;
+		color: #706862;
 		font-weight: 500;
 	}
 
 	form input, form select {
 		display: block;
 		width: 100%;
-		margin-top: 0.4rem;
-		padding: 0.75rem 1rem;
-		border: 1px solid #EAE4DC;
+		margin-top: 0.5rem;
+		padding: 0.85rem 1rem;
+		border: 1px solid rgba(230, 226, 216, 0.8);
 		border-radius: 12px;
-		background: #FDFBF7;
-		font-size: 0.95rem;
-		color: #4A433E;
+		background: #FAF8F5;
+		font-size: 1rem;
+		color: #3D3834;
 		box-sizing: border-box;
 		transition: all 0.2s;
 		font-family: inherit;
 	}
 
 	form input:focus, form select:focus {
-		border-color: #6B7F72;
+		border-color: #5E7163;
 		outline: none;
-		background: #fff;
-		box-shadow: 0 0 0 3px rgba(107, 127, 114, 0.15);
+		background: #FFFFFF;
+		box-shadow: 0 0 0 3px rgba(94, 113, 99, 0.15);
 	}
 
 	.form-actions {
 		display: flex;
 		justify-content: flex-end;
-		gap: 0.75rem;
-		margin-top: 2rem;
+		gap: 1rem;
+		margin-top: 2.5rem;
 	}
 
 	.setting-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1.25rem;
-		border: 1px solid #EAE4DC;
-		border-radius: 16px;
-		background: #fff;
-		box-shadow: 0 2px 8px rgba(74, 67, 62, 0.02);
+		padding: 1.5rem;
+		border: 1px solid rgba(230, 226, 216, 0.6);
+		border-radius: 20px;
+		background: #FFFFFF;
+		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.02);
 	}
 
 	.setting-title {
 		font-weight: 500;
-		color: #4A433E;
-		margin-bottom: 0.25rem;
+		color: #3D3834;
+		margin-bottom: 0.4rem;
+		font-size: 1.05rem;
 	}
 
 	.setting-desc {
-		font-size: 0.85rem;
-		color: #8C847D;
-		line-height: 1.4;
+		font-size: 0.9rem;
+		color: #706862;
+		line-height: 1.5;
 	}
 
 	.toggle {
 		position: relative;
-		width: 48px;
-		height: 26px;
+		width: 52px;
+		height: 28px;
 		border-radius: 100px;
 		border: none;
 		background: #D6CFC7;
@@ -584,63 +601,63 @@
 	}
 
 	.toggle.on {
-		background: #6B7F72;
+		background: #5E7163;
 	}
 
 	.toggle-knob {
 		position: absolute;
 		top: 3px;
 		left: 3px;
-		width: 20px;
-		height: 20px;
+		width: 22px;
+		height: 22px;
 		border-radius: 50%;
-		background: #fff;
+		background: #FFFFFF;
 		transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
 	.toggle.on .toggle-knob {
-		transform: translateX(22px);
+		transform: translateX(24px);
 	}
 
 	.section-desc {
-		font-size: 0.9rem;
-		color: #8C847D;
-		margin: -0.25rem 0 1rem;
-		line-height: 1.5;
+		font-size: 0.95rem;
+		color: #706862;
+		margin: -0.25rem 0 1.25rem;
+		line-height: 1.6;
 	}
 
 	.prompt-editor {
 		width: 100%;
-		padding: 1rem;
-		border: 1px solid #EAE4DC;
-		border-radius: 16px;
-		background: #FDFBF7;
+		padding: 1.25rem;
+		border: 1px solid rgba(230, 226, 216, 0.8);
+		border-radius: 20px;
+		background: #FAF8F5;
 		font-size: 0.95rem;
 		font-family: inherit;
 		line-height: 1.6;
-		color: #4A433E;
+		color: #3D3834;
 		resize: vertical;
 		box-sizing: border-box;
 		transition: all 0.2s;
 	}
 
 	.prompt-editor:focus {
-		border-color: #6B7F72;
+		border-color: #5E7163;
 		outline: none;
-		background: #fff;
-		box-shadow: 0 0 0 3px rgba(107, 127, 114, 0.15);
+		background: #FFFFFF;
+		box-shadow: 0 0 0 3px rgba(94, 113, 99, 0.15);
 	}
 
 	.prompt-actions {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-top: 0.75rem;
+		margin-top: 1rem;
 	}
 
 	.prompt-hint {
-		font-size: 0.85rem;
-		color: #A3A8A0;
+		font-size: 0.9rem;
+		color: #A39B93;
 	}
 </style>

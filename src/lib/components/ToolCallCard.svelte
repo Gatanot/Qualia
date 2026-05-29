@@ -66,23 +66,24 @@
 
 <style>
 	.tool-call {
-		background: #FDFBF7;
-		border: 1px solid #EAE4DC;
+		background: #FFFFFF;
+		border: 1px solid rgba(230, 226, 216, 0.6);
 		border-radius: 16px;
-		padding: 0.65rem 1rem;
+		padding: 0.75rem 1rem;
 		font-size: 0.85rem;
 		transition: border-color 0.2s, background 0.2s;
+		box-shadow: 0 1px 2px rgba(61, 56, 52, 0.02);
 	}
 
 	.tool-call.tool-done {
-		border-color: #D6E0D9;
+		border-color: rgba(214, 224, 217, 0.6);
 		background: #F8FAF8;
 	}
 
 	.tool-header {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.6rem;
 		cursor: pointer;
 		user-select: none;
 	}
@@ -94,7 +95,7 @@
 	}
 
 	.tool-done .tool-icon {
-		color: #6B7F72;
+		color: #5E7163;
 	}
 
 	.tool-summary {
@@ -102,17 +103,17 @@
 		min-width: 0;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.6rem;
 	}
 
 	.tool-name {
 		font-weight: 500;
-		color: #6D645D;
+		color: #3D3834;
 		flex-shrink: 0;
 	}
 
 	.tool-command {
-		color: #8C847D;
+		color: #706862;
 		font-size: 0.8rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -122,33 +123,42 @@
 
 	.expand-icon {
 		font-size: 20px;
-		color: #A69E96;
+		color: #A39B93;
 		flex-shrink: 0;
 		transition: transform 0.2s;
 	}
 
 	.tool-args pre {
-		margin: 0.6rem 0 0;
-		padding: 0.5rem 0.75rem;
-		background: #F4EFE6;
+		margin: 0.75rem 0 0;
+		padding: 0.6rem 0.85rem;
+		background: #F4F1EA;
 		border-radius: 8px;
 		font-size: 0.8rem;
 		overflow-x: auto;
 		white-space: pre-wrap;
-		color: #6D645D;
+		color: #706862;
 	}
 
 	.tool-output {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.4rem;
-		margin-top: 0.5rem;
+		gap: 0.5rem;
+		margin-top: 0.6rem;
 		font-size: 0.8rem;
-		color: #6D645D;
+		color: #706862;
 		max-height: 200px;
 		overflow-y: auto;
 		white-space: pre-wrap;
 		font-family: 'Roboto Mono', monospace;
+	}
+	
+	.tool-output::-webkit-scrollbar, .tool-args pre::-webkit-scrollbar {
+		width: 4px;
+		height: 4px;
+	}
+	.tool-output::-webkit-scrollbar-thumb, .tool-args pre::-webkit-scrollbar-thumb {
+		background-color: rgba(166, 155, 147, 0.3);
+		border-radius: 10px;
 	}
 
 	.tool-output .material-symbols-rounded {
@@ -157,6 +167,6 @@
 	}
 
 	.tool-error {
-		color: #D32F2F;
+		color: #B71C1C;
 	}
 </style>

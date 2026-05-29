@@ -24,11 +24,12 @@
 
 <style>
 	.confirm-inline {
-		background: #FFF8E1;
-		border: 1px solid #FFE082;
-		border-radius: 16px;
-		padding: 0.85rem 1rem;
-		font-size: 0.85rem;
+		background: #FFF9E6;
+		border: 1px solid #FFE699;
+		border-radius: 20px;
+		padding: 1rem 1.25rem;
+		font-size: 0.9rem;
+		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.04);
 	}
 
 	.confirm-header {
@@ -45,49 +46,56 @@
 
 	.confirm-label {
 		font-weight: 500;
-		color: #6D645D;
+		color: #706862;
 	}
 
 	.confirm-message {
-		margin: 0 0 0.75rem;
-		color: #4A433E;
-		font-size: 0.85rem;
-		line-height: 1.5;
+		margin: 0 0 1rem;
+		color: #3D3834;
+		font-size: 0.95rem;
+		line-height: 1.6;
 		white-space: pre-wrap;
 		word-break: break-word;
 	}
 
 	.confirm-actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.75rem;
+		justify-content: flex-end;
 	}
 
 	.btn {
-		padding: 0.4rem 1.25rem;
+		padding: 0.5rem 1.5rem;
 		border-radius: 100px;
 		border: none;
 		font-family: inherit;
-		font-size: 0.82rem;
+		font-size: 0.85rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: transform 0.15s, background-color 0.2s, box-shadow 0.2s;
+	}
+	
+	.btn:active {
+		transform: scale(0.98);
 	}
 
 	.btn-primary {
-		background: #6B7F72;
-		color: #fff;
+		background: #5E7163;
+		color: #FFFFFF;
+		box-shadow: 0 2px 4px rgba(94, 113, 99, 0.2);
 	}
 
 	.btn-primary:hover {
-		background: #5A6B60;
+		background: #4A594E;
+		box-shadow: 0 4px 8px rgba(94, 113, 99, 0.3);
 	}
 
 	.btn-outline {
-		background: #F4EFE6;
-		color: #6D645D;
+		background: #F0EBE1;
+		color: #706862;
 	}
 
 	.btn-outline:hover {
-		background: #EAE4DC;
+		background: #E6E2D8;
 	}
 </style>

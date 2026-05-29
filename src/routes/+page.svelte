@@ -316,16 +316,29 @@
 		display: flex;
 		flex-direction: column;
 		height: calc(100vh - 64px);
-		max-width: 860px;
+		max-width: 900px;
 		margin: 0 auto;
 	}
 
 	.messages {
 		flex: 1;
 		overflow-y: auto;
-		padding: 1.5rem 1.5rem 2rem;
+		padding: 2rem 2rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
+		gap: 1.5rem; /* slightly larger gap between messages */
+		scroll-behavior: smooth;
+	}
+	
+	/* Hide scrollbar for cleaner look, but keep functionality */
+	.messages::-webkit-scrollbar {
+		width: 6px;
+	}
+	.messages::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.messages::-webkit-scrollbar-thumb {
+		background-color: rgba(166, 155, 147, 0.3);
+		border-radius: 10px;
 	}
 </style>

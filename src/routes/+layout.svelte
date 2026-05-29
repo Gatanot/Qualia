@@ -14,7 +14,10 @@
 </svelte:head>
 
 <nav class="nav">
-	<a href="/" class="nav-brand">Qualia</a>
+	<a href="/" class="nav-brand">
+		<span class="material-symbols-rounded brand-icon">spa</span>
+		Qualia
+	</a>
 	<div class="nav-links">
 		<a href="/" class:active={$page.url.pathname === '/'}>对话</a>
 		<a href="/settings" class:active={$page.url.pathname === '/settings'}>设置</a>
@@ -29,29 +32,38 @@
 	:global(body) {
 		margin: 0;
 		font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-		background: #FDFBF7;
-		color: #4A433E;
+		background: #FAF8F5; /* Softer, warmer background */
+		color: #3D3834;      /* Slightly darker for better contrast */
+		-webkit-font-smoothing: antialiased;
 	}
 
 	.nav {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0 1.5rem;
+		padding: 0 2rem;
 		height: 64px;
-		background: #FDFBF7;
-		color: #4A433E;
-		border-bottom: 1px solid #EAE4DC;
+		background: #FAF8F5;
+		color: #3D3834;
+		border-bottom: 1px solid rgba(230, 226, 216, 0.6);
 		position: relative;
 		z-index: 10;
 	}
 
 	.nav-brand {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		font-weight: 500;
-		font-size: 1.2rem;
-		color: #4A433E;
+		font-size: 1.25rem;
+		color: #3D3834;
 		text-decoration: none;
 		letter-spacing: 0.2px;
+	}
+
+	.brand-icon {
+		color: #6B7F72;
+		font-size: 24px;
 	}
 
 	.nav-links {
@@ -60,22 +72,22 @@
 	}
 
 	.nav-links a {
-		color: #8C847D;
+		color: #706862;
 		text-decoration: none;
-		font-size: 0.9rem;
+		font-size: 0.95rem;
 		font-weight: 500;
 		padding: 0.5rem 1.25rem;
-		border-radius: 24px;
-		transition: all 0.2s ease;
+		border-radius: 100px; /* Fully rounded for M3 feel */
+		transition: background-color 0.2s ease, color 0.2s ease;
 	}
 
 	.nav-links a:hover {
-		background: #F4EFE6;
-		color: #4A433E;
+		background: #F0EBE1;
+		color: #3D3834;
 	}
 	
 	.nav-links a.active {
-		background: #EAE4DC;
-		color: #4A433E;
+		background: #E8E3D9;
+		color: #3D3834;
 	}
 </style>
