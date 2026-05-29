@@ -161,7 +161,7 @@
 
 	<section class="section">
 		<h2>系统提示词</h2>
-		<p class="section-desc">定义 AI 的角色和行为准则，将作为每条对话的 system prompt 发送给模型。</p>
+		<p class="section-desc">定义 Qualia 的角色和行为准则，将作为每条对话的 system prompt 发送给模型。</p>
 		<textarea
 			class="prompt-editor"
 			bind:value={config.systemPrompt}

@@ -202,7 +202,7 @@ export class AgentLoop {
 								confirmation: error
 							};
 
-							const approved = await this.onConfirm(error);
+							const approved = await this.onConfirm(error, confirmId);
 
 							if (approved) {
 								try {

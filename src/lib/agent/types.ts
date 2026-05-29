@@ -15,4 +15,4 @@ export interface BuildResult {
 	forked?: { newSessionId: string; summary: string };
 }
 
-export type ConfirmFn = (confirmation: PendingConfirmation) => Promise<boolean>;
+export type ConfirmFn = (confirmation: PendingConfirmation, confirmId: string) => Promise<boolean>;
