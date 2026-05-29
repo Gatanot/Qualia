@@ -27,6 +27,12 @@ interface SessionRow {
 	token_count: number;
 }
 
+/**
+ * SQLiteStorage — 基于 better-sqlite3 的持久化存储
+ *
+ * 使用 WAL 模式，支持外键约束。
+ * 自动建表，联合索引 (session_id, seq)。
+ */
 export class SQLiteStorage implements Storage {
 	private db: Database.Database;
 	private stmts: ReturnType<typeof this.prepareStatements>;
@@ -50,7 +56,6 @@ export class SQLiteStorage implements Storage {
 				status      TEXT NOT NULL DEFAULT 'active',
 				token_count INTEGER NOT NULL DEFAULT 0
 			);
-
 			CREATE TABLE IF NOT EXISTS messages (
 				id                 TEXT PRIMARY KEY,
 				session_id         TEXT NOT NULL,
@@ -66,7 +71,6 @@ export class SQLiteStorage implements Storage {
 				seq                INTEGER NOT NULL,
 				FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 			);
-
 			CREATE INDEX IF NOT EXISTS idx_messages_session_seq
 				ON messages(session_id, seq);
 		`);
@@ -74,44 +78,18 @@ export class SQLiteStorage implements Storage {
 
 	private prepareStatements() {
 		return {
-			createSession: this.db.prepare(`
-				INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
-			`),
+			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count) VALUES (?, ?, ?, ?, ?, ?, ?)`),
 			getSession: this.db.prepare(`SELECT * FROM sessions WHERE id = ?`),
-			listSessions: this.db.prepare(`
-				SELECT * FROM sessions WHERE status = 'active'
-				ORDER BY updated_at DESC
-			`),
-			listAllSessions: this.db.prepare(`
-				SELECT * FROM sessions ORDER BY updated_at DESC
-			`),
+			listAllSessions: this.db.prepare(`SELECT * FROM sessions ORDER BY updated_at DESC`),
 			deleteSession: this.db.prepare(`DELETE FROM sessions WHERE id = ?`),
-			updateSessionStatus: this.db.prepare(`
-				UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?
-			`),
-			updateSession: this.db.prepare(`
-				UPDATE sessions SET title = ?, updated_at = ?, token_count = ? WHERE id = ?
-			`),
-			insertMessage: this.db.prepare(`
-				INSERT INTO messages
-					(id, session_id, role, content, reasoning_content, tool_calls,
-					 tool_call_id, name, usage, audio_path, created_at, seq)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			`),
-			getMessages: this.db.prepare(`
-				SELECT * FROM messages
-				WHERE session_id = ? AND (? IS NULL OR seq < ?)
-				ORDER BY seq ASC
-			`),
+			updateSessionStatus: this.db.prepare(`UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?`),
+			updateSession: this.db.prepare(`UPDATE sessions SET title = ?, updated_at = ?, token_count = ? WHERE id = ?`),
+			insertMessage: this.db.prepare(`INSERT INTO messages (id, session_id, role, content, reasoning_content, tool_calls, tool_call_id, name, usage, audio_path, created_at, seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			getMessages: this.db.prepare(`SELECT * FROM messages WHERE session_id = ? AND (? IS NULL OR seq < ?) ORDER BY seq ASC`),
 			getMessage: this.db.prepare(`SELECT * FROM messages WHERE id = ?`),
 			deleteMessage: this.db.prepare(`DELETE FROM messages WHERE id = ?`),
-			getMaxSeq: this.db.prepare(`
-				SELECT COALESCE(MAX(seq), 0) as max_seq FROM messages WHERE session_id = ?
-			`),
-			updateAudioPath: this.db.prepare(`
-				UPDATE messages SET audio_path = ? WHERE id = ?
-			`)
+			getMaxSeq: this.db.prepare(`SELECT COALESCE(MAX(seq), 0) as max_seq FROM messages WHERE session_id = ?`),
+			updateAudioPath: this.db.prepare(`UPDATE messages SET audio_path = ? WHERE id = ?`)
 		};
 	}
 
@@ -119,7 +97,7 @@ export class SQLiteStorage implements Storage {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		this.stmts.createSession.run(id, title || '', now, now, null, 'active', 0);
-		return this.getSession(id) as Promise<Session>;
+		return (await this.getSession(id))!;
 	}
 
 	async getSession(id: string): Promise<Session | null> {
@@ -142,16 +120,12 @@ export class SQLiteStorage implements Storage {
 
 	async forkSession(id: string, summary: string): Promise<Session> {
 		const parent = await this.getSession(id);
-		if (!parent) {
-			throw new Error(`会话不存在: ${id}`);
-		}
+		if (!parent) throw new Error(`会话不存在: ${id}`);
 
 		const newSession = await this.createSession(`[分叉] ${parent.title}`);
+		newSession.parent_id = id;
 		this.stmts.updateSession.run(newSession.title, Date.now(), 0, newSession.id);
-
-		// Update parent_id for fork
-		this.db.prepare('UPDATE sessions SET parent_id = ? WHERE id = ?')
-			.run(id, newSession.id);
+		this.db.prepare('UPDATE sessions SET parent_id = ? WHERE id = ?').run(id, newSession.id);
 
 		if (summary) {
 			await this.addMessage(newSession.id, {
@@ -160,7 +134,6 @@ export class SQLiteStorage implements Storage {
 				content: `【父会话摘要】\n${summary}`
 			});
 		}
-
 		return (await this.getSession(newSession.id))!;
 	}
 
@@ -169,9 +142,7 @@ export class SQLiteStorage implements Storage {
 		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'>
 	): Promise<MessageRecord> {
 		const session = await this.getSession(sessionId);
-		if (!session) {
-			throw new Error(`会话不存在: ${sessionId}`);
-		}
+		if (!session) throw new Error(`会话不存在: ${sessionId}`);
 
 		const { max_seq } = this.stmts.getMaxSeq.get(sessionId) as { max_seq: number };
 		const seq = max_seq + 1;
@@ -179,22 +150,16 @@ export class SQLiteStorage implements Storage {
 		const now = Date.now();
 
 		this.stmts.insertMessage.run(
-			id,
-			sessionId,
-			message.role,
-			message.content,
+			id, sessionId, message.role, message.content,
 			message.reasoning_content || null,
 			message.tool_calls ? JSON.stringify(message.tool_calls) : null,
 			message.tool_call_id || null,
 			message.name || null,
 			message.usage ? JSON.stringify(message.usage) : null,
 			message.audio_path || null,
-			now,
-			seq
+			now, seq
 		);
-
 		this.stmts.updateSession.run(session.title, now, session.token_count, sessionId);
-
 		return (await this.getMessage(id))!;
 	}
 
@@ -204,13 +169,8 @@ export class SQLiteStorage implements Storage {
 	): Promise<MessageRecord[]> {
 		const before = options?.before ?? null;
 		const rows = this.stmts.getMessages.all(sessionId, before, before) as MessageRow[];
-
 		let result = rows.map((row) => this.rowToMessage(row));
-
-		if (options?.limit !== undefined) {
-			result = result.slice(-options.limit);
-		}
-
+		if (options?.limit !== undefined) result = result.slice(-options.limit);
 		return result;
 	}
 
@@ -230,9 +190,7 @@ export class SQLiteStorage implements Storage {
 
 	async updateTokenCount(sessionId: string, count: number): Promise<void> {
 		const session = await this.getSession(sessionId);
-		if (session) {
-			this.stmts.updateSession.run(session.title, Date.now(), count, sessionId);
-		}
+		if (session) this.stmts.updateSession.run(session.title, Date.now(), count, sessionId);
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {

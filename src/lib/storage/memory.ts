@@ -1,5 +1,11 @@
 import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
 
+/**
+ * MemoryStorage — 基于内存 Map 的存储实现
+ *
+ * 所有数据存储在内存中，进程重启后数据丢失。
+ * 适用于开发测试或关闭持久化时使用。
+ */
 export class MemoryStorage implements Storage {
 	private sessions = new Map<string, Session>();
 	private messages = new Map<string, MessageRecord[]>();
@@ -53,16 +59,12 @@ export class MemoryStorage implements Storage {
 
 	async forkSession(id: string, summary: string): Promise<Session> {
 		const parent = this.sessions.get(id);
-		if (!parent) {
-			throw new Error(`会话不存在: ${id}`);
-		}
+		if (!parent) throw new Error(`会话不存在: ${id}`);
 
 		const newSession = await this.createSession(`[分叉] ${parent.title}`);
 		newSession.parent_id = id;
-		newSession.updated_at = Date.now();
 		this.sessions.set(newSession.id, newSession);
 
-		// 注入摘要作为首条 system 消息
 		if (summary) {
 			await this.addMessage(newSession.id, {
 				session_id: newSession.id,
@@ -70,7 +72,6 @@ export class MemoryStorage implements Storage {
 				content: `【父会话摘要】\n${summary}`
 			});
 		}
-
 		return newSession;
 	}
 
@@ -79,9 +80,7 @@ export class MemoryStorage implements Storage {
 		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'>
 	): Promise<MessageRecord> {
 		const session = this.sessions.get(sessionId);
-		if (!session) {
-			throw new Error(`会话不存在: ${sessionId}`);
-		}
+		if (!session) throw new Error(`会话不存在: ${sessionId}`);
 
 		const seq = (this.seqCounter.get(sessionId) || 0) + 1;
 		this.seqCounter.set(sessionId, seq);
@@ -97,9 +96,7 @@ export class MemoryStorage implements Storage {
 		list.push(record);
 		this.messages.set(sessionId, list);
 		this.messageById.set(record.id, record);
-
 		session.updated_at = Date.now();
-
 		return record;
 	}
 
@@ -108,15 +105,8 @@ export class MemoryStorage implements Storage {
 		options?: MessageQueryOptions
 	): Promise<MessageRecord[]> {
 		let list = this.messages.get(sessionId) || [];
-
-		if (options?.before !== undefined) {
-			list = list.filter((m) => m.seq < options.before!);
-		}
-
-		if (options?.limit !== undefined) {
-			list = list.slice(-options.limit);
-		}
-
+		if (options?.before !== undefined) list = list.filter((m) => m.seq < options.before!);
+		if (options?.limit !== undefined) list = list.slice(-options.limit);
 		return list;
 	}
 
@@ -127,15 +117,11 @@ export class MemoryStorage implements Storage {
 	async deleteMessage(id: string): Promise<void> {
 		const msg = this.messageById.get(id);
 		if (!msg) return;
-
 		this.messageById.delete(id);
-
 		const list = this.messages.get(msg.session_id);
 		if (list) {
 			const idx = list.findIndex((m) => m.id === id);
-			if (idx !== -1) {
-				list.splice(idx, 1);
-			}
+			if (idx !== -1) list.splice(idx, 1);
 		}
 	}
 
@@ -145,15 +131,11 @@ export class MemoryStorage implements Storage {
 
 	async updateTokenCount(sessionId: string, count: number): Promise<void> {
 		const session = this.sessions.get(sessionId);
-		if (session) {
-			session.token_count = count;
-		}
+		if (session) session.token_count = count;
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {
 		const msg = this.messageById.get(messageId);
-		if (msg) {
-			msg.audio_path = path;
-		}
+		if (msg) msg.audio_path = path;
 	}
 }
