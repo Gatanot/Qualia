@@ -35,8 +35,8 @@ export const DEEPSEEK_MODELS: ModelDef[] = [
 		id: 'deepseek-v4-flash',
 		name: 'DeepSeek V4 Flash',
 		contextWindow: 128_000,
-		supportsReasoning: false,
-		reasoningEffortValues: []
+		supportsReasoning: true,
+		reasoningEffortValues: ['high', 'max']
 	}
 ];
 
