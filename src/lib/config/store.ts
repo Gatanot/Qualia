@@ -10,7 +10,7 @@ function getConfigPath(): string {
 const defaultConfig: AppConfig = {
 	providers: [],
 	activeProvider: '',
-	storageEnabled: true,
+	storageEnabled: false,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT
 };
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: true, systemPrompt: '' });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
 	let loading = $state(true);
 	let error = $state('');
 	let editingProvider: ProviderConfig | null = $state(null);
