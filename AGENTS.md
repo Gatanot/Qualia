@@ -74,9 +74,10 @@ When `contextWindow - token_count < 20000`, ContextBuilder triggers `forkSession
 ## Git conventions
 
 - Branch naming: `feature/<name>` for new work, `fix/<name>` for bug fixes discovered outside active feature development.
-- Merge to `main` when done, then delete the branch.
+- **All development must be done on a feature/fix branch.** Never commit directly to `main`.
+- **Do NOT merge to `main` unless the user explicitly asks.** Wait for a clear instruction like "合并到 main" before merging.
+- After merging, delete the feature branch.
 - Commit messages in Chinese, short format: `prefix: 简要描述`.
-- No `develop` branch; `main` is the integration target.
 - Run `npm run check` before committing.
 
 ## Notable quirks

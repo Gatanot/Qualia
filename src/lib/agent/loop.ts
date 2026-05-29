@@ -68,11 +68,15 @@ export class AgentLoop {
 					tools: tools.length > 0 ? tools : undefined
 				});
 
-				for await (const chunk of stream) {
-					if (chunk.content) {
-						fullContent += chunk.content;
-						yield { type: 'content', text: chunk.content };
-					}
+			for await (const chunk of stream) {
+				if (chunk.reasoning_content) {
+					yield { type: 'reasoning', text: chunk.reasoning_content };
+				}
+
+				if (chunk.content) {
+					fullContent += chunk.content;
+					yield { type: 'content', text: chunk.content };
+				}
 
 					if (chunk.tool_calls) {
 						for (const tc of chunk.tool_calls) {

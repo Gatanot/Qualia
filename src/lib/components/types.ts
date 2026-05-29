@@ -5,6 +5,7 @@ export interface ToolResult {
 
 export type ContentBlock =
 	| { type: 'text'; content: string }
+	| { type: 'reasoning'; content: string }
 	| { type: 'tool'; name: string; args: Record<string, unknown>; result?: ToolResult }
 	| { type: 'confirm'; confirmId: string; message: string };
 

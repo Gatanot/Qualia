@@ -9,6 +9,8 @@ import type { PendingConfirmation } from '$lib/tool';
 export type AgentEvent =
 	/** 流式文本增量 */
 	| { type: 'content'; text: string }
+	/** 流式思维链增量 */
+	| { type: 'reasoning'; text: string }
 	/** LLM 发起的工具调用 */
 	| { type: 'tool_call'; name: string; args: Record<string, unknown> }
 	/** 工具执行结果 */

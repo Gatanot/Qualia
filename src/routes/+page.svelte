@@ -188,6 +188,29 @@
 				break;
 			}
 
+			case 'reasoning': {
+				const text = event.text as string;
+				if (!currentAssistant) {
+					currentAssistant = {
+						id: crypto.randomUUID(),
+						role: 'assistant',
+						blocks: [{ type: 'reasoning', content: text }],
+						done: false
+					};
+					messages.push(currentAssistant);
+				} else {
+					const blocks = currentAssistant.blocks;
+					const lastBlock = blocks[blocks.length - 1];
+					if (lastBlock && lastBlock.type === 'reasoning') {
+						lastBlock.content += text;
+					} else {
+						blocks.push({ type: 'reasoning', content: text });
+					}
+				}
+				scrollToBottom();
+				break;
+			}
+
 			case 'tool_call': {
 				if (!currentAssistant) {
 					currentAssistant = { id: crypto.randomUUID(), role: 'assistant', blocks: [], done: false };

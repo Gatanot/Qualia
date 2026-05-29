@@ -2,6 +2,7 @@
 	import type { UIMessage } from './types';
 	import ToolCallCard from './ToolCallCard.svelte';
 	import ConfirmInline from './ConfirmInline.svelte';
+	import ReasoningBlock from './ReasoningBlock.svelte';
 
 	let { message, onconfirm }: {
 		message: UIMessage;
@@ -36,6 +37,8 @@
 		{#each message.blocks as block, i (i)}
 			{#if block.type === 'text'}
 				<div class="message-content">{block.content}</div>
+			{:else if block.type === 'reasoning'}
+				<ReasoningBlock content={block.content} done={message.done} />
 			{:else if block.type === 'tool'}
 				<ToolCallCard name={block.name} args={block.args} result={block.result} />
 			{:else if block.type === 'confirm'}
