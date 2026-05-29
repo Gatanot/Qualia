@@ -6,6 +6,13 @@ import { PendingConfirmation } from '../types';
 
 const MAX_FILE_SIZE = 1024 * 1024;
 
+/**
+ * read_file — 读取文件内容
+ *
+ * 工作区内文件直接读取；工作区外文件需用户确认。
+ * 文件大小限制 1 MB，超限返回错误。
+ * 超过 500 行的文件仅展示前 500 行并标注总行数。
+ */
 export const readFileTool: ToolDef = {
 	name: 'read_file',
 	description: '读取指定文件的内容。用于查看代码、配置、文档等文件。',

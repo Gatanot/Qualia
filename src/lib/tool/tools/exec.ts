@@ -6,6 +6,15 @@ import { PendingConfirmation } from '../types';
 const MAX_TIMEOUT = 30_000;
 const MAX_OUTPUT = 50_000;
 
+/**
+ * execute_command — 执行终端命令
+ *
+ * 安全策略：
+ * - 安全命令 + 工作区路径 → 直接执行
+ * - 危险命令 → 需用户确认
+ * - format/diskpart → 拒绝
+ * - 超时 30 秒，输出上限 50KB
+ */
 export const execTool: ToolDef = {
 	name: 'execute_command',
 	description: '在工作区目录执行终端命令并返回输出。仅用于开发任务，非交互式命令。',
@@ -44,7 +53,6 @@ export const execTool: ToolDef = {
 			);
 		}
 
-		// Re-classify after confirmation (defense in depth)
 		if (args.__confirmed) {
 			const recheck = classifyCommand(command, workspaceRoot);
 			if (recheck === 'reject') {

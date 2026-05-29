@@ -63,10 +63,18 @@ const SYSTEM_DIRS = [
 	'/proc'
 ];
 
+/**
+ * 检测命令字符串是否包含危险模式
+ *
+ * 使用正则匹配识别格式化、强制删除、系统修改、管道注入等危险操作。
+ */
 export function isDangerousCommand(command: string): boolean {
 	return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command));
 }
 
+/**
+ * 判断目标路径是否在工作区目录内
+ */
 export function isPathInWorkspace(targetPath: string, workspaceRoot: string): boolean {
 	const resolved = normalizePath(targetPath, workspaceRoot);
 	const normalizedRoot = resolve(workspaceRoot).toLowerCase();
@@ -75,6 +83,9 @@ export function isPathInWorkspace(targetPath: string, workspaceRoot: string): bo
 	return normalizedTarget.startsWith(normalizedRoot + sep);
 }
 
+/**
+ * 判断目标路径是否在系统保护目录内
+ */
 export function isSystemPath(targetPath: string, workspaceRoot: string): boolean {
 	const resolved = normalizePath(targetPath, workspaceRoot);
 	const normalized = resolve(resolved).toLowerCase();
@@ -82,17 +93,18 @@ export function isSystemPath(targetPath: string, workspaceRoot: string): boolean
 	return SYSTEM_DIRS.some((sysDir) => normalized.startsWith(sysDir.toLowerCase()));
 }
 
+/**
+ * 从命令字符串中提取所有路径参数
+ */
 export function extractPaths(command: string): string[] {
 	const paths: string[] = [];
 
-	// Match Windows paths (C:\..., D:\...)
 	const winPathRe = /[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*/g;
 	let match: RegExpExecArray | null;
 	while ((match = winPathRe.exec(command)) !== null) {
 		paths.push(match[0]);
 	}
 
-	// Match Unix absolute paths
 	const unixPathRe = /(?<!\w)\/(?:[^\s'"]+)/g;
 	while ((match = unixPathRe.exec(command)) !== null) {
 		const p = match[0];
@@ -104,21 +116,23 @@ export function extractPaths(command: string): string[] {
 	return paths;
 }
 
+/**
+ * 分类命令的安全性
+ *
+ * @returns 'safe' 可直接执行 / 'confirm' 需用户确认 / 'reject' 拒绝执行
+ */
 export function classifyCommand(
 	command: string,
 	workspaceRoot: string
 ): CommandClassification {
-	// Always reject format, diskpart-level commands
 	if (/^\s*(format|diskpart)\b/i.test(command.trim())) {
 		return 'reject';
 	}
 
-	// Check dangerous pattern
 	if (isDangerousCommand(command)) {
 		return 'confirm';
 	}
 
-	// Check paths in command
 	const paths = extractPaths(command);
 	for (const p of paths) {
 		if (isSystemPath(p, workspaceRoot)) {
@@ -132,6 +146,11 @@ export function classifyCommand(
 	return 'safe';
 }
 
+/**
+ * 分类文件路径的安全性
+ *
+ * @returns 'safe' 可直接操作 / 'confirm' 需用户确认
+ */
 export function classifyFilePath(
 	targetPath: string,
 	workspaceRoot: string
@@ -140,10 +159,6 @@ export function classifyFilePath(
 
 	if (isSystemPath(normalized, workspaceRoot)) {
 		return 'confirm';
-	}
-
-	if (!isPathInWorkspace(normalized, workspaceRoot) && !isPathInWorkspace(workspaceRoot, workspaceRoot)) {
-		// Can this happen? Handle edge case
 	}
 
 	if (!isPathInWorkspace(normalized, workspaceRoot)) {

@@ -4,6 +4,13 @@ import type { ToolDef, ToolResult } from '../types';
 import { classifyFilePath } from '../safeguard';
 import { PendingConfirmation } from '../types';
 
+/**
+ * delete_file — 删除文件
+ *
+ * 删除操作始终需要用户确认（不可逆）。
+ * 仅支持删除文件，不支持删除目录。
+ * 系统路径始终拒绝。
+ */
 export const deleteFileTool: ToolDef = {
 	name: 'delete_file',
 	description: '删除指定的文件。删除操作始终需要用户确认。',
@@ -27,7 +34,6 @@ export const deleteFileTool: ToolDef = {
 		const filePath = resolve(workspaceRoot, userPath);
 
 		if (!args.__confirmed) {
-			// Delete always requires confirmation
 			throw new PendingConfirmation(
 				'delete_file',
 				{ path: userPath },
@@ -35,7 +41,6 @@ export const deleteFileTool: ToolDef = {
 			);
 		}
 
-		// After confirmation: double-check system paths are rejected
 		const classification = classifyFilePath(filePath, workspaceRoot);
 		if (classification === 'reject') {
 			return { success: false, output: '', error: `拒绝删除系统路径: ${userPath}` };

@@ -4,6 +4,12 @@ import type { ToolDef, ToolResult } from '../types';
 import { classifyFilePath } from '../safeguard';
 import { PendingConfirmation } from '../types';
 
+/**
+ * write_file — 写入文件内容
+ *
+ * 自动创建不存在的父目录。覆盖已有文件。
+ * 工作区内文件直接写入；工作区外需用户确认。
+ */
 export const writeFileTool: ToolDef = {
 	name: 'write_file',
 	description: '将内容写入指定文件（覆盖已有内容）。会自动创建不存在的父目录。',
