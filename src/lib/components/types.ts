@@ -1,0 +1,16 @@
+export interface ToolResult {
+	success: boolean;
+	output: string;
+}
+
+export type ContentBlock =
+	| { type: 'text'; content: string }
+	| { type: 'tool'; name: string; args: Record<string, unknown>; result?: ToolResult }
+	| { type: 'confirm'; confirmId: string; message: string };
+
+export interface UIMessage {
+	id: string;
+	role: 'user' | 'assistant' | 'tool' | 'error';
+	blocks: ContentBlock[];
+	done: boolean;
+}

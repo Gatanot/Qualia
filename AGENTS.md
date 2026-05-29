@@ -9,10 +9,12 @@ Qualia — a local personal AI companion. SvelteKit full-stack app (Node.js back
 ```sh
 npm run dev          # start dev server (http://localhost:5173)
 npm run check        # type-check everything (svelte-kit sync + svelte-check)
+npm run check:watch  # type-check on file change
 npm run docs         # regenerate TypeDoc HTML to docs/
 ```
 
 - `npm run check` is the **primary verification** — always run it after changes. It syncs SvelteKit types first, then type-checks.
+- `npm run prepare` runs `svelte-kit sync` on every `npm install`, generating `.svelte-kit/tsconfig.json`.
 - There is no test runner yet.
 
 ## Stack & constraints
@@ -21,7 +23,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 |---------|--------|
 | Framework | SvelteKit 2 + Svelte 5 + TypeScript 6 + Vite 8 |
 | Runes mode | **Forced** project-wide (except node_modules). Always use `$state()`, `$props()`, `$effect()`, not legacy Svelte 4 syntax |
-| Imports | `$lib` → `src/lib/`. Use `$lib/xxx` paths exclusively |
+| Imports | `$lib` → `src/lib/`. Use `$lib/xxx` paths exclusively (alias is SvelteKit-managed, not in tsconfig) |
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
 | Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts` |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
@@ -36,23 +38,18 @@ src/lib/
 ├── storage/      # Storage interface + MemoryStorage + SQLiteStorage
 ├── agent/        # ContextBuilder (messages assembly) + AgentLoop (AsyncGenerator)
 └── chat-confirm.ts  # Shared Map for pending confirmations across API routes
-
-src/routes/
-├── +page.svelte           # Chat UI (home page)
-├── +layout.svelte         # Nav bar (MD blue header)
-├── settings/+page.svelte  # Settings page
-└── api/
-    ├── chat/+server.ts    # POST → SSE streaming
-    ├── confirm/+server.ts # POST → resolve tool confirmation
-    └── config/+server.ts  # GET/PUT config CRUD
 ```
 
 `src/lib/` code is server-side unless imported by a `.svelte` component.
 
+API routes:
+- `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
+- `api/confirm/+server.ts` — `POST` → resolve tool confirmation
+- `api/config/+server.ts` — `GET`/`PUT` config CRUD
+
 ## SvelteKit route file rules
 
 - **`+server.ts` can ONLY export** `GET`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`, `HEAD`, `fallback`, `prerender`, `trailingSlash`, `config`, `entries`, or `_`-prefixed names. Any other export causes a 500 error.
-- Handler signature: `export async function POST({ request }: { request: Request })`.
 - Do NOT export helper functions from `+server.ts`. If two endpoints need shared state, put it in `src/lib/`.
 
 ## Tool confirmation flow
@@ -74,19 +71,10 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 
 When `contextWindow - token_count < 20000`, ContextBuilder triggers `forkSession()`. Summary generation is not yet implemented (placeholder text).
 
-## File patterns
-
-| Pattern | Meaning |
-|---------|---------|
-| `src/lib/**/index.ts` | Public exports of each module (use `export type` for types) |
-| `src/routes/**/+page.svelte` | Page component |
-| `src/routes/**/+server.ts` | API route handler |
-| `src/routes/**/+layout.svelte` | Layout wrapper |
-
 ## Notable quirks
 
 - `data/` and `docs/` directories are gitignored, auto-created at runtime
 - `.svelte-kit/` contains auto-generated types — never edit manually
+- `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
 - `better-sqlite3` has a warning on install about `prebuild-install` — safe to ignore
 - `process.cwd()` is used as the workspace root for tool path safety checks
-- The `$lib` alias is configured by SvelteKit, not in tsconfig directly
