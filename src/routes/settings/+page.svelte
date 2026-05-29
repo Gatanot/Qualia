@@ -1,15 +1,34 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
+	import { getDefaultModels } from '$lib/provider';
 
 	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
 	let loading = $state(true);
 	let error = $state('');
 	let editingProvider: ProviderConfig | null = $state(null);
 	let showForm = $state(false);
+	let formType = $state<string>('openai');
+	let formModel = $state('');
 
 	$effect(() => {
 		loadConfig();
 	});
+
+	let formModels = $derived(getDefaultModels(formType));
+
+	$effect(() => {
+		if (formModels.length > 0 && !formModels.find(m => m.id === formModel)) {
+			formModel = formModels[0].id;
+		}
+	});
+
+	function displayModel(p: ProviderConfig): string {
+		if (p.models && p.activeModel) {
+			const m = p.models.find(m => m.id === p.activeModel);
+			return m?.name || p.activeModel;
+		}
+		return p.activeModel || p.model || '-';
+	}
 
 	async function loadConfig() {
 		loading = true;
@@ -31,17 +50,29 @@
 		const form = e.target as HTMLFormElement;
 		const fd = new FormData(form);
 
-		const provider: ProviderConfig = {
-			type: 'openai',
-			name: (fd.get('name') as string).trim(),
-			apiKey: (fd.get('apiKey') as string).trim(),
-			baseURL: (fd.get('baseURL') as string).trim(),
-			model: (fd.get('model') as string).trim()
+		const type = (fd.get('type') as string) || 'openai';
+		const name = (fd.get('name') as string).trim();
+		const apiKey = (fd.get('apiKey') as string).trim();
+		const baseURL = (fd.get('baseURL') as string).trim();
+		const activeModel = formModel;
+
+		if (!name || !apiKey || !baseURL) {
+			error = '名称、密钥、接口地址必填';
+			return;
+		}
+
+		const provider: Record<string, unknown> = {
+			type,
+			name,
+			apiKey,
+			baseURL,
+			activeModel,
+			models: getDefaultModels(type)
 		};
 
-		if (!provider.name || !provider.apiKey || !provider.baseURL || !provider.model) {
-			error = '所有字段必填';
-			return;
+		if (type === 'deepseek') {
+			provider.thinking = (fd.get('thinking') as string) || 'enabled';
+			provider.reasoningEffort = fd.get('reasoningEffort') as string || undefined;
 		}
 
 		const res = await fetch('/api/config', {
@@ -113,6 +144,8 @@
 
 	function editProvider(p: ProviderConfig) {
 		editingProvider = p;
+		formType = p.type || 'openai';
+		formModel = p.activeModel || p.model || '';
 		showForm = true;
 	}
 
@@ -202,8 +235,8 @@
 								{/if}
 							</div>
 							<div class="provider-meta">
-								<span>模型：{p.model}</span>
-								<span>地址：{p.baseURL}</span>
+								<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : 'OpenAI 兼容'}</span>
+								<span>模型：{displayModel(p)}</span>
 								<span>密钥：{maskKey(p.apiKey)}</span>
 							</div>
 						</div>
@@ -232,11 +265,18 @@
 				<h3>{editingProvider ? '编辑供应商' : '添加供应商'}</h3>
 				<form method="post" onsubmit={(e: Event) => { e.preventDefault(); handleSubmit(e); }}>
 					<label>
+						供应商类型
+						<select name="type" bind:value={formType}>
+							<option value="openai">OpenAI 兼容</option>
+							<option value="deepseek">DeepSeek</option>
+						</select>
+					</label>
+					<label>
 						名称
 						<input
 							name="name"
 							type="text"
-							placeholder="例如：我的 OpenAI"
+							placeholder="例如：我的 DeepSeek"
 							value={editingProvider?.name || ''}
 							required
 						/>
@@ -256,21 +296,38 @@
 						<input
 							name="baseURL"
 							type="text"
-							placeholder="https://api.openai.com/v1"
+							placeholder={formType === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.openai.com/v1'}
 							value={editingProvider?.baseURL || ''}
 							required
 						/>
 					</label>
 					<label>
-						模型名称
-						<input
-							name="model"
-							type="text"
-							placeholder="gpt-4o"
-							value={editingProvider?.model || ''}
-							required
-						/>
+						模型
+						<select name="model" bind:value={formModel}>
+							{#each formModels as m}
+								<option value={m.id}>{m.name}</option>
+							{/each}
+						</select>
 					</label>
+
+					{#if formType === 'deepseek'}
+						<label>
+							思考模式
+							<select name="thinking">
+								<option value="enabled" selected={editingProvider?.thinking !== 'disabled'}>开启</option>
+								<option value="disabled" selected={editingProvider?.thinking === 'disabled'}>关闭</option>
+							</select>
+						</label>
+						<label>
+							推理深度
+							<select name="reasoningEffort">
+								<option value="">默认</option>
+								<option value="high" selected={editingProvider?.reasoningEffort === 'high'}>high</option>
+								<option value="max" selected={editingProvider?.reasoningEffort === 'max'}>max</option>
+							</select>
+						</label>
+					{/if}
+
 					<div class="form-actions">
 						<button type="button" class="btn" onclick={cancelForm}>取消</button>
 						<button type="submit" class="btn btn-primary">
@@ -462,7 +519,7 @@
 		font-weight: 500;
 	}
 
-	form input {
+	form input, form select {
 		display: block;
 		width: 100%;
 		margin-top: 0.4rem;
@@ -474,9 +531,10 @@
 		color: #4A433E;
 		box-sizing: border-box;
 		transition: all 0.2s;
+		font-family: inherit;
 	}
 
-	form input:focus {
+	form input:focus, form select:focus {
 		border-color: #6B7F72;
 		outline: none;
 		background: #fff;

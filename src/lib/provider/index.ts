@@ -43,5 +43,9 @@ export type {
 } from './types';
 export { OpenAIProvider } from './openai';
 export type { OpenAIConfig } from './openai';
+export { DeepSeekProvider } from './deepseek';
+export type { DeepSeekConfig } from './deepseek';
 export { createProvider } from './factory';
+export type { ModelDef } from './models';
+export { getDefaultModels, OPENAI_MODELS, DEEPSEEK_MODELS } from './models';
 export { ProviderError, fetchWithRetry, parseSSEStream, parseUsage, sleep } from './utils';

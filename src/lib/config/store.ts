@@ -1,7 +1,11 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
+import type { ModelDef } from '../provider/models';
+import { getDefaultModels } from '../provider/models';
 import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
+
+const DEFAULT_CONTEXT_WINDOW = 128_000;
 
 function getConfigPath(): string {
 	return join(process.cwd(), 'data', 'config.json');
@@ -14,12 +18,25 @@ const defaultConfig: AppConfig = {
 	systemPrompt: DEFAULT_SYSTEM_PROMPT
 };
 
-/**
- * 读取应用配置
- *
- * 如果配置文件不存在，返回默认配置。
- * 旧配置文件缺少新增字段时，自动回退默认值。
- */
+function normalizeProvider(p: Partial<ProviderConfig> & { type?: string; model?: string }): ProviderConfig {
+	const type = (p.type as ProviderConfig['type']) || 'openai';
+	const models = Array.isArray(p.models) && p.models.length > 0 ? p.models : getDefaultModels(type);
+	const activeModel = p.activeModel || p.model || models[0]?.id || '';
+
+	return {
+		type,
+		name: p.name || '',
+		apiKey: p.apiKey || '',
+		baseURL: p.baseURL || '',
+		activeModel,
+		models,
+		thinking: p.thinking,
+		reasoningEffort: p.reasoningEffort,
+		timeout: p.timeout,
+		maxRetries: p.maxRetries
+	};
+}
+
 export function readConfig(): AppConfig {
 	const path = getConfigPath();
 
@@ -31,7 +48,9 @@ export function readConfig(): AppConfig {
 		const raw = readFileSync(path, 'utf-8');
 		const parsed = JSON.parse(raw) as Partial<AppConfig>;
 		return {
-			providers: Array.isArray(parsed.providers) ? parsed.providers : [],
+			providers: Array.isArray(parsed.providers)
+				? parsed.providers.map((p) => normalizeProvider(p as Partial<ProviderConfig>))
+				: [],
 			activeProvider: parsed.activeProvider || '',
 			storageEnabled: parsed.storageEnabled !== false,
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT
@@ -122,4 +141,14 @@ export function setActiveProvider(name: string): AppConfig {
 export function getActiveProvider(): ProviderConfig | undefined {
 	const config = readConfig();
 	return config.providers.find((p) => p.name === config.activeProvider);
+}
+
+export function getActiveModel(): ModelDef | undefined {
+	const provider = getActiveProvider();
+	if (!provider?.models) return undefined;
+	return provider.models.find((m) => m.id === provider.activeModel) || provider.models[0];
+}
+
+export function getContextWindow(): number {
+	return getActiveModel()?.contextWindow || DEFAULT_CONTEXT_WINDOW;
 }

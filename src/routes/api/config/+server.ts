@@ -19,11 +19,11 @@ export async function PUT({ request }: { request: Request }) {
 
 		switch (body.action) {
 			case 'addProvider': {
-				const provider = body.provider as ProviderConfig;
-				if (!provider.name || !provider.apiKey || !provider.baseURL || !provider.model) {
-					return json({ error: 'Missing required fields: name, apiKey, baseURL, model' }, { status: 400 });
+				const provider = body.provider as Record<string, unknown>;
+				if (!provider.name || !provider.apiKey || !provider.baseURL) {
+					return json({ error: 'Missing required fields: name, apiKey, baseURL' }, { status: 400 });
 				}
-				const config = addProvider({ ...provider, type: provider.type || 'openai' });
+				const config = addProvider(provider as unknown as ProviderConfig);
 				return json(config);
 			}
 			case 'removeProvider': {

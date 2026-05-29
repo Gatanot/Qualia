@@ -8,11 +8,14 @@
  */
 
 export type { AppConfig, ProviderConfig } from './types';
+export type { ModelDef } from '../provider/models';
 export {
 	readConfig,
 	writeConfig,
 	addProvider,
 	removeProvider,
 	setActiveProvider,
-	getActiveProvider
+	getActiveProvider,
+	getActiveModel,
+	getContextWindow
 } from './store';

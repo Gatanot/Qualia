@@ -31,7 +31,7 @@ export interface OpenAIConfig {
 export class OpenAIProvider implements AIProvider {
 	private apiKey: string;
 	private baseURL: string;
-	private model: string;
+	protected model: string;
 	private timeout: number;
 	private maxRetries: number;
 
@@ -71,8 +71,8 @@ export class OpenAIProvider implements AIProvider {
 		yield* parseSSEStream(reader);
 	}
 
-	private buildBody(request: ChatRequest & { stream: boolean }): string {
-		return JSON.stringify({
+	protected buildBodyObject(request: ChatRequest & { stream: boolean }): Record<string, unknown> {
+		return {
 			model: request.model || this.model,
 			messages: request.messages,
 			tools: request.tools,
@@ -80,7 +80,11 @@ export class OpenAIProvider implements AIProvider {
 			max_tokens: request.max_tokens,
 			temperature: request.temperature,
 			stream: request.stream
-		});
+		};
+	}
+
+	protected buildBody(request: ChatRequest & { stream: boolean }): string {
+		return JSON.stringify(this.buildBodyObject(request));
 	}
 
 	private async doFetch(body: string): Promise<Response> {

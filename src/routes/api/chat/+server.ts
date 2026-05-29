@@ -1,4 +1,4 @@
-import { readConfig, getActiveProvider } from '$lib/config';
+import { readConfig, getActiveProvider, getContextWindow } from '$lib/config';
 import { createProvider } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool } from '$lib/tool';
@@ -30,6 +30,10 @@ export async function POST({ request }: { request: Request }) {
 
 		const provider = createProvider(providerConfig);
 		const storage = createStorage({ enabled: config.storageEnabled });
+
+		if (!providerConfig.contextWindow) {
+			providerConfig.contextWindow = getContextWindow();
+		}
 		const registry = new ToolRegistry();
 		registry.register(readFileTool);
 		registry.register(writeFileTool);
