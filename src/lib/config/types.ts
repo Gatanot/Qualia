@@ -4,6 +4,7 @@ export interface ProviderConfig {
 	apiKey: string;
 	baseURL: string;
 	model: string;
+	contextWindow?: number;
 	timeout?: number;
 	maxRetries?: number;
 }
@@ -12,4 +13,5 @@ export interface AppConfig {
 	providers: ProviderConfig[];
 	activeProvider: string;
 	storageEnabled: boolean;
+	systemPrompt: string;
 }

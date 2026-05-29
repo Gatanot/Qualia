@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: true });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: true, systemPrompt: '' });
 	let loading = $state(true);
 	let error = $state('');
 	let editingProvider: ProviderConfig | null = $state(null);
@@ -99,6 +99,18 @@
 		}
 	}
 
+	async function saveSystemPrompt() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
+
 	function editProvider(p: ProviderConfig) {
 		editingProvider = p;
 		showForm = true;
@@ -144,6 +156,21 @@
 			>
 				<span class="toggle-knob"></span>
 			</button>
+		</div>
+	</section>
+
+	<section class="section">
+		<h2>系统提示词</h2>
+		<p class="section-desc">定义 AI 的角色和行为准则，将作为每条对话的 system prompt 发送给模型。</p>
+		<textarea
+			class="prompt-editor"
+			bind:value={config.systemPrompt}
+			rows={10}
+			placeholder="输入系统提示词..."
+		></textarea>
+		<div class="prompt-actions">
+			<span class="prompt-hint">{config.systemPrompt?.length || 0} 字符</span>
+			<button class="btn btn-primary" onclick={saveSystemPrompt}>保存提示词</button>
 		</div>
 	</section>
 
@@ -490,5 +517,41 @@
 
 	.toggle.on .toggle-knob {
 		transform: translateX(20px);
+	}
+
+	.section-desc {
+		font-size: 0.85rem;
+		color: #888;
+		margin: -0.5rem 0 0.75rem;
+	}
+
+	.prompt-editor {
+		width: 100%;
+		padding: 0.75rem;
+		border: 1px solid #ccc;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		font-family: inherit;
+		line-height: 1.5;
+		resize: vertical;
+		box-sizing: border-box;
+	}
+
+	.prompt-editor:focus {
+		border-color: #1976d2;
+		outline: none;
+		box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+	}
+
+	.prompt-actions {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 0.5rem;
+	}
+
+	.prompt-hint {
+		font-size: 0.8rem;
+		color: #aaa;
 	}
 </style>

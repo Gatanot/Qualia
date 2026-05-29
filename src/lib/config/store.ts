@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
+import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
 
 function getConfigPath(): string {
 	return join(process.cwd(), 'data', 'config.json');
@@ -9,7 +10,8 @@ function getConfigPath(): string {
 const defaultConfig: AppConfig = {
 	providers: [],
 	activeProvider: '',
-	storageEnabled: true
+	storageEnabled: true,
+	systemPrompt: DEFAULT_SYSTEM_PROMPT
 };
 
 export function readConfig(): AppConfig {
@@ -25,7 +27,8 @@ export function readConfig(): AppConfig {
 		return {
 			providers: Array.isArray(parsed.providers) ? parsed.providers : [],
 			activeProvider: parsed.activeProvider || '',
-			storageEnabled: parsed.storageEnabled !== false
+			storageEnabled: parsed.storageEnabled !== false,
+			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT
 		};
 	} catch {
 		return { ...defaultConfig };
