@@ -223,9 +223,9 @@
 	<div class="messages" bind:this={messagesEl}>
 		{#if messages.length === 0}
 			<div class="empty-state">
-				<div class="empty-icon">chat</div>
+				<div class="empty-icon">spa</div>
 				<h2>Qualia</h2>
-				<p>你的虚拟 AI 伙伴，随时开始对话</p>
+				<p>你的虚拟伙伴，随时倾听</p>
 			</div>
 		{/if}
 
@@ -238,7 +238,7 @@
 						{:else if msg.role === 'error'}
 							error
 						{:else}
-							smart_toy
+							spa
 						{/if}
 					</span>
 				</div>
@@ -328,7 +328,7 @@
 	.chat-container {
 		display: flex;
 		flex-direction: column;
-		height: calc(100vh - 56px);
+		height: calc(100vh - 64px);
 		max-width: 860px;
 		margin: 0 auto;
 	}
@@ -336,10 +336,10 @@
 	.messages {
 		flex: 1;
 		overflow-y: auto;
-		padding: 1rem 1.5rem;
+		padding: 1.5rem 1.5rem 2rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 1.25rem;
 	}
 
 	.empty-state {
@@ -348,26 +348,29 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
-		color: #9e9e9e;
-		gap: 0.5rem;
+		color: #8C847D;
+		gap: 0.75rem;
 	}
 
 	.empty-icon {
 		font-family: 'Material Symbols Rounded';
-		font-size: 3rem;
+		font-size: 3.5rem;
 		margin-bottom: 0.5rem;
+		color: #A3A8A0;
 	}
 
 	.empty-state h2 {
 		margin: 0;
 		font-weight: 500;
-		font-size: 1.5rem;
-		color: #616161;
+		font-size: 1.75rem;
+		color: #4A433E;
+		letter-spacing: 0.5px;
 	}
 
 	.empty-state p {
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: 1rem;
+		color: #8C847D;
 	}
 
 	.message-row {
@@ -382,28 +385,28 @@
 
 	.message-avatar {
 		flex-shrink: 0;
-		width: 36px;
-		height: 36px;
+		width: 40px;
+		height: 40px;
 		border-radius: 50%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 20px;
+		font-size: 22px;
 	}
 
 	.message-row:not(.user) .message-avatar {
-		background: #e3f2fd;
-		color: #1976d2;
+		background: #F4EFE6;
+		color: #6B7F72;
 	}
 
 	.message-row.user .message-avatar {
-		background: #1976d2;
+		background: #6B7F72;
 		color: #fff;
 	}
 
 	.message-row.error .message-avatar {
-		background: #ffebee;
-		color: #d32f2f;
+		background: #FDECEA;
+		color: #D32F2F;
 	}
 
 	.message-body {
@@ -420,35 +423,39 @@
 	.message-role {
 		font-size: 0.8rem;
 		font-weight: 500;
-		color: #757575;
-		margin-bottom: 0.25rem;
+		color: #8C847D;
+		margin-bottom: 0.4rem;
+		padding: 0 0.25rem;
 	}
 
 	.message-content {
 		background: #fff;
-		border-radius: 12px;
-		padding: 0.75rem 1rem;
-		font-size: 0.925rem;
-		line-height: 1.55;
+		border-radius: 4px 24px 24px 24px;
+		padding: 0.85rem 1.25rem;
+		font-size: 0.95rem;
+		line-height: 1.6;
 		white-space: pre-wrap;
 		word-break: break-word;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+		box-shadow: 0 2px 12px rgba(74, 67, 62, 0.04);
+		color: #4A433E;
 	}
 
 	.message-row.user .message-content {
-		background: #1976d2;
+		background: #6B7F72;
 		color: #fff;
+		border-radius: 24px 4px 24px 24px;
 	}
 
 	.message-row.error .message-content {
-		background: #ffebee;
-		color: #c62828;
+		background: #FDECEA;
+		color: #C62828;
+		border-radius: 4px 24px 24px 24px;
 	}
 
 	.cursor {
 		animation: blink 0.7s infinite;
 		font-weight: 700;
-		color: #1976d2;
+		color: #6B7F72;
 	}
 
 	@keyframes blink {
@@ -457,62 +464,63 @@
 	}
 
 	.tool-calls {
-		margin-top: 0.5rem;
+		margin-top: 0.75rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
 
 	.tool-call {
-		background: #fafafa;
-		border: 1px solid #e0e0e0;
-		border-radius: 8px;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.8rem;
+		background: #FDFBF7;
+		border: 1px solid #EAE4DC;
+		border-radius: 16px;
+		padding: 0.75rem 1rem;
+		font-size: 0.85rem;
 	}
 
 	.tool-call.tool-done {
-		border-color: #c8e6c9;
-		background: #f1f8e9;
+		border-color: #D6E0D9;
+		background: #F8FAF8;
 	}
 
 	.tool-header {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.5rem;
 	}
 
 	.tool-icon {
-		font-size: 16px !important;
-		color: #ff9800;
+		font-size: 18px !important;
+		color: #D4A373;
 	}
 
 	.tool-done .tool-icon {
-		color: #4caf50;
+		color: #6B7F72;
 	}
 
 	.tool-name {
 		font-weight: 500;
-		color: #616161;
+		color: #6D645D;
 	}
 
 	.tool-args pre {
-		margin: 0.3rem 0;
-		padding: 0.3rem 0.5rem;
-		background: #f5f5f5;
-		border-radius: 4px;
-		font-size: 0.75rem;
+		margin: 0.5rem 0 0;
+		padding: 0.5rem 0.75rem;
+		background: #F4EFE6;
+		border-radius: 8px;
+		font-size: 0.8rem;
 		overflow-x: auto;
 		white-space: pre-wrap;
+		color: #6D645D;
 	}
 
 	.tool-output {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.3rem;
-		margin-top: 0.3rem;
-		font-size: 0.78rem;
-		color: #616161;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+		font-size: 0.8rem;
+		color: #6D645D;
 		max-height: 200px;
 		overflow-y: auto;
 		white-space: pre-wrap;
@@ -520,74 +528,79 @@
 	}
 
 	.tool-output .material-symbols-rounded {
-		font-size: 14px;
+		font-size: 16px;
 		flex-shrink: 0;
 	}
 
 	.tool-error {
-		color: #d32f2f;
+		color: #D32F2F;
 	}
 
 	.input-bar {
 		display: flex;
 		gap: 0.5rem;
-		padding: 0.75rem 1.5rem 1rem;
+		margin: 0 1.5rem 1.5rem;
+		padding: 0.5rem 0.5rem 0.5rem 1rem;
 		background: #fff;
-		border-top: 1px solid #e0e0e0;
+		border-radius: 32px;
 		align-items: flex-end;
-		box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+		box-shadow: 0 4px 20px rgba(74, 67, 62, 0.08);
+		border: 1px solid #EAE4DC;
 	}
 
 	.chat-input {
 		flex: 1;
-		padding: 0.6rem 0.75rem;
-		border: 1px solid #e0e0e0;
-		border-radius: 8px;
+		padding: 0.6rem 0;
+		border: none;
+		background: transparent;
 		font-family: inherit;
-		font-size: 0.9rem;
+		font-size: 0.95rem;
 		resize: none;
 		max-height: 120px;
-		line-height: 1.4;
+		line-height: 1.5;
 		outline: none;
-		transition: border-color 0.2s;
+		color: #4A433E;
 	}
-
-	.chat-input:focus {
-		border-color: #1976d2;
+	
+	.chat-input::placeholder {
+		color: #A69E96;
 	}
 
 	.send-btn {
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		border-radius: 50%;
 		border: none;
-		background: #1976d2;
+		background: #6B7F72;
 		color: #fff;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		transition: background 0.2s;
+		transition: background 0.2s, transform 0.1s;
+		margin-bottom: 2px;
 	}
 
 	.send-btn:hover:not(:disabled) {
-		background: #1565c0;
+		background: #5A6B60;
+		transform: scale(1.05);
 	}
 
 	.send-btn:disabled {
-		background: #bdbdbd;
+		background: #D6CFC7;
 		cursor: default;
 	}
 
 	.send-btn .material-symbols-rounded {
-		font-size: 20px;
+		font-size: 22px;
 	}
 
 	.confirm-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: rgba(74, 67, 62, 0.4);
+		backdrop-filter: blur(2px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -596,31 +609,34 @@
 
 	.confirm-dialog {
 		background: #fff;
-		border-radius: 16px;
-		padding: 2rem;
-		max-width: 420px;
+		border-radius: 28px;
+		padding: 2.5rem 2rem;
+		max-width: 400px;
 		width: 90%;
 		text-align: center;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+		box-shadow: 0 12px 40px rgba(74, 67, 62, 0.15);
 	}
 
 	.confirm-icon {
-		color: #ff9800;
+		color: #D4A373;
 		font-size: 2.5rem;
-		margin-bottom: 0.75rem;
+		margin-bottom: 1rem;
 	}
 
 	.confirm-dialog h3 {
-		margin: 0 0 0.5rem;
+		margin: 0 0 0.75rem;
 		font-weight: 500;
+		color: #4A433E;
+		font-size: 1.25rem;
 	}
 
 	.confirm-dialog p {
-		margin: 0 0 1.5rem;
-		color: #616161;
-		font-size: 0.9rem;
+		margin: 0 0 2rem;
+		color: #6D645D;
+		font-size: 0.95rem;
 		white-space: pre-wrap;
 		word-break: break-word;
+		line-height: 1.5;
 	}
 
 	.confirm-actions {
@@ -630,32 +646,31 @@
 	}
 
 	.btn {
-		padding: 0.5rem 1.5rem;
-		border-radius: 6px;
+		padding: 0.6rem 1.75rem;
+		border-radius: 100px;
 		border: none;
 		font-family: inherit;
-		font-size: 0.875rem;
+		font-size: 0.9rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: background 0.2s;
+		transition: all 0.2s;
 	}
 
 	.btn-primary {
-		background: #1976d2;
+		background: #6B7F72;
 		color: #fff;
 	}
 
 	.btn-primary:hover {
-		background: #1565c0;
+		background: #5A6B60;
 	}
 
 	.btn-outline {
-		background: #fff;
-		color: #616161;
-		border: 1px solid #e0e0e0;
+		background: #F4EFE6;
+		color: #6D645D;
 	}
 
 	.btn-outline:hover {
-		background: #f5f5f5;
+		background: #EAE4DC;
 	}
 </style>
