@@ -1,11 +1,22 @@
-import { resolve, relative, isAbsolute, sep } from 'node:path';
+import { resolve, isAbsolute, sep } from 'node:path';
 import type { CommandClassification } from './types';
 
+const READONLY_PATTERNS: RegExp[] = [
+	// PowerShell read-only cmdlets & aliases
+	/^\s*(?:Get-ChildItem|dir|ls|Get-Content|cat|type|Get-Process|ps|Get-Service|Get-Location|pwd|gl|Get-Item|gi|Get-ItemProperty|gp|Get-Date|Get-Host|Get-Variable|gv|Get-Command|gcm|Get-Member|gm|Get-Alias|gal|Get-History|history|ghy|Select-String|sls|findstr|Test-Path|Measure-Object|measure|Sort-Object|sort|Group-Object|group|Select-Object|select|Format-List|fl|Format-Table|ft|Format-Wide|fw|Format-Hex|Write-Output|echo|write|Compare-Object|diff|compare|Where-Object|Join-Path|Split-Path|Resolve-Path|ConvertFrom-Json|ConvertFrom-Csv)\b/i,
+	// Unix read-only
+	/^\s*(?:head|tail|less|more|grep|egrep|fgrep|rg|find|wc|sort|uniq|cut|tr|file|stat|df|du|which|whereis|command|whoami|id|groups|printf|uname|hostname|basename|dirname|readlink|realpath)\b/i,
+	// Git read-only
+	/^\s*git\s+(?:status|log|diff|show|branch|tag|stash\s+list|remote\s+(?:-v|show)|config\s+(?:--list|--get\b)|ls-files|rev-parse|rev-list|describe|shortlog|blame|grep|notes\s+list|reflog|cherry|for-each-ref|name-rev)\b/i,
+	// npm read-only
+	/^\s*npm\s+(?:ls|list|view|info|outdated|version|config\s+list)\b/i
+];
+
 const DANGEROUS_PATTERNS: RegExp[] = [
-	// Windows: recursive force delete
-	/del\s+\/[fs].*\/[sq]/i,
-	/rmdir\s+\/[sq]/i,
-	/Remove-Item\s+.*-(Recurse|Force)/i,
+	// Windows: delete operations (all forms — confirm before any deletion)
+	/^\s*del\b/i,
+	/^\s*rmdir\b/i,
+	/^\s*Remove-Item\b/i,
 	// Windows: system modification
 	/\bformat\b/i,
 	/\bdiskpart\b/i,
@@ -63,19 +74,15 @@ const SYSTEM_DIRS = [
 	'/proc'
 ];
 
-/**
- * 检测命令字符串是否包含危险模式
- *
- * 使用正则匹配识别格式化、强制删除、系统修改、管道注入等危险操作。
- */
-export function isDangerousCommand(command: string): boolean {
+function isDangerousCommand(command: string): boolean {
 	return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command));
 }
 
-/**
- * 判断目标路径是否在工作区目录内
- */
-export function isPathInWorkspace(targetPath: string, workspaceRoot: string): boolean {
+function isReadonlyCommand(command: string): boolean {
+	return READONLY_PATTERNS.some((pattern) => pattern.test(command));
+}
+
+function isPathInWorkspace(targetPath: string, workspaceRoot: string): boolean {
 	const resolved = normalizePath(targetPath, workspaceRoot);
 	const normalizedRoot = resolve(workspaceRoot).toLowerCase();
 	const normalizedTarget = resolve(resolved).toLowerCase();
@@ -83,20 +90,14 @@ export function isPathInWorkspace(targetPath: string, workspaceRoot: string): bo
 	return normalizedTarget.startsWith(normalizedRoot + sep);
 }
 
-/**
- * 判断目标路径是否在系统保护目录内
- */
-export function isSystemPath(targetPath: string, workspaceRoot: string): boolean {
+function isSystemPath(targetPath: string, workspaceRoot: string): boolean {
 	const resolved = normalizePath(targetPath, workspaceRoot);
 	const normalized = resolve(resolved).toLowerCase();
 
 	return SYSTEM_DIRS.some((sysDir) => normalized.startsWith(sysDir.toLowerCase()));
 }
 
-/**
- * 从命令字符串中提取所有路径参数
- */
-export function extractPaths(command: string): string[] {
+function extractPaths(command: string): string[] {
 	const paths: string[] = [];
 
 	const winPathRe = /[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*/g;
@@ -119,6 +120,13 @@ export function extractPaths(command: string): string[] {
 /**
  * 分类命令的安全性
  *
+ * 判定顺序：
+ * 1. reject  — 明确禁止（format, diskpart）
+ * 2. confirm — 命中危险模式（删除、系统修改、管道注入等）
+ * 3. safe    — 只读命令，无需后续路径检查
+ * 4. confirm — 路径在工作区外或系统目录
+ * 5. safe    — 其余放行
+ *
  * @returns 'safe' 可直接执行 / 'confirm' 需用户确认 / 'reject' 拒绝执行
  */
 export function classifyCommand(
@@ -131,6 +139,10 @@ export function classifyCommand(
 
 	if (isDangerousCommand(command)) {
 		return 'confirm';
+	}
+
+	if (isReadonlyCommand(command)) {
+		return 'safe';
 	}
 
 	const paths = extractPaths(command);

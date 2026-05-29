@@ -71,6 +71,14 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 
 When `contextWindow - token_count < 20000`, ContextBuilder triggers `forkSession()`. Summary generation is not yet implemented (placeholder text).
 
+## Git conventions
+
+- Branch naming: `feature/<name>` for new work, `fix/<name>` for bug fixes discovered outside active feature development.
+- Merge to `main` when done, then delete the branch.
+- Commit messages in Chinese, short format: `prefix: 简要描述`.
+- No `develop` branch; `main` is the integration target.
+- Run `npm run check` before committing.
+
 ## Notable quirks
 
 - `data/` and `docs/` directories are gitignored, auto-created at runtime
