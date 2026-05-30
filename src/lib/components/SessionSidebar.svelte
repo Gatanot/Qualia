@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { sessions, activeId, setActive, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 
@@ -61,14 +62,21 @@
 			<span class="material-symbols-rounded">menu</span>
 		</button>
 		{#if !collapsed}
-			<span class="sidebar-title">对话</span>
-			<button class="new-btn" onclick={handleNew}>
-				<span class="material-symbols-rounded">add</span>
-			</button>
+			<div class="brand">
+				<span class="material-symbols-rounded brand-icon">spa</span>
+				<span class="brand-name">Qualia</span>
+			</div>
 		{/if}
 	</div>
 
 	{#if !collapsed}
+		<div class="section-label">
+			<span>对话</span>
+			<button class="new-btn" onclick={handleNew}>
+				<span class="material-symbols-rounded">add</span>
+			</button>
+		</div>
+
 		<div class="session-list">
 			{#each $sessions as session (session.id)}
 				<div
@@ -115,6 +123,13 @@
 				</div>
 			{/each}
 		</div>
+
+		<div class="sidebar-footer">
+			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
+				<span class="material-symbols-rounded">settings</span>
+				设置
+			</a>
+		</div>
 	{/if}
 </div>
 
@@ -128,6 +143,7 @@
 		flex-direction: column;
 		transition: width 0.2s ease;
 		overflow: hidden;
+		height: 100%;
 	}
 
 	.sidebar.collapsed {
@@ -137,17 +153,16 @@
 	.sidebar-header {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
 		padding: 0.75rem;
-		height: 64px;
+		height: 52px;
 		box-sizing: border-box;
 	}
 
-	.hamburger, .new-btn {
+	.hamburger {
 		width: 36px;
 		height: 36px;
 		border: none;
-		border-radius: 50%;
+		border-radius: 8px;
 		background: transparent;
 		color: #706862;
 		cursor: pointer;
@@ -158,19 +173,65 @@
 		transition: background 0.15s;
 	}
 
-	.hamburger:hover, .new-btn:hover {
+	.hamburger:hover {
 		background: #E8E3D9;
 	}
 
-	.hamburger .material-symbols-rounded, .new-btn .material-symbols-rounded {
+	.hamburger .material-symbols-rounded {
 		font-size: 20px;
 	}
 
-	.sidebar-title {
-		flex: 1;
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding-left: 0.5rem;
+	}
+
+	.brand-icon {
+		font-size: 22px;
+		color: #6B7F72;
+	}
+
+	.brand-name {
 		font-weight: 500;
-		font-size: 1rem;
+		font-size: 1.1rem;
 		color: #3D3834;
+	}
+
+	.section-label {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.25rem 0.75rem 0.25rem 1rem;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: #A39B93;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.new-btn {
+		width: 28px;
+		height: 28px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: #A39B93;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: background 0.15s;
+	}
+
+	.new-btn:hover {
+		background: #E8E3D9;
+		color: #3D3834;
+	}
+
+	.new-btn .material-symbols-rounded {
+		font-size: 18px;
 	}
 
 	.session-list {
@@ -274,5 +335,31 @@
 
 	.delete-btn .material-symbols-rounded {
 		font-size: 16px;
+	}
+
+	.sidebar-footer {
+		padding: 0.75rem;
+		border-top: 1px solid rgba(230, 226, 216, 0.5);
+	}
+
+	.footer-link {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: 12px;
+		color: #706862;
+		text-decoration: none;
+		font-size: 0.9rem;
+		transition: background 0.12s, color 0.12s;
+	}
+
+	.footer-link:hover, .footer-link.active {
+		background: #E3DDD0;
+		color: #3D3834;
+	}
+
+	.footer-link .material-symbols-rounded {
+		font-size: 20px;
 	}
 </style>
