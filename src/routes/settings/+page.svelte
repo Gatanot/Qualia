@@ -364,7 +364,7 @@
 	h1 {
 		font-size: 2rem;
 		margin-bottom: 2.5rem;
-		color: #3D3834;
+		color: #4A4542;
 		font-weight: 500;
 		letter-spacing: -0.02em;
 	}
@@ -372,7 +372,7 @@
 	h2 {
 		font-size: 1.25rem;
 		margin: 0;
-		color: #3D3834;
+		color: #4A4542;
 		font-weight: 500;
 	}
 
@@ -388,7 +388,7 @@
 	}
 
 	.msg {
-		color: #706862;
+		color: #8E857D;
 		padding: 1rem 0;
 	}
 
@@ -403,19 +403,19 @@
 
 	.btn {
 		padding: 0.5rem 1.25rem;
-		border: 1px solid rgba(230, 226, 216, 0.8);
+		border: 1px solid rgba(215, 210, 200, 0.6);
 		border-radius: 100px;
 		background: #FFFFFF;
-		color: #3D3834;
+		color: #4A4542;
 		cursor: pointer;
 		font-size: 0.9rem;
 		font-weight: 500;
-		transition: transform 0.15s, background-color 0.2s, border-color 0.2s;
+		transition: transform 0.15s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 	}
 
 	.btn:hover {
-		background: #F0EBE1;
-		border-color: #E6E2D8;
+		background: #F2EEE5;
+		border-color: #D7D2C8;
 	}
 	
 	.btn:active {
@@ -423,16 +423,16 @@
 	}
 
 	.btn-primary {
-		background: #5E7163;
+		background: #7B8C7C;
 		color: #FFFFFF;
-		border-color: #5E7163;
-		box-shadow: 0 2px 4px rgba(94, 113, 99, 0.2);
+		border-color: #7B8C7C;
+		box-shadow: 0 4px 12px rgba(123, 140, 124, 0.15);
 	}
 
 	.btn-primary:hover {
-		background: #4A594E;
-		border-color: #4A594E;
-		box-shadow: 0 4px 8px rgba(94, 113, 99, 0.3);
+		background: #627463;
+		border-color: #627463;
+		box-shadow: 0 6px 16px rgba(123, 140, 124, 0.25);
 	}
 
 	.btn-danger {
@@ -462,22 +462,22 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1.5rem;
-		border: 1px solid rgba(230, 226, 216, 0.6);
-		border-radius: 20px;
+		border: 1px solid rgba(215, 210, 200, 0.4);
+		border-radius: 24px;
 		background: #FFFFFF;
-		transition: all 0.2s ease;
-		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.02);
+		transition: all 0.25s ease;
+		box-shadow: 0 4px 12px rgba(74, 69, 66, 0.02);
 	}
 
 	.provider-card.active {
-		border-color: #5E7163;
+		border-color: #7B8C7C;
 		background: #F8FAF8;
-		box-shadow: 0 4px 16px rgba(94, 113, 99, 0.08);
+		box-shadow: 0 8px 24px rgba(123, 140, 124, 0.1);
 	}
 
 	.provider-name {
 		font-weight: 500;
-		color: #3D3834;
+		color: #4A4542;
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
@@ -487,16 +487,16 @@
 
 	.badge {
 		font-size: 0.75rem;
-		background: #5E7163;
+		background: #7B8C7C;
 		color: #FFFFFF;
-		padding: 0.2rem 0.75rem;
+		padding: 0.25rem 0.8rem;
 		border-radius: 100px;
 		font-weight: 500;
 	}
 
 	.provider-meta {
 		font-size: 0.9rem;
-		color: #706862;
+		color: #8E857D;
 		display: flex;
 		flex-wrap: wrap;
 		gap: 1rem;
@@ -538,14 +538,14 @@
 		margin: 0 0 1.75rem;
 		font-size: 1.5rem;
 		font-weight: 500;
-		color: #3D3834;
+		color: #4A4542;
 	}
 
 	form label {
 		display: block;
 		margin-bottom: 1.25rem;
 		font-size: 0.95rem;
-		color: #706862;
+		color: #8E857D;
 		font-weight: 500;
 	}
 
@@ -554,21 +554,21 @@
 		width: 100%;
 		margin-top: 0.5rem;
 		padding: 0.85rem 1rem;
-		border: 1px solid rgba(230, 226, 216, 0.8);
+		border: 1px solid rgba(215, 210, 200, 0.6);
 		border-radius: 12px;
-		background: #FAF8F5;
+		background: #F8FAF8;
 		font-size: 1rem;
-		color: #3D3834;
+		color: #4A4542;
 		box-sizing: border-box;
 		transition: all 0.2s;
 		font-family: inherit;
 	}
 
 	form input:focus, form select:focus {
-		border-color: #5E7163;
+		border-color: #7B8C7C;
 		outline: none;
 		background: #FFFFFF;
-		box-shadow: 0 0 0 3px rgba(94, 113, 99, 0.15);
+		box-shadow: 0 0 0 3px rgba(123, 140, 124, 0.15);
 	}
 
 	.form-actions {
@@ -591,14 +591,14 @@
 
 	.setting-title {
 		font-weight: 500;
-		color: #3D3834;
+		color: #4A4542;
 		margin-bottom: 0.4rem;
 		font-size: 1.05rem;
 	}
 
 	.setting-desc {
 		font-size: 0.9rem;
-		color: #706862;
+		color: #8E857D;
 		line-height: 1.5;
 	}
 
@@ -608,14 +608,14 @@
 		height: 28px;
 		border-radius: 100px;
 		border: none;
-		background: #D6CFC7;
+		background: #D7D2C8;
 		cursor: pointer;
 		transition: background 0.3s;
 		flex-shrink: 0;
 	}
 
 	.toggle.on {
-		background: #5E7163;
+		background: #7B8C7C;
 	}
 
 	.toggle-knob {
@@ -644,13 +644,13 @@
 	.prompt-editor {
 		width: 100%;
 		padding: 1.25rem;
-		border: 1px solid rgba(230, 226, 216, 0.8);
+		border: 1px solid rgba(215, 210, 200, 0.6);
 		border-radius: 20px;
-		background: #FAF8F5;
-		font-size: 0.9rem;
+		background: #F8FAF8;
+		font-size: 0.95rem;
 		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 		line-height: 1.7;
-		color: #3D3834;
+		color: #4A4542;
 		resize: vertical;
 		box-sizing: border-box;
 		transition: all 0.2s;
@@ -658,10 +658,10 @@
 	}
 
 	.prompt-editor:focus {
-		border-color: #5E7163;
+		border-color: #7B8C7C;
 		outline: none;
 		background: #FFFFFF;
-		box-shadow: 0 0 0 3px rgba(94, 113, 99, 0.15);
+		box-shadow: 0 0 0 3px rgba(123, 140, 124, 0.15);
 	}
 
 	.prompt-actions {

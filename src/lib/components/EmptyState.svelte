@@ -13,45 +13,46 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
-		color: #706862;
+		color: #8E857D;
 		gap: 0.75rem;
-		animation: fadeIn 0.8s ease-out forwards;
+		animation: fadeIn 1s cubic-bezier(0.2, 0, 0, 1) forwards;
 		opacity: 0;
 	}
 
 	@keyframes fadeIn {
-		from { opacity: 0; transform: translateY(10px); }
+		from { opacity: 0; transform: translateY(15px); }
 		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.empty-icon-container {
-		width: 96px;
-		height: 96px;
-		background: #F0EBE1;
+		width: 110px;
+		height: 110px;
+		background: #F2EEE5;
 		border-radius: 50%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		margin-bottom: 0.5rem;
-		box-shadow: inset 0 2px 4px rgba(255,255,255,0.5), 0 4px 12px rgba(61, 56, 52, 0.05);
+		margin-bottom: 0.75rem;
+		box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.6), 0 8px 24px rgba(74, 69, 66, 0.06);
 	}
 
 	.empty-icon {
-		font-size: 48px;
-		color: #5E7163;
+		font-size: 52px;
+		color: #7B8C7C;
 	}
 
 	.empty-state h2 {
 		margin: 0;
-		font-weight: 400;
-		font-size: 2rem;
-		color: #3D3834;
-		letter-spacing: 0.5px;
+		font-weight: 300;
+		font-size: 2.25rem;
+		color: #4A4542;
+		letter-spacing: 0.04em;
 	}
 
 	.empty-state p {
 		margin: 0;
-		font-size: 1.1rem;
-		color: #706862;
+		font-size: 1.15rem;
+		color: #8E857D;
+		font-weight: 400;
 	}
 </style>

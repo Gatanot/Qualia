@@ -540,7 +540,7 @@
 		bottom: 0;
 		margin-top: auto;
 		z-index: 10;
-		background: linear-gradient(to top, #FAF8F5 70%, transparent);
+		background: linear-gradient(to top, #FBF9F6 70%, transparent);
 		padding-top: 0.75rem;
 	}
 

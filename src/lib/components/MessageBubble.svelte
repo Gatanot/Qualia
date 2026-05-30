@@ -160,28 +160,28 @@
 	.message-role {
 		font-size: 0.85rem;
 		font-weight: 500;
-		color: #706862;
-		padding: 0 0.25rem;
-		margin-bottom: -0.25rem;
+		color: #8E857D;
+		padding: 0 0.5rem;
+		margin-bottom: 0.1rem;
 	}
 
 	.message-content {
 		background: #FFFFFF;
-		border-radius: 4px 20px 20px 20px;
-		padding: 1rem 1.25rem;
-		font-size: 1rem;
-		line-height: 1.65;
+		border-radius: 4px 24px 24px 24px;
+		padding: 1.25rem 1.5rem;
+		font-size: 1.05rem;
+		line-height: 1.75;
 		white-space: pre-wrap;
 		word-break: break-word;
-		box-shadow: 0 1px 3px rgba(61, 56, 52, 0.05), 0 4px 12px rgba(61, 56, 52, 0.03);
-		color: #3D3834;
+		box-shadow: 0 4px 20px rgba(74, 69, 66, 0.04), 0 1px 3px rgba(74, 69, 66, 0.02);
+		color: #4A4542;
 	}
 
 	.message-row.user .message-content {
-		background: #5E7163;
+		background: #7B8C7C;
 		color: #FFFFFF;
-		border-radius: 20px 4px 20px 20px;
-		box-shadow: 0 1px 3px rgba(94, 113, 99, 0.2), 0 4px 12px rgba(94, 113, 99, 0.1);
+		border-radius: 24px 4px 24px 24px;
+		box-shadow: 0 4px 20px rgba(123, 140, 124, 0.15), 0 1px 3px rgba(123, 140, 124, 0.1);
 	}
 
 	.message-row.error .message-content {
@@ -228,10 +228,10 @@
 	:global(.markdown-body code:not(pre code)) {
 		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 		font-size: 0.88em;
-		background: #F0EBE1;
-		padding: 0.15em 0.4em;
+		background: #F4F1EA;
+		padding: 0.2em 0.5em;
 		border-radius: 6px;
-		color: #5E7163;
+		color: #7B8C7C;
 		font-weight: 500;
 	}
 
@@ -274,11 +274,12 @@
 
 	.markdown-body :global(blockquote) {
 		margin: 0.75rem 0;
-		padding: 0.5rem 1rem;
-		border-left: 3px solid #6B7F72;
-		background: #F5F2EB;
-		border-radius: 0 8px 8px 0;
-		color: #706862;
+		padding: 0.75rem 1.25rem;
+		border-left: 4px solid #7B8C7C;
+		background: #F8F6F0;
+		border-radius: 0 12px 12px 0;
+		color: #8E857D;
+		font-style: italic;
 	}
 
 	.markdown-body :global(blockquote:last-child) {
@@ -432,7 +433,7 @@
 	.cursor {
 		animation: blink 0.7s infinite;
 		font-weight: 700;
-		color: #5E7163;
+		color: #7B8C7C;
 	}
 
 	@keyframes blink {

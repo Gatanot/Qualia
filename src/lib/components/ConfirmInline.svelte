@@ -51,7 +51,7 @@
 
 	.confirm-message {
 		margin: 0 0 1rem;
-		color: #3D3834;
+		color: #4A4542;
 		font-size: 0.95rem;
 		line-height: 1.6;
 		white-space: pre-wrap;
@@ -80,14 +80,14 @@
 	}
 
 	.btn-primary {
-		background: #5E7163;
+		background: #7B8C7C;
 		color: #FFFFFF;
-		box-shadow: 0 2px 4px rgba(94, 113, 99, 0.2);
+		box-shadow: 0 2px 4px rgba(123, 140, 124, 0.2);
 	}
 
 	.btn-primary:hover {
-		background: #4A594E;
-		box-shadow: 0 4px 8px rgba(94, 113, 99, 0.3);
+		background: #627463;
+		box-shadow: 0 4px 8px rgba(123, 140, 124, 0.3);
 	}
 
 	.btn-outline {

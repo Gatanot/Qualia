@@ -67,16 +67,16 @@
 <style>
 	.tool-call {
 		background: #FFFFFF;
-		border: 1px solid rgba(230, 226, 216, 0.6);
+		border: 1px solid rgba(215, 210, 200, 0.6);
 		border-radius: 16px;
 		padding: 0.75rem 1rem;
 		font-size: 0.85rem;
 		transition: border-color 0.2s, background 0.2s;
-		box-shadow: 0 1px 2px rgba(61, 56, 52, 0.02);
+		box-shadow: 0 2px 4px rgba(74, 69, 66, 0.02);
 	}
 
 	.tool-call.tool-done {
-		border-color: rgba(214, 224, 217, 0.6);
+		border-color: rgba(123, 140, 124, 0.2);
 		background: #F8FAF8;
 	}
 
@@ -95,7 +95,7 @@
 	}
 
 	.tool-done .tool-icon {
-		color: #5E7163;
+		color: #7B8C7C;
 	}
 
 	.tool-summary {
@@ -108,7 +108,7 @@
 
 	.tool-name {
 		font-weight: 500;
-		color: #3D3834;
+		color: #4A4542;
 		flex-shrink: 0;
 	}
 

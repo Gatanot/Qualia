@@ -27,16 +27,16 @@
 
 <style>
 	.reasoning {
-		background: #F4F1EA; /* Softer secondary container */
-		border: 1px solid rgba(230, 226, 216, 0.6);
-		border-radius: 16px; /* M3 standard */
-		font-size: 0.85rem;
+		background: #F8F6F0;
+		border: 1px solid rgba(215, 210, 200, 0.6);
+		border-radius: 16px;
+		font-size: 0.9rem;
 		transition: border-color 0.2s, background 0.2s;
 		overflow: hidden;
 	}
 
 	.reasoning.done {
-		background: #F0EBE1;
+		background: #F2EEE5;
 	}
 
 	.reasoning-header {
@@ -50,12 +50,12 @@
 
 	.reasoning-icon {
 		font-size: 18px;
-		color: #A48956;
+		color: #8E857D;
 	}
 
 	.reasoning-label {
 		font-weight: 500;
-		color: #706862;
+		color: #8E857D;
 	}
 
 	.reasoning-dot {
@@ -77,7 +77,7 @@
 
 	.reasoning-content {
 		padding: 0 0.85rem 0.85rem;
-		color: #706862;
+		color: #8E857D;
 		white-space: pre-wrap;
 		line-height: 1.6;
 		font-style: italic;
