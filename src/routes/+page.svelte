@@ -14,14 +14,10 @@
 	let inputQueue: string[] = $state([]);
 	let abortController: AbortController | null = null;
 
-	let messagesEl = $state<HTMLDivElement>();
-
 	function scrollToBottom() {
-		if (messagesEl) {
-			setTimeout(() => {
-				messagesEl!.scrollTop = messagesEl!.scrollHeight;
-			}, 16);
-		}
+		requestAnimationFrame(() => {
+			window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+		});
 	}
 
 	function finishStreaming() {
@@ -291,7 +287,7 @@
 </script>
 
 <div class="chat-container">
-	<div class="messages" bind:this={messagesEl}>
+	<div class="messages" class:welcome={messages.length === 0}>
 		{#if messages.length === 0}
 			<EmptyState />
 		{/if}
@@ -301,39 +297,41 @@
 		{/each}
 	</div>
 
-	<ChatInput
-		bind:value={input}
-		streaming={streaming}
-		queueCount={inputQueue.length}
-		onsend={() => sendMessage()}
-		onstop={stopAI}
-		focusTrigger={focusTrigger}
-	/>
+	<div class="input-anchor">
+		<ChatInput
+			bind:value={input}
+			streaming={streaming}
+			queueCount={inputQueue.length}
+			onsend={() => sendMessage()}
+			onstop={stopAI}
+			focusTrigger={focusTrigger}
+		/>
+	</div>
 </div>
 
 <style>
 	.chat-container {
 		display: flex;
 		flex-direction: column;
-		height: calc(100vh - 64px);
+		min-height: calc(100vh - 64px);
 		max-width: 900px;
 		margin: 0 auto;
 	}
 
 	.messages {
-		flex: 1;
-		overflow-y: auto;
 		padding: 2rem 2rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem; /* slightly larger gap between messages */
-		scroll-behavior: smooth;
+		gap: 1.5rem;
 	}
-	
-	.messages {
-		scrollbar-width: none;
+
+	.messages.welcome {
+		flex: 1;
+		justify-content: center;
+		align-items: center;
 	}
-	.messages::-webkit-scrollbar {
-		display: none;
+
+	.input-anchor {
+		margin-top: auto;
 	}
 </style>
