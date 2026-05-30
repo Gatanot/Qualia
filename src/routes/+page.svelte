@@ -14,6 +14,7 @@
 	let inputQueue: string[] = $state([]);
 	let abortController: AbortController | null = null;
 	let nearBottom = $state(true);
+	let lastUserMessage = $state('');
 	const SCROLL_THRESHOLD = 150;
 
 	function checkNearBottom(): boolean {
@@ -86,6 +87,23 @@
 		}
 	}
 
+	function handleRecovery(action: 'retry' | 'rollback') {
+		const recoveryMsg = messages.find(
+			(m) => m.blocks.some((b) => b.type === 'error_recovery')
+		);
+		if (recoveryMsg) {
+			const idx = messages.indexOf(recoveryMsg);
+			if (idx !== -1) messages.splice(idx, 1);
+		}
+
+		if (action === 'retry') {
+			if (lastUserMessage) sendMessage(lastUserMessage);
+		} else {
+			input = lastUserMessage;
+			focusTrigger++;
+		}
+	}
+
 	async function sendMessage(queuedText?: string) {
 		const text = (queuedText ?? input).trim();
 		if (!text) return;
@@ -97,6 +115,7 @@
 		}
 
 		if (!queuedText) { input = ''; focusTrigger++; }
+		lastUserMessage = text;
 
 		messages.push({
 			id: crypto.randomUUID(),
@@ -303,6 +322,34 @@
 				break;
 			}
 
+			case 'retrying': {
+				if (currentAssistant) {
+					const idx = messages.indexOf(currentAssistant);
+					if (idx !== -1) messages.splice(idx, 1);
+					currentAssistant = null;
+				}
+				break;
+			}
+
+			case 'retry_exhausted': {
+				if (currentAssistant) {
+					const idx = messages.indexOf(currentAssistant);
+					if (idx !== -1) messages.splice(idx, 1);
+					currentAssistant = null;
+				}
+				currentAssistant = {
+					id: crypto.randomUUID(),
+					role: 'assistant',
+					blocks: [{ type: 'error_recovery', message: event.message as string }],
+					done: true
+				};
+				messages.push(currentAssistant);
+				currentAssistant = null;
+				streaming = false;
+				focusTrigger++;
+				break;
+			}
+
 			case 'done': {
 				break;
 			}
@@ -317,7 +364,7 @@
 		{/if}
 
 		{#each messages as msg (msg.id)}
-			<MessageBubble message={msg} onconfirm={handleConfirm} />
+			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} />
 		{/each}
 	</div>
 

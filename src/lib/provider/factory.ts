@@ -11,7 +11,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 				baseURL: config.baseURL,
 				model: config.activeModel || config.model || '',
 				timeout: config.timeout,
-				maxRetries: config.maxRetries
+				maxRetries: config.maxRetries ?? 5
 			});
 		case 'deepseek':
 			return new DeepSeekProvider({
@@ -19,7 +19,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 				baseURL: config.baseURL,
 				model: config.activeModel || config.model || '',
 				timeout: config.timeout,
-				maxRetries: config.maxRetries,
+				maxRetries: config.maxRetries ?? 5,
 				thinking: config.thinking,
 				reasoningEffort: config.reasoningEffort as 'high' | 'max' | undefined
 			});

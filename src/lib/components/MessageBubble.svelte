@@ -5,9 +5,10 @@
 	import ReasoningBlock from './ReasoningBlock.svelte';
 	import { renderMarkdown } from '$lib/markdown';
 
-	let { message, onconfirm }: {
+	let { message, onconfirm, onrecovery }: {
 		message: UIMessage;
 		onconfirm?: (confirmId: string, approved: boolean) => void;
+		onrecovery?: (action: 'retry' | 'rollback') => void;
 	} = $props();
 
 	let roleLabel = $derived(
@@ -58,6 +59,20 @@
 					message={block.message}
 					onresolve={handleConfirm}
 				/>
+			{:else if block.type === 'error_recovery'}
+				<div class="error-recovery">
+					<p class="recovery-msg">{block.message}</p>
+					<div class="recovery-actions">
+						<button class="btn-recovery" onclick={() => onrecovery?.('retry')}>
+							<span class="material-symbols-rounded">refresh</span>
+							重试
+						</button>
+						<button class="btn-recovery btn-recovery-secondary" onclick={() => onrecovery?.('rollback')}>
+							<span class="material-symbols-rounded">undo</span>
+							回退
+						</button>
+					</div>
+				</div>
 			{/if}
 		{/each}
 
@@ -263,6 +278,60 @@
 
 	.markdown-body :global(strong) {
 		font-weight: 600;
+	}
+
+	.error-recovery {
+		background: #FFF9E6;
+		border: 1px solid #FFE699;
+		border-radius: 12px;
+		padding: 1rem 1.25rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.recovery-msg {
+		margin: 0;
+		font-size: 0.9rem;
+		color: #706862;
+		line-height: 1.5;
+	}
+
+	.recovery-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.btn-recovery {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 1rem;
+		border: 1px solid rgba(230, 226, 216, 0.6);
+		border-radius: 100px;
+		background: #FFFFFF;
+		color: #3D3834;
+		cursor: pointer;
+		font-size: 0.85rem;
+		font-weight: 500;
+		font-family: inherit;
+		transition: transform 0.15s, background 0.2s;
+	}
+
+	.btn-recovery:hover {
+		background: #F0EBE1;
+	}
+
+	.btn-recovery:active {
+		transform: scale(0.98);
+	}
+
+	.btn-recovery-secondary {
+		background: #FAF8F5;
+	}
+
+	.btn-recovery .material-symbols-rounded {
+		font-size: 18px;
 	}
 
 	.cursor {

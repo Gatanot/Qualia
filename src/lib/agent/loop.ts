@@ -1,15 +1,19 @@
 import type { AIProvider, Message, ToolCall, Usage } from '$lib/provider';
+import { sleep } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn } from './types';
+
+const MAX_LLM_RETRIES = 5;
+const RETRY_BASE_DELAY = 1000;
 
 /**
  * AgentLoop — Agent 主循环
  *
  * AsyncGenerator 形式的对话主循环，流程：
  * 1. 保存用户消息到 Storage
- * 2. 调用 LLM (chatStream)
+ * 2. 调用 LLM (chatStream)，内置重试（最多 5 次，指数退避）
  * 3. 流式 yield 'content' 事件
  * 4. 如 LLM 返回 tool_calls：
  *    - 执行工具
@@ -63,43 +67,67 @@ export class AgentLoop {
 				let collectedToolCalls: Map<number, ToolCall> = new Map();
 				let chunkUsage: Usage | undefined;
 
-				const stream = this.provider.chatStream({
-					messages,
-					tools: tools.length > 0 ? tools : undefined
-				});
+				// === LLM 调用（含重试） ===
+				for (let attempt = 0; attempt <= MAX_LLM_RETRIES; attempt++) {
+					try {
+						const stream = this.provider.chatStream({
+							messages,
+							tools: tools.length > 0 ? tools : undefined
+						});
 
-			for await (const chunk of stream) {
-				if (chunk.reasoning_content) {
-					yield { type: 'reasoning', text: chunk.reasoning_content };
-				}
-
-				if (chunk.content) {
-					fullContent += chunk.content;
-					yield { type: 'content', text: chunk.content };
-				}
-
-					if (chunk.tool_calls) {
-						for (const tc of chunk.tool_calls) {
-							const existing = collectedToolCalls.get(tc.index);
-							if (existing) {
-								if (tc.function?.arguments) {
-									existing.function.arguments += tc.function.arguments;
-								}
-							} else if (tc.id) {
-								const newTc: ToolCall = {
-									id: tc.id,
-									type: 'function',
-									function: {
-										name: tc.function?.name || '',
-										arguments: tc.function?.arguments || ''
-									}
-								};
-								collectedToolCalls.set(tc.index, newTc);
+						for await (const chunk of stream) {
+							if (chunk.reasoning_content) {
+								yield { type: 'reasoning', text: chunk.reasoning_content };
 							}
-						}
-					}
 
-					if (chunk.usage) chunkUsage = chunk.usage;
+							if (chunk.content) {
+								fullContent += chunk.content;
+								yield { type: 'content', text: chunk.content };
+							}
+
+							if (chunk.tool_calls) {
+								for (const tc of chunk.tool_calls) {
+									const existing = collectedToolCalls.get(tc.index);
+									if (existing) {
+										if (tc.function?.arguments) {
+											existing.function.arguments += tc.function.arguments;
+										}
+									} else if (tc.id) {
+										const newTc: ToolCall = {
+											id: tc.id,
+											type: 'function',
+											function: {
+												name: tc.function?.name || '',
+												arguments: tc.function?.arguments || ''
+											}
+										};
+										collectedToolCalls.set(tc.index, newTc);
+									}
+								}
+							}
+
+							if (chunk.usage) chunkUsage = chunk.usage;
+						}
+
+						break; // LLM 调用成功
+					} catch (llmError) {
+						// 重置当前轮的部分状态
+						fullContent = '';
+						collectedToolCalls.clear();
+						chunkUsage = undefined;
+
+						if (attempt === MAX_LLM_RETRIES) {
+							yield {
+								type: 'retry_exhausted',
+								message: (llmError as Error).message || '连接失败',
+								partialContent: true
+							};
+							return;
+						}
+
+						yield { type: 'retrying', attempt: attempt + 1, maxRetries: MAX_LLM_RETRIES };
+						await sleep(RETRY_BASE_DELAY * Math.pow(2, attempt));
+					}
 				}
 
 				if (chunkUsage) totalUsage = chunkUsage;
