@@ -77,7 +77,7 @@ export class MemoryStorage implements Storage {
 
 	async addMessage(
 		sessionId: string,
-		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'>
+		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'> & { id?: string }
 	): Promise<MessageRecord> {
 		const session = this.sessions.get(sessionId);
 		if (!session) throw new Error(`会话不存在: ${sessionId}`);
@@ -87,7 +87,7 @@ export class MemoryStorage implements Storage {
 
 		const record: MessageRecord = {
 			...message,
-			id: crypto.randomUUID(),
+			id: message.id || crypto.randomUUID(),
 			created_at: Date.now(),
 			seq
 		};

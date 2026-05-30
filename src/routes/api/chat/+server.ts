@@ -10,7 +10,11 @@ import { pendingConfirms } from '$lib/chat-confirm';
 export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
-		let { sessionId, message } = body as { sessionId?: string; message: string };
+		let { sessionId, message, clientMessageId } = body as {
+			sessionId?: string;
+			message: string;
+			clientMessageId?: string;
+		};
 
 		if (!message?.trim()) {
 			return new Response(JSON.stringify({ error: '消息不能为空' }), {
@@ -78,7 +82,7 @@ export async function POST({ request }: { request: Request }) {
 				}
 
 				try {
-					for await (const event of agent.run(sid!, message, buildResult)) {
+					for await (const event of agent.run(sid!, message, buildResult, clientMessageId)) {
 						send(event);
 					}
 				} catch (e) {

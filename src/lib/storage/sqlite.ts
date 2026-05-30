@@ -140,14 +140,14 @@ export class SQLiteStorage implements Storage {
 
 	async addMessage(
 		sessionId: string,
-		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'>
+		message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'> & { id?: string }
 	): Promise<MessageRecord> {
 		const session = await this.getSession(sessionId);
 		if (!session) throw new Error(`会话不存在: ${sessionId}`);
 
 		const { max_seq } = this.stmts.getMaxSeq.get(sessionId) as { max_seq: number };
 		const seq = max_seq + 1;
-		const id = crypto.randomUUID();
+		const id = message.id || crypto.randomUUID();
 		const now = Date.now();
 
 		this.stmts.insertMessage.run(

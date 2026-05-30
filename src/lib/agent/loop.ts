@@ -40,7 +40,7 @@ export class AgentLoop {
 		this.onConfirm = onConfirm;
 	}
 
-	async *run(sessionId: string, userMessage: string, buildResult: BuildResult): AsyncGenerator<AgentEvent> {
+	async *run(sessionId: string, userMessage: string, buildResult: BuildResult, userMessageId?: string): AsyncGenerator<AgentEvent> {
 		const effectiveSessionId = buildResult.forked?.newSessionId || sessionId;
 
 		if (buildResult.forked) {
@@ -52,6 +52,7 @@ export class AgentLoop {
 		}
 
 		await this.storage.addMessage(effectiveSessionId, {
+			id: userMessageId,
 			session_id: effectiveSessionId,
 			role: 'user',
 			content: userMessage

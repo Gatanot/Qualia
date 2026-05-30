@@ -122,6 +122,7 @@
 		if (idx < messages.length - 1) {
 			messages.splice(idx + 1);
 		}
+		messages.splice(idx, 1);
 
 		if (sessionId) {
 			fetch('/api/messages', {
@@ -147,9 +148,10 @@
 
 		if (!queuedText) { input = ''; focusTrigger++; }
 		lastUserMessage = text;
+		const userMsgId = crypto.randomUUID();
 
 		messages.push({
-			id: crypto.randomUUID(),
+			id: userMsgId,
 			role: 'user',
 			blocks: [{ type: 'text', content: text }],
 			done: true
@@ -164,7 +166,7 @@
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sessionId, message: text }),
+				body: JSON.stringify({ sessionId, message: text, clientMessageId: userMsgId }),
 				signal: controller.signal
 			});
 

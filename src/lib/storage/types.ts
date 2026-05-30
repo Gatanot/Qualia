@@ -83,7 +83,7 @@ export interface Storage {
 	forkSession(id: string, summary: string): Promise<Session>;
 
 	/** 添加消息，自动分配 id / created_at / seq */
-	addMessage(sessionId: string, message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'>): Promise<MessageRecord>;
+	addMessage(sessionId: string, message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'> & { id?: string }): Promise<MessageRecord>;
 	/** 查询会话消息 */
 	getMessages(sessionId: string, options?: MessageQueryOptions): Promise<MessageRecord[]>;
 	/** 按 ID 获取消息 */
