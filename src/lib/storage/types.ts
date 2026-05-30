@@ -98,6 +98,9 @@ export interface Storage {
 	/** 更新缓存 Token 计数 */
 	updateTokenCount(sessionId: string, count: number): Promise<void>;
 
+	/** 设置会话标题（不更新 updated_at） */
+	setSessionTitle(sessionId: string, title: string): Promise<void>;
+
 	/** 设置消息的 TTS 音频路径 */
 	setAudioPath(messageId: string, path: string): Promise<void>;
 }

@@ -3,11 +3,11 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
+	import { sessionStore } from '$lib/session-store';
 
 	let messages = $state<UIMessage[]>([]);
 	let input = $state('');
 	let streaming = $state(false);
-	let sessionId = $state<string | null>(null);
 	let currentAssistant = $state<UIMessage | null>(null);
 	let frontendConfirms = new Map<string, () => void>();
 	let focusTrigger = $state(0);
@@ -15,10 +15,12 @@
 	let abortController: AbortController | null = null;
 	let nearBottom = $state(true);
 	let lastUserMessage = $state('');
+	let messagesEl = $state<HTMLDivElement>();
 	const SCROLL_THRESHOLD = 150;
 
 	function checkNearBottom(): boolean {
-		const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
+		if (!messagesEl) return true;
+		const { scrollHeight, scrollTop, clientHeight } = messagesEl;
 		return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD;
 	}
 
@@ -28,22 +30,29 @@
 
 	function scrollToBottom() {
 		requestAnimationFrame(() => {
-			if (!checkNearBottom()) return;
-			window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+			if (!messagesEl || !checkNearBottom()) return;
+			messagesEl.scrollTop = messagesEl.scrollHeight;
 		});
 	}
 
 	function forceScrollToBottom() {
 		nearBottom = true;
 		requestAnimationFrame(() => {
-			window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+			if (!messagesEl) return;
+			messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
 		});
 	}
 
 	$effect(() => {
-		window.addEventListener('scroll', onPageScroll, { passive: true });
-		return () => window.removeEventListener('scroll', onPageScroll);
+		const el = messagesEl;
+		if (!el) return;
+		el.addEventListener('scroll', onPageScroll, { passive: true });
+		return () => el.removeEventListener('scroll', onPageScroll);
 	});
+
+	function activeSessionId(): string | null {
+		return sessionStore.activeId || null;
+	}
 
 	function finishStreaming() {
 		if (currentAssistant) {
@@ -124,11 +133,12 @@
 		}
 		messages.splice(idx, 1);
 
-		if (sessionId) {
+		const sid = activeSessionId();
+		if (sid) {
 			fetch('/api/messages', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'deleteFrom', sessionId, messageId })
+				body: JSON.stringify({ action: 'deleteFrom', sessionId: sid, messageId })
 			}).catch(() => {});
 		}
 
@@ -166,7 +176,7 @@
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sessionId, message: text, clientMessageId: userMsgId }),
+				body: JSON.stringify({ sessionId: activeSessionId(), message: text, clientMessageId: userMsgId }),
 				signal: controller.signal
 			});
 
@@ -183,7 +193,10 @@
 			}
 
 			const newSid = res.headers.get('X-Session-Id');
-			if (newSid) sessionId = newSid;
+			if (newSid) {
+				sessionStore.setActive(newSid);
+				sessionStore.addMessageToSession(newSid);
+			}
 
 			const reader = res.body!.getReader();
 			const decoder = new TextDecoder();
@@ -350,7 +363,8 @@
 
 			case 'forked': {
 				if (event.newSessionId) {
-					sessionId = event.newSessionId as string;
+					sessionStore.setActive(event.newSessionId as string);
+					sessionStore.addMessageToSession(event.newSessionId as string);
 				}
 				break;
 			}
@@ -391,7 +405,7 @@
 </script>
 
 <div class="chat-container">
-	<div class="messages" class:welcome={messages.length === 0}>
+	<div class="messages" class:welcome={messages.length === 0} bind:this={messagesEl}>
 		{#if messages.length === 0}
 			<EmptyState />
 		{/if}
@@ -423,9 +437,10 @@
 	.chat-container {
 		display: flex;
 		flex-direction: column;
-		min-height: calc(100vh - 64px);
+		height: 100%;
 		max-width: 900px;
 		margin: 0 auto;
+		position: relative;
 	}
 
 	.messages {
@@ -433,6 +448,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+		overflow-y: auto;
+		scrollbar-width: none;
+	}
+
+	.messages::-webkit-scrollbar {
+		display: none;
 	}
 
 	.messages.welcome {
@@ -452,9 +473,9 @@
 	}
 
 	.scroll-btn {
-		position: fixed;
-		bottom: 120px;
-		right: calc(50% - 450px + 2rem);
+		position: absolute;
+		bottom: 100px;
+		right: 2rem;
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
@@ -469,12 +490,6 @@
 		z-index: 20;
 		transition: transform 0.15s, box-shadow 0.15s;
 		animation: scrollFadeIn 0.2s ease;
-	}
-
-	@media (max-width: 950px) {
-		.scroll-btn {
-			right: 1.5rem;
-		}
 	}
 
 	.scroll-btn:hover {

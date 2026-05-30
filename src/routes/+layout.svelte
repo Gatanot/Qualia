@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import favicon from '$lib/assets/favicon.svg';
+	import SessionSidebar from '$lib/components/SessionSidebar.svelte';
 
 	let { children } = $props();
 </script>
@@ -13,28 +14,38 @@
 	<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
 </svelte:head>
 
-<nav class="nav">
-	<a href="/" class="nav-brand">
-		<span class="material-symbols-rounded brand-icon">spa</span>
-		Qualia
-	</a>
-	<div class="nav-links">
-		<a href="/" class:active={$page.url.pathname === '/'}>对话</a>
-		<a href="/settings" class:active={$page.url.pathname === '/settings'}>设置</a>
-	</div>
-</nav>
+<div class="app">
+	<nav class="nav">
+		<a href="/" class="nav-brand">
+			<span class="material-symbols-rounded brand-icon">spa</span>
+			Qualia
+		</a>
+		<div class="nav-links">
+			<a href="/settings" class:active={$page.url.pathname === '/settings'}>设置</a>
+		</div>
+	</nav>
 
-<main>
-	{@render children()}
-</main>
+	<div class="app-body">
+		<SessionSidebar />
+		<main>
+			{@render children()}
+		</main>
+	</div>
+</div>
 
 <style>
 	:global(body) {
 		margin: 0;
 		font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-		background: #FAF8F5; /* Softer, warmer background */
-		color: #3D3834;      /* Slightly darker for better contrast */
+		background: #FAF8F5;
+		color: #3D3834;
 		-webkit-font-smoothing: antialiased;
+	}
+
+	.app {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
 	}
 
 	.nav {
@@ -46,8 +57,8 @@
 		background: #FAF8F5;
 		color: #3D3834;
 		border-bottom: 1px solid rgba(230, 226, 216, 0.6);
-		position: relative;
-		z-index: 10;
+		z-index: 20;
+		flex-shrink: 0;
 	}
 
 	.nav-brand {
@@ -77,7 +88,7 @@
 		font-size: 0.95rem;
 		font-weight: 500;
 		padding: 0.5rem 1.25rem;
-		border-radius: 100px; /* Fully rounded for M3 feel */
+		border-radius: 100px;
 		transition: background-color 0.2s ease, color 0.2s ease;
 	}
 
@@ -85,9 +96,20 @@
 		background: #F0EBE1;
 		color: #3D3834;
 	}
-	
+
 	.nav-links a.active {
 		background: #E8E3D9;
 		color: #3D3834;
+	}
+
+	.app-body {
+		display: flex;
+		flex: 1;
+		overflow: hidden;
+	}
+
+	main {
+		flex: 1;
+		overflow: hidden;
 	}
 </style>

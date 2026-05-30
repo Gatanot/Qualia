@@ -145,6 +145,11 @@ export class MemoryStorage implements Storage {
 		if (session) session.token_count = count;
 	}
 
+	async setSessionTitle(sessionId: string, title: string): Promise<void> {
+		const session = this.sessions.get(sessionId);
+		if (session) session.title = title;
+	}
+
 	async setAudioPath(messageId: string, path: string): Promise<void> {
 		const msg = this.messageById.get(messageId);
 		if (msg) msg.audio_path = path;
