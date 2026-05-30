@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 	import { getDefaultModels } from '$lib/provider';
-	import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
+	import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent/prompts';
 
 	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
 	let loading = $state(true);
