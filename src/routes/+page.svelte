@@ -16,10 +16,20 @@
 	let nearBottom = $state(true);
 	let lastUserMessage = $state('');
 	let messagesEl = $state<HTMLDivElement>();
+	let displayedSessionId = $state('');
 	const SCROLL_THRESHOLD = 150;
 
 	$effect(() => {
 		loadSessions();
+	});
+
+	$effect(() => {
+		const currentId = $activeId;
+		if (currentId && currentId !== displayedSessionId) {
+			messages = [];
+			currentAssistant = null;
+			displayedSessionId = currentId;
+		}
 	});
 
 	function checkNearBottom(): boolean {
@@ -165,6 +175,7 @@
 		if (!$activeId) {
 			const session = await createSession();
 			if (!session) return;
+			displayedSessionId = session.id;
 		}
 
 		lastUserMessage = text;
@@ -204,6 +215,7 @@
 
 			const newSid = res.headers.get('X-Session-Id');
 			if (newSid) {
+				displayedSessionId = newSid;
 				setActive(newSid);
 				bumpSession(newSid);
 			}
@@ -373,6 +385,7 @@
 
 			case 'forked': {
 				if (event.newSessionId) {
+					displayedSessionId = event.newSessionId as string;
 					setActive(event.newSessionId as string);
 					bumpSession(event.newSessionId as string);
 				}

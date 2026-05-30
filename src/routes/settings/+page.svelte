@@ -357,6 +357,8 @@
 		max-width: 760px;
 		margin: 0 auto;
 		padding: 2.5rem 2rem;
+		height: 100%;
+		overflow-y: auto;
 	}
 
 	h1 {
