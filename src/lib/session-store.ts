@@ -1,19 +1,14 @@
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import type { Session, MessageRecord } from '$lib/storage';
 
 export const sessions = writable<Session[]>([]);
-export const activeId = writable<string>('');
-export const messages = writable<MessageRecord[]>([]);
+const messages = writable<MessageRecord[]>([]);
 
 export async function loadSessions() {
 	const res = await fetch('/api/sessions');
 	if (res.ok) {
 		sessions.set(await res.json());
 	}
-}
-
-export function setActive(id: string) {
-	activeId.set(id);
 }
 
 export async function loadMessages(sessionId: string): Promise<MessageRecord[]> {
@@ -42,8 +37,6 @@ export async function createSession(): Promise<Session | null> {
 	if (res.ok) {
 		const session = await res.json();
 		sessions.update((list) => [session, ...list]);
-		activeId.set(session.id);
-		messages.set([]);
 		return session;
 	}
 	return null;
@@ -69,11 +62,6 @@ export async function deleteSession(sessionId: string) {
 		body: JSON.stringify({ action: 'delete', sessionId })
 	});
 	sessions.update((list) => list.filter((s) => s.id !== sessionId));
-	if (get(activeId) === sessionId) {
-		const list = get(sessions);
-		activeId.set(list[0]?.id || '');
-		messages.set([]);
-	}
 }
 
 export function bumpSession(sessionId: string) {

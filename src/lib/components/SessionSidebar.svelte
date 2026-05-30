@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { sessions, activeId, setActive, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
+	import { sessions, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 
 	let collapsed = $state(false);
@@ -9,13 +9,12 @@
 	let editTitle = $state('');
 
 	function handleSelect(session: Session) {
-		setActive(session.id);
-		if ($page.url.pathname !== '/') goto('/');
+		goto('/chat/' + session.id);
 	}
 
 	async function handleNew() {
-		await createSession();
-		if ($page.url.pathname !== '/') goto('/');
+		const session = await createSession();
+		if (session) goto('/chat/' + session.id);
 	}
 
 	function startEdit(session: Session) {
@@ -84,7 +83,7 @@
 			{#each $sessions as session (session.id)}
 				<div
 					class="session-item"
-					class:active={session.id === $activeId}
+					class:active={session.id === $page.params.sessionId}
 					onclick={() => handleSelect(session)}
 					onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
 					role="button"
