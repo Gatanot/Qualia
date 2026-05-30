@@ -3,6 +3,7 @@ import type { Session, MessageRecord } from '$lib/storage';
 
 export const sessions = writable<Session[]>([]);
 const messages = writable<MessageRecord[]>([]);
+export const pendingFirstMessage = writable('');
 
 export async function loadSessions() {
 	const res = await fetch('/api/sessions');

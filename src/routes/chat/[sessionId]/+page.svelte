@@ -5,7 +5,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { sessions, loadSessions, createSession, bumpSession, loadMessages } from '$lib/session-store';
+	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
 
 	let sessionId = $derived($page.params.sessionId);
@@ -35,6 +35,12 @@
 			loadMessages(sessionId).then((records) => {
 				if ($page.params.sessionId !== sessionId) return;
 				messages = recordsToUIMessages(records);
+				// send pending first message from home page
+				const pending = $pendingFirstMessage;
+				if (pending && records.length === 0) {
+					pendingFirstMessage.set('');
+					sendMessage(pending);
+				}
 			});
 		}
 	});
