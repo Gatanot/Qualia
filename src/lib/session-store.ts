@@ -16,17 +16,20 @@ export function setActive(id: string) {
 	activeId.set(id);
 }
 
-export async function loadMessages(sessionId: string) {
-	if (!sessionId) { messages.set([]); return; }
+export async function loadMessages(sessionId: string): Promise<MessageRecord[]> {
+	if (!sessionId) { messages.set([]); return []; }
 	const res = await fetch('/api/sessions', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ action: 'getMessages', sessionId })
 	});
 	if (res.ok) {
-		messages.set(await res.json());
+		const data = await res.json();
+		messages.set(data);
+		return data;
 	} else {
 		messages.set([]);
+		return [];
 	}
 }
 

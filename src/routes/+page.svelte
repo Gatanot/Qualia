@@ -3,7 +3,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { activeId, sessions, loadSessions, setActive, createSession, bumpSession } from '$lib/session-store';
+	import { activeId, sessions, loadSessions, setActive, createSession, bumpSession, loadMessages } from '$lib/session-store';
+	import type { MessageRecord } from '$lib/storage';
 
 	let messages = $state<UIMessage[]>([]);
 	let input = $state('');
@@ -29,8 +30,60 @@
 			messages = [];
 			currentAssistant = null;
 			displayedSessionId = currentId;
+			loadMessages(currentId).then((records) => {
+				if ($activeId !== currentId) return; // switched away
+				messages = recordsToUIMessages(records);
+			});
 		}
 	});
+
+	function recordsToUIMessages(records: MessageRecord[]): UIMessage[] {
+		const result: UIMessage[] = [];
+		for (const r of records) {
+			if (r.role === 'system') continue;
+			if (r.role === 'user') {
+				result.push({
+					id: r.id,
+					role: 'user',
+					blocks: [{ type: 'text', content: r.content }],
+					done: true
+				});
+			} else if (r.role === 'assistant') {
+				const blocks: Array<{ type: 'text' | 'reasoning' | 'tool'; content?: string; name?: string; args?: Record<string, unknown>; result?: { success: boolean; output: string } }> = [];
+				if (r.reasoning_content) {
+					blocks.push({ type: 'reasoning', content: r.reasoning_content });
+				}
+				if (r.content) {
+					blocks.push({ type: 'text', content: r.content });
+				}
+				if (r.tool_calls) {
+					for (const tc of r.tool_calls) {
+						let args: Record<string, unknown> = {};
+						try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
+						blocks.push({ type: 'tool', name: tc.function.name, args });
+					}
+				}
+				result.push({
+					id: r.id,
+					role: 'assistant',
+					blocks: blocks as UIMessage['blocks'],
+					done: true
+				});
+			} else if (r.role === 'tool') {
+				const last = result[result.length - 1];
+				if (last?.role === 'assistant') {
+					for (let i = last.blocks.length - 1; i >= 0; i--) {
+						const b = last.blocks[i];
+						if (b.type === 'tool' && !b.result) {
+							b.result = { success: true, output: r.content };
+							break;
+						}
+					}
+				}
+			}
+		}
+		return result;
+	}
 
 	function checkNearBottom(): boolean {
 		if (!messagesEl) return true;
