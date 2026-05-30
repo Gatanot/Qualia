@@ -104,6 +104,37 @@
 		}
 	}
 
+	async function handleRollback(messageId: string) {
+		if (streaming) {
+			stopAI();
+			await new Promise((r) => setTimeout(r, 100));
+		}
+
+		const idx = messages.findIndex((m) => m.id === messageId);
+		if (idx === -1) return;
+
+		const targetMsg = messages[idx];
+		const rollbackText = targetMsg.blocks
+			.filter((b) => b.type === 'text')
+			.map((b) => b.content)
+			.join('\n');
+
+		if (idx < messages.length - 1) {
+			messages.splice(idx + 1);
+		}
+
+		if (sessionId) {
+			fetch('/api/messages', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'deleteFrom', sessionId, messageId })
+			}).catch(() => {});
+		}
+
+		input = rollbackText;
+		focusTrigger++;
+	}
+
 	async function sendMessage(queuedText?: string) {
 		const text = (queuedText ?? input).trim();
 		if (!text) return;
@@ -364,7 +395,7 @@
 		{/if}
 
 		{#each messages as msg (msg.id)}
-			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} />
+			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} />
 		{/each}
 	</div>
 

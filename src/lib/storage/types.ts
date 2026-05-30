@@ -90,6 +90,8 @@ export interface Storage {
 	getMessage(id: string): Promise<MessageRecord | null>;
 	/** 删除消息 */
 	deleteMessage(id: string): Promise<void>;
+	/** 删除指定消息及其之后所有消息（用于回退） */
+	deleteMessagesFrom(sessionId: string, messageId: string): Promise<void>;
 
 	/** 获取缓存 Token 计数 */
 	getTokenCount(sessionId: string): Promise<number>;

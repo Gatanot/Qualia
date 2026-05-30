@@ -89,7 +89,8 @@ export class SQLiteStorage implements Storage {
 			getMessage: this.db.prepare(`SELECT * FROM messages WHERE id = ?`),
 			deleteMessage: this.db.prepare(`DELETE FROM messages WHERE id = ?`),
 			getMaxSeq: this.db.prepare(`SELECT COALESCE(MAX(seq), 0) as max_seq FROM messages WHERE session_id = ?`),
-			updateAudioPath: this.db.prepare(`UPDATE messages SET audio_path = ? WHERE id = ?`)
+			updateAudioPath: this.db.prepare(`UPDATE messages SET audio_path = ? WHERE id = ?`),
+			deleteFromSeq: this.db.prepare(`DELETE FROM messages WHERE session_id = ? AND seq >= ?`)
 		};
 	}
 
@@ -181,6 +182,12 @@ export class SQLiteStorage implements Storage {
 
 	async deleteMessage(id: string): Promise<void> {
 		this.stmts.deleteMessage.run(id);
+	}
+
+	async deleteMessagesFrom(sessionId: string, messageId: string): Promise<void> {
+		const msg = this.stmts.getMessage.get(messageId) as MessageRow | undefined;
+		if (!msg) return;
+		this.stmts.deleteFromSeq.run(sessionId, msg.seq);
 	}
 
 	async getTokenCount(sessionId: string): Promise<number> {

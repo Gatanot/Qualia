@@ -125,6 +125,17 @@ export class MemoryStorage implements Storage {
 		}
 	}
 
+	async deleteMessagesFrom(sessionId: string, messageId: string): Promise<void> {
+		const list = this.messages.get(sessionId);
+		if (!list) return;
+		const idx = list.findIndex((m) => m.id === messageId);
+		if (idx === -1) return;
+		const toDelete = list.splice(idx);
+		for (const msg of toDelete) {
+			this.messageById.delete(msg.id);
+		}
+	}
+
 	async getTokenCount(sessionId: string): Promise<number> {
 		return this.sessions.get(sessionId)?.token_count || 0;
 	}

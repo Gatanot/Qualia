@@ -5,10 +5,11 @@
 	import ReasoningBlock from './ReasoningBlock.svelte';
 	import { renderMarkdown } from '$lib/markdown';
 
-	let { message, onconfirm, onrecovery }: {
+	let { message, onconfirm, onrecovery, onrollback }: {
 		message: UIMessage;
 		onconfirm?: (confirmId: string, approved: boolean) => void;
 		onrecovery?: (action: 'retry' | 'rollback') => void;
+		onrollback?: (messageId: string) => void;
 	} = $props();
 
 	let roleLabel = $derived(
@@ -16,6 +17,36 @@
 	);
 
 	const htmlCache = new Map<string, string>();
+	let rollbackConfirm = $state(false);
+	let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function getUserText(): string {
+		return message.blocks
+			.filter((b) => b.type === 'text')
+			.map((b) => b.content)
+			.join('\n');
+	}
+
+	async function handleCopy() {
+		try {
+			await navigator.clipboard.writeText(getUserText());
+		} catch {
+			// fallback for insecure context
+		}
+	}
+
+	function handleRollbackClick() {
+		if (!rollbackConfirm) {
+			rollbackConfirm = true;
+			confirmTimer = setTimeout(() => {
+				rollbackConfirm = false;
+			}, 3000);
+		} else {
+			if (confirmTimer) clearTimeout(confirmTimer);
+			rollbackConfirm = false;
+			onrollback?.(message.id);
+		}
+	}
 
 	function getBlockHtml(content: string): string {
 		const cached = htmlCache.get(content);
@@ -78,6 +109,25 @@
 
 		{#if !message.done}
 			<span class="cursor">|</span>
+		{/if}
+
+		{#if message.role === 'user' && message.done}
+			<div class="msg-actions">
+				<button class="action-btn" onclick={handleCopy} title="复制">
+					<span class="material-symbols-rounded">content_copy</span>
+				</button>
+				<button
+					class="action-btn"
+					class:confirm={rollbackConfirm}
+					onclick={handleRollbackClick}
+					title="回退到此"
+				>
+					<span class="material-symbols-rounded">undo</span>
+					{#if rollbackConfirm}
+						<span class="confirm-label">确认?</span>
+					{/if}
+				</button>
+			</div>
 		{/if}
 	</div>
 </div>
@@ -332,6 +382,51 @@
 
 	.btn-recovery .material-symbols-rounded {
 		font-size: 18px;
+	}
+
+	.msg-actions {
+		display: flex;
+		gap: 0.25rem;
+		opacity: 0;
+		transition: opacity 0.15s;
+		justify-content: flex-end;
+	}
+
+	.message-row:hover .msg-actions {
+		opacity: 1;
+	}
+
+	.action-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: #A39B93;
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.8rem;
+		transition: background 0.15s, color 0.15s;
+	}
+
+	.action-btn:hover {
+		background: #F0EBE1;
+		color: #3D3834;
+	}
+
+	.action-btn.confirm {
+		background: #FFF3E0;
+		color: #E65100;
+	}
+
+	.action-btn .material-symbols-rounded {
+		font-size: 16px;
+	}
+
+	.confirm-label {
+		white-space: nowrap;
 	}
 
 	.cursor {
