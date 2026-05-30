@@ -13,12 +13,36 @@
 	let focusTrigger = $state(0);
 	let inputQueue: string[] = $state([]);
 	let abortController: AbortController | null = null;
+	let nearBottom = $state(true);
+	const SCROLL_THRESHOLD = 150;
+
+	function checkNearBottom(): boolean {
+		const { scrollHeight, scrollTop, clientHeight } = document.documentElement;
+		return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD;
+	}
+
+	function onPageScroll() {
+		nearBottom = checkNearBottom();
+	}
 
 	function scrollToBottom() {
 		requestAnimationFrame(() => {
+			if (!checkNearBottom()) return;
 			window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
 		});
 	}
+
+	function forceScrollToBottom() {
+		nearBottom = true;
+		requestAnimationFrame(() => {
+			window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+		});
+	}
+
+	$effect(() => {
+		window.addEventListener('scroll', onPageScroll, { passive: true });
+		return () => window.removeEventListener('scroll', onPageScroll);
+	});
 
 	function finishStreaming() {
 		if (currentAssistant) {
@@ -80,7 +104,7 @@
 			blocks: [{ type: 'text', content: text }],
 			done: true
 		});
-		scrollToBottom();
+		forceScrollToBottom();
 
 		streaming = true;
 		const controller = new AbortController();
@@ -297,6 +321,12 @@
 		{/each}
 	</div>
 
+	{#if !nearBottom && streaming}
+		<button class="scroll-btn" onclick={forceScrollToBottom}>
+			<span class="material-symbols-rounded">arrow_downward</span>
+		</button>
+	{/if}
+
 	<div class="input-anchor">
 		<ChatInput
 			bind:value={input}
@@ -339,5 +369,45 @@
 		z-index: 10;
 		background: linear-gradient(to top, #FAF8F5 70%, transparent);
 		padding-top: 0.75rem;
+	}
+
+	.scroll-btn {
+		position: fixed;
+		bottom: 120px;
+		right: calc(50% - 450px + 2rem);
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		border: 1px solid rgba(230, 226, 216, 0.6);
+		background: #FFFFFF;
+		color: #3D3834;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.1);
+		z-index: 20;
+		transition: transform 0.15s, box-shadow 0.15s;
+		animation: scrollFadeIn 0.2s ease;
+	}
+
+	@media (max-width: 950px) {
+		.scroll-btn {
+			right: 1.5rem;
+		}
+	}
+
+	.scroll-btn:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(61, 56, 52, 0.15);
+	}
+
+	.scroll-btn .material-symbols-rounded {
+		font-size: 20px;
+	}
+
+	@keyframes scrollFadeIn {
+		from { opacity: 0; transform: scale(0.9) translateY(4px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 </style>
