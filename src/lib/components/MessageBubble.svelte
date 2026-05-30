@@ -80,7 +80,7 @@
 
 	.message-body {
 		min-width: 0;
-		max-width: 85%;
+		width: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
@@ -88,6 +88,8 @@
 
 	.message-row.user .message-body {
 		align-items: flex-end;
+		width: auto;
+		max-width: 85%;
 	}
 
 	.message-role {
