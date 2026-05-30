@@ -203,7 +203,7 @@
 		}
 
 		if (action === 'retry') {
-			if (lastUserMessage) sendMessage(lastUserMessage);
+			if (lastUserMessage) sendMessage(lastUserMessage, true);
 		} else {
 			input = lastUserMessage;
 			focusTrigger++;
@@ -240,13 +240,15 @@
 		focusTrigger++;
 	}
 
-	async function sendMessage(queuedText?: string) {
+	async function sendMessage(queuedText?: string, skipUserMsg = false) {
 		const text = (queuedText ?? input).trim();
 		if (!text) return;
 
 		if (streaming) {
-			inputQueue.push(text);
-			if (!queuedText) { input = ''; focusTrigger++; }
+			if (!skipUserMsg) {
+				inputQueue.push(text);
+				if (!queuedText) { input = ''; focusTrigger++; }
+			}
 			return;
 		}
 
@@ -255,13 +257,15 @@
 		lastUserMessage = text;
 		const userMsgId = crypto.randomUUID();
 
-		messages.push({
-			id: userMsgId,
-			role: 'user',
-			blocks: [{ type: 'text', content: text }],
-			done: true
-		});
-		forceScrollToBottom();
+		if (!skipUserMsg) {
+			messages.push({
+				id: userMsgId,
+				role: 'user',
+				blocks: [{ type: 'text', content: text }],
+				done: true
+			});
+			forceScrollToBottom();
+		}
 
 		streaming = true;
 		const controller = new AbortController();
@@ -271,7 +275,7 @@
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sessionId: sessionId, message: text, clientMessageId: userMsgId }),
+				body: JSON.stringify({ sessionId: sessionId, message: text, clientMessageId: skipUserMsg ? undefined : userMsgId }),
 				signal: controller.signal
 			});
 
