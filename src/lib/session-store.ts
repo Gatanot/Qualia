@@ -1,84 +1,85 @@
+import { writable, get } from 'svelte/store';
 import type { Session, MessageRecord } from '$lib/storage';
 
-let _sessions = $state<Session[]>([]);
-let _activeId = $state<string>('');
-let _messages = $state<MessageRecord[]>([]);
+export const sessions = writable<Session[]>([]);
+export const activeId = writable<string>('');
+export const messages = writable<MessageRecord[]>([]);
 
-export const sessionStore = {
-	get sessions() { return _sessions; },
-	get activeId() { return _activeId; },
-	get messages() { return _messages; },
-
-	async load() {
-		const res = await fetch('/api/sessions');
-		if (res.ok) {
-			_sessions = await res.json();
-		}
-	},
-
-	setActive(id: string) {
-		_activeId = id;
-	},
-
-	async loadMessages(sessionId: string) {
-		if (!sessionId) { _messages = []; return; }
-		const res = await fetch('/api/sessions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'getMessages', sessionId })
-		});
-		if (res.ok) {
-			_messages = await res.json();
-		} else {
-			_messages = [];
-		}
-	},
-
-	async create(): Promise<Session | null> {
-		const res = await fetch('/api/sessions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'create' })
-		});
-		if (res.ok) {
-			const session = await res.json();
-			_sessions = [session, ..._sessions];
-			_activeId = session.id;
-			_messages = [];
-			return session;
-		}
-		return null;
-	},
-
-	async setTitle(sessionId: string, title: string) {
-		await fetch('/api/sessions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'setTitle', sessionId, title })
-		});
-		const s = _sessions.find((s) => s.id === sessionId);
-		if (s) s.title = title;
-	},
-
-	async deleteSession(sessionId: string) {
-		await fetch('/api/sessions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'delete', sessionId })
-		});
-		_sessions = _sessions.filter((s) => s.id !== sessionId);
-		if (_activeId === sessionId) {
-			_activeId = _sessions[0]?.id || '';
-			_messages = [];
-		}
-	},
-
-	addMessageToSession(sessionId: string) {
-		// bump the session to top of list
-		const idx = _sessions.findIndex((s) => s.id === sessionId);
-		if (idx > 0) {
-			const [s] = _sessions.splice(idx, 1);
-			_sessions = [s, ..._sessions];
-		}
+export async function loadSessions() {
+	const res = await fetch('/api/sessions');
+	if (res.ok) {
+		sessions.set(await res.json());
 	}
-};
+}
+
+export function setActive(id: string) {
+	activeId.set(id);
+}
+
+export async function loadMessages(sessionId: string) {
+	if (!sessionId) { messages.set([]); return; }
+	const res = await fetch('/api/sessions', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ action: 'getMessages', sessionId })
+	});
+	if (res.ok) {
+		messages.set(await res.json());
+	} else {
+		messages.set([]);
+	}
+}
+
+export async function createSession(): Promise<Session | null> {
+	const res = await fetch('/api/sessions', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ action: 'create' })
+	});
+	if (res.ok) {
+		const session = await res.json();
+		sessions.update((list) => [session, ...list]);
+		activeId.set(session.id);
+		messages.set([]);
+		return session;
+	}
+	return null;
+}
+
+export async function setSessionTitle(sessionId: string, title: string) {
+	await fetch('/api/sessions', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ action: 'setTitle', sessionId, title })
+	});
+	sessions.update((list) => {
+		const s = list.find((s) => s.id === sessionId);
+		if (s) s.title = title;
+		return list;
+	});
+}
+
+export async function deleteSession(sessionId: string) {
+	await fetch('/api/sessions', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ action: 'delete', sessionId })
+	});
+	sessions.update((list) => list.filter((s) => s.id !== sessionId));
+	if (get(activeId) === sessionId) {
+		const list = get(sessions);
+		activeId.set(list[0]?.id || '');
+		messages.set([]);
+	}
+}
+
+export function bumpSession(sessionId: string) {
+	sessions.update((list) => {
+		const idx = list.findIndex((s) => s.id === sessionId);
+		if (idx > 0) {
+			const [s] = list.splice(idx, 1);
+			return [s, ...list];
+		}
+		return list;
+	});
+}

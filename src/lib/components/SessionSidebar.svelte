@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sessionStore } from '$lib/session-store';
+	import { sessions, activeId, setActive, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 
 	let collapsed = $state(false);
@@ -7,11 +7,11 @@
 	let editTitle = $state('');
 
 	function handleSelect(session: Session) {
-		sessionStore.setActive(session.id);
+		setActive(session.id);
 	}
 
 	async function handleNew() {
-		await sessionStore.create();
+		await createSession();
 	}
 
 	function startEdit(session: Session) {
@@ -22,7 +22,7 @@
 	async function saveEdit(sessionId: string) {
 		const title = editTitle.trim();
 		if (title) {
-			await sessionStore.setTitle(sessionId, title);
+			await setSessionTitle(sessionId, title);
 		}
 		editingId = null;
 	}
@@ -32,7 +32,7 @@
 	}
 
 	async function handleDelete(sessionId: string) {
-		await sessionStore.deleteSession(sessionId);
+		await deleteSession(sessionId);
 	}
 
 	function handleEditKeydown(e: KeyboardEvent, sessionId: string) {
@@ -70,10 +70,10 @@
 
 	{#if !collapsed}
 		<div class="session-list">
-			{#each sessionStore.sessions as session (session.id)}
+			{#each $sessions as session (session.id)}
 				<div
 					class="session-item"
-					class:active={session.id === sessionStore.activeId}
+					class:active={session.id === $activeId}
 					onclick={() => handleSelect(session)}
 					onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
 					role="button"

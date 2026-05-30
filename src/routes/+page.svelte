@@ -3,7 +3,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { sessionStore } from '$lib/session-store';
+	import { activeId, sessions, loadSessions, setActive, createSession, bumpSession } from '$lib/session-store';
 
 	let messages = $state<UIMessage[]>([]);
 	let input = $state('');
@@ -17,6 +17,16 @@
 	let lastUserMessage = $state('');
 	let messagesEl = $state<HTMLDivElement>();
 	const SCROLL_THRESHOLD = 150;
+
+	$effect(() => {
+		loadSessions().then(() => {
+			if (!$activeId && $sessions.length === 0) {
+				createSession();
+			} else if (!$activeId) {
+				setActive($sessions[0].id);
+			}
+		});
+	});
 
 	function checkNearBottom(): boolean {
 		if (!messagesEl) return true;
@@ -51,7 +61,7 @@
 	});
 
 	function activeSessionId(): string | null {
-		return sessionStore.activeId || null;
+		return $activeId || null;
 	}
 
 	function finishStreaming() {
@@ -194,8 +204,8 @@
 
 			const newSid = res.headers.get('X-Session-Id');
 			if (newSid) {
-				sessionStore.setActive(newSid);
-				sessionStore.addMessageToSession(newSid);
+				setActive(newSid);
+				bumpSession(newSid);
 			}
 
 			const reader = res.body!.getReader();
@@ -363,8 +373,8 @@
 
 			case 'forked': {
 				if (event.newSessionId) {
-					sessionStore.setActive(event.newSessionId as string);
-					sessionStore.addMessageToSession(event.newSessionId as string);
+					setActive(event.newSessionId as string);
+					bumpSession(event.newSessionId as string);
 				}
 				break;
 			}
