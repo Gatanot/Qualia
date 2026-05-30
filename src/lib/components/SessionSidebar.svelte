@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { sessions, activeId, setActive, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 
@@ -9,10 +10,12 @@
 
 	function handleSelect(session: Session) {
 		setActive(session.id);
+		if ($page.url.pathname !== '/') goto('/');
 	}
 
 	async function handleNew() {
 		await createSession();
+		if ($page.url.pathname !== '/') goto('/');
 	}
 
 	function startEdit(session: Session) {
