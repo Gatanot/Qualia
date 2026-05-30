@@ -10,16 +10,8 @@
 		onconfirm?: (confirmId: string, approved: boolean) => void;
 	} = $props();
 
-	let avatarIcon = $derived(
-		message.role === 'user' ? 'person' :
-		message.role === 'error' ? 'error' :
-		'spa'
-	);
-
 	let roleLabel = $derived(
-		message.role === 'user' ? '你' :
-		message.role === 'error' ? '错误' :
-		'Qualia'
+		message.role === 'error' ? '错误' : 'Qualia'
 	);
 
 	const htmlCache = new Map<string, string>();
@@ -44,11 +36,10 @@
 </script>
 
 <div class="message-row" class:user={message.role === 'user'} class:error={message.role === 'error'}>
-	<div class="message-avatar">
-		<span class="material-symbols-rounded">{avatarIcon}</span>
-	</div>
 	<div class="message-body">
-		<div class="message-role">{roleLabel}</div>
+		{#if message.role !== 'user'}
+			<div class="message-role">{roleLabel}</div>
+		{/if}
 
 		{#each message.blocks as block, i (i)}
 			{#if block.type === 'text'}
@@ -79,45 +70,17 @@
 <style>
 	.message-row {
 		display: flex;
-		gap: 1rem;
 		max-width: 100%;
 		margin-bottom: 0.5rem;
 	}
 
 	.message-row.user {
-		flex-direction: row-reverse;
-	}
-
-	.message-avatar {
-		flex-shrink: 0;
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 20px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-	}
-
-	.message-row:not(.user) .message-avatar {
-		background: #F0EBE1;
-		color: #5E7163;
-	}
-
-	.message-row.user .message-avatar {
-		background: #5E7163;
-		color: #FFFFFF;
-	}
-
-	.message-row.error .message-avatar {
-		background: #FCE8E6;
-		color: #C62828;
+		justify-content: flex-end;
 	}
 
 	.message-body {
 		min-width: 0;
-		flex: 1;
+		max-width: 85%;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
@@ -160,12 +123,10 @@
 		border-radius: 4px 20px 20px 20px;
 	}
 
-	/* Markdown rendered overrides — strip bubble chrome for richer layout */
+	/* Markdown rendered overrides */
 	.message-content.markdown-body {
 		white-space: normal;
 	}
-
-	/* ---- markdown elements inside rendered content ---- */
 
 	.markdown-body :global(h1),
 	.markdown-body :global(h2),
