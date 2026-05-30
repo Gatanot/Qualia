@@ -319,7 +319,7 @@
 	}
 
 	.messages {
-		padding: 2rem 2rem 1rem;
+		padding: 2rem 2rem 120px;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
@@ -329,9 +329,15 @@
 		flex: 1;
 		justify-content: center;
 		align-items: center;
+		padding-bottom: 2rem;
 	}
 
 	.input-anchor {
+		position: sticky;
+		bottom: 0;
 		margin-top: auto;
+		z-index: 10;
+		background: linear-gradient(to top, #FAF8F5 70%, transparent);
+		padding-top: 0.75rem;
 	}
 </style>

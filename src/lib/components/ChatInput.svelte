@@ -15,11 +15,27 @@
 		textareaEl?.focus();
 	});
 
+	$effect(() => {
+		void value;
+		autoResize();
+	});
+
 	let hasInput = $derived(value.trim().length > 0);
+	const MAX_HEIGHT = 300;
+
+	function autoResize() {
+		const el = textareaEl;
+		if (!el) return;
+		el.style.height = 'auto';
+		const h = Math.min(el.scrollHeight, MAX_HEIGHT);
+		el.style.height = h + 'px';
+		el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
+	}
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
+			autoResize();
 			if (hasInput || streaming) {
 				onsend();
 			}
@@ -32,6 +48,10 @@
 		} else {
 			onsend();
 		}
+	}
+
+	function handleInput() {
+		autoResize();
 	}
 </script>
 
@@ -49,7 +69,8 @@
 			bind:value
 			bind:this={textareaEl}
 			onkeydown={handleKeydown}
-			placeholder="输入消息..."
+			oninput={handleInput}
+			placeholder="输入消息... Shift+Enter 换行"
 			rows={1}
 		></textarea>
 		<button
@@ -121,7 +142,6 @@
 		font-family: inherit;
 		font-size: 1rem;
 		resize: none;
-		max-height: 140px;
 		line-height: 1.5;
 		outline: none;
 		color: #3D3834;
