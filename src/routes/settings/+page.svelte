@@ -171,6 +171,7 @@
 </svelte:head>
 
 <div class="settings">
+	<div class="settings-inner">
 	<h1>设置</h1>
 
 	<section class="section">
@@ -350,15 +351,22 @@
 			</div>
 		</div>
 	{/if}
+	</div>
 </div>
 
 <style>
 	.settings {
+		height: 100%;
+		overflow-y: auto;
+		box-sizing: border-box;
+		scrollbar-width: thin;
+		scrollbar-color: #D5CFC6 transparent;
+	}
+
+	.settings-inner {
 		max-width: 760px;
 		margin: 0 auto;
 		padding: 2.5rem 2rem;
-		height: 100%;
-		overflow-y: auto;
 	}
 
 	h1 {
@@ -525,6 +533,8 @@
 		padding: 2.5rem;
 		width: 100%;
 		max-width: 480px;
+		max-height: 90vh;
+		overflow-y: auto;
 		box-shadow: 0 12px 48px rgba(61, 56, 52, 0.15);
 		animation: modalScale 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
 	}
