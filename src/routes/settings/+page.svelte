@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 	import { getDefaultModels } from '$lib/provider';
+	import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
 
 	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
 	let loading = $state(true);
@@ -142,6 +143,10 @@
 		}
 	}
 
+	function resetSystemPrompt() {
+		config = { ...config, systemPrompt: DEFAULT_SYSTEM_PROMPT };
+	}
+
 	function editProvider(p: ProviderConfig) {
 		editingProvider = p;
 		formType = p.type || 'openai';
@@ -203,7 +208,14 @@
 		></textarea>
 		<div class="prompt-actions">
 			<span class="prompt-hint">{config.systemPrompt?.length || 0} 字符</span>
-			<button class="btn btn-primary" onclick={saveSystemPrompt}>保存提示词</button>
+			<div class="prompt-actions-right">
+				<button type="button" class="btn" onclick={resetSystemPrompt}
+					disabled={config.systemPrompt === DEFAULT_SYSTEM_PROMPT}
+				>
+					恢复默认
+				</button>
+				<button class="btn btn-primary" onclick={saveSystemPrompt}>保存提示词</button>
+			</div>
 		</div>
 	</section>
 
@@ -633,13 +645,14 @@
 		border: 1px solid rgba(230, 226, 216, 0.8);
 		border-radius: 20px;
 		background: #FAF8F5;
-		font-size: 0.95rem;
-		font-family: inherit;
-		line-height: 1.6;
+		font-size: 0.9rem;
+		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+		line-height: 1.7;
 		color: #3D3834;
 		resize: vertical;
 		box-sizing: border-box;
 		transition: all 0.2s;
+		min-height: 240px;
 	}
 
 	.prompt-editor:focus {
@@ -659,5 +672,10 @@
 	.prompt-hint {
 		font-size: 0.9rem;
 		color: #A39B93;
+	}
+
+	.prompt-actions-right {
+		display: flex;
+		gap: 0.75rem;
 	}
 </style>

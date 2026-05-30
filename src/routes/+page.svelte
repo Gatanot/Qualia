@@ -330,15 +330,10 @@
 		scroll-behavior: smooth;
 	}
 	
-	/* Hide scrollbar for cleaner look, but keep functionality */
+	.messages {
+		scrollbar-width: none;
+	}
 	.messages::-webkit-scrollbar {
-		width: 6px;
-	}
-	.messages::-webkit-scrollbar-track {
-		background: transparent;
-	}
-	.messages::-webkit-scrollbar-thumb {
-		background-color: rgba(166, 155, 147, 0.3);
-		border-radius: 10px;
+		display: none;
 	}
 </style>
