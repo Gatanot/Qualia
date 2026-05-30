@@ -110,7 +110,7 @@
 								role="textbox"
 								tabindex="-1"
 							>
-								{session.title || '新对话'}
+								{session.title}
 							</div>
 							<div class="session-time">{formatTime(session.updated_at)}</div>
 						{/if}

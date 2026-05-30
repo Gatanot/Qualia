@@ -48,6 +48,10 @@ API routes:
 - `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
 - `api/config/+server.ts` — `GET`/`PUT` config CRUD
+- `api/sessions/+server.ts` — `GET` list / `POST` create, setTitle, delete, getMessages
+- `api/messages/+server.ts` — `POST` deleteFrom a given messageId
+
+Chat pages are at `/` (new chat) and `/chat/[sessionId]`. Settings at `/settings`.
 
 ## SvelteKit route file rules
 
@@ -60,6 +64,10 @@ API routes:
 2. API handler stores a Promise in `src/lib/chat-confirm.ts` Map
 3. Frontend shows dialog, on answer POSTs to `/api/confirm` with `{ confirmId, approved }`
 4. Confirm endpoint resolves the stored Promise → AgentLoop continues
+
+## AgentLoop error handling
+
+LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The loop yields `retrying` and `retry_exhausted` events. On `retry_exhausted`, the chat ends with partial content.
 
 ## Tool safety
 

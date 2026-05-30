@@ -1,3 +1,5 @@
+import type { Usage } from '$lib/provider';
+
 export interface ToolResult {
 	success: boolean;
 	output: string;
@@ -15,4 +17,5 @@ export interface UIMessage {
 	role: 'user' | 'assistant' | 'tool' | 'error';
 	blocks: ContentBlock[];
 	done: boolean;
+	usage?: Usage;
 }

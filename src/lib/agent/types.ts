@@ -22,7 +22,7 @@ export type AgentEvent =
 	/** 会话分叉 */
 	| { type: 'forked'; newSessionId: string; summary: string }
 	/** 本轮对话完成 */
-	| { type: 'done'; messageId: string; usage?: Usage }
+	| { type: 'done'; messageId: string; usage?: Usage; contextWindow?: number }
 	/** LLM 调用失败，正在重试 */
 	| { type: 'retrying'; attempt: number; maxRetries: number }
 	/** 所有重试均已失败 */

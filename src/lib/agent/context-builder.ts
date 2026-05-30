@@ -9,7 +9,7 @@ import {
 	TOOL_PROMPT_SUFFIX
 } from './prompts';
 
-const DEFAULT_CONTEXT_WINDOW = 128_000;
+const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
 /** 剩余窗口低于此阈值（20K token）触发自动分叉 */
 const FORK_THRESHOLD = 20_000;

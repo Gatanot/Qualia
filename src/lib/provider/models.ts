@@ -27,14 +27,14 @@ export const DEEPSEEK_MODELS: ModelDef[] = [
 	{
 		id: 'deepseek-v4-pro',
 		name: 'DeepSeek V4 Pro',
-		contextWindow: 128_000,
+		contextWindow: 1_048_576,
 		supportsReasoning: true,
 		reasoningEffortValues: ['high', 'max']
 	},
 	{
 		id: 'deepseek-v4-flash',
 		name: 'DeepSeek V4 Flash',
-		contextWindow: 128_000,
+		contextWindow: 1_048_576,
 		supportsReasoning: true,
 		reasoningEffortValues: ['high', 'max']
 	}

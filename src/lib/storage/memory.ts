@@ -1,4 +1,5 @@
 import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
+import { formatSessionTitle } from './utils';
 
 /**
  * MemoryStorage — 基于内存 Map 的存储实现
@@ -15,9 +16,16 @@ export class MemoryStorage implements Storage {
 	async createSession(title?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
+		const today = new Date(now);
+		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+		let count = 0;
+		for (const s of this.sessions.values()) {
+			if (s.created_at >= startOfDay) count++;
+		}
+		const effectiveTitle = title || formatSessionTitle(today, count + 1);
 		const session: Session = {
 			id,
-			title: title || '',
+			title: effectiveTitle,
 			created_at: now,
 			updated_at: now,
 			parent_id: null,

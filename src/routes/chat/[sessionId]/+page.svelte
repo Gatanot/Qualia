@@ -21,10 +21,35 @@
 	let lastUserMessage = $state('');
 	let messagesEl = $state<HTMLDivElement>();
 	let loadedSessionId = $state('');
+	let contextWindow = $state<number | undefined>(undefined);
 	const SCROLL_THRESHOLD = 150;
+
+	const cumulativeUsage = $derived.by(() => {
+		let total = 0;
+		for (const msg of messages) {
+			if (msg.role === 'assistant' && msg.usage) {
+				total += msg.usage.total_tokens;
+			}
+		}
+		const pct = contextWindow && total > 0 ? ((total / contextWindow) * 100).toFixed(1) : null;
+		return { total, pct };
+	});
 
 	$effect(() => {
 		loadSessions();
+	});
+
+	$effect(() => {
+		fetch('/api/config')
+			.then(r => r.json())
+			.then((config) => {
+				const provider = config.providers?.find((p: { name: string }) => p.name === config.activeProvider);
+				const model = provider?.models?.find((m: { id: string }) => m.id === provider.activeModel) || provider?.models?.[0];
+				if (model?.contextWindow) {
+					contextWindow = model.contextWindow;
+				}
+			})
+			.catch(() => {});
 	});
 
 	$effect(() => {
@@ -75,7 +100,8 @@
 					id: r.id,
 					role: 'assistant',
 					blocks: blocks as UIMessage['blocks'],
-					done: true
+					done: true,
+					usage: r.usage
 				});
 			} else if (r.role === 'tool') {
 				const last = result[result.length - 1];
@@ -470,6 +496,12 @@
 			}
 
 			case 'done': {
+				if (currentAssistant && event.usage) {
+					currentAssistant.usage = event.usage as import('$lib/provider').Usage;
+				}
+				if (event.contextWindow) {
+					contextWindow = event.contextWindow as number;
+				}
 				break;
 			}
 		}
@@ -485,6 +517,20 @@
 		{#each messages as msg (msg.id)}
 			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} />
 		{/each}
+
+		{#if cumulativeUsage.total > 0}
+			<div class="stats-line">
+				<span class="stats-label">Token</span>
+				<span class="stats-value">{cumulativeUsage.total}</span>
+				{#if contextWindow}
+					<span class="stats-sep">/</span>
+					<span class="stats-max">{contextWindow}</span>
+					{#if cumulativeUsage.pct}
+						<span class="stats-pct">({cumulativeUsage.pct}%)</span>
+					{/if}
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	{#if !nearBottom && streaming}
@@ -576,5 +622,37 @@
 	@keyframes scrollFadeIn {
 		from { opacity: 0; transform: scale(0.9) translateY(4px); }
 		to { opacity: 1; transform: scale(1) translateY(0); }
+	}
+
+	.stats-line {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.5rem 0;
+		font-size: 0.72rem;
+		color: #A39B93;
+		border-top: 1px solid rgba(230, 226, 216, 0.4);
+	}
+
+	.stats-label {
+		font-weight: 500;
+	}
+
+	.stats-value {
+		font-weight: 600;
+		color: #706862;
+	}
+
+	.stats-sep {
+		color: #D5CFC6;
+	}
+
+	.stats-max {
+		color: #706862;
+	}
+
+	.stats-pct {
+		color: #5E7163;
+		font-weight: 500;
 	}
 </style>

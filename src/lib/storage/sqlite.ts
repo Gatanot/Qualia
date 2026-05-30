@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
 import type { ToolCall, Usage } from '$lib/provider';
+import { formatSessionTitle } from './utils';
 
 interface MessageRow {
 	id: string;
@@ -91,15 +92,25 @@ export class SQLiteStorage implements Storage {
 			getMaxSeq: this.db.prepare(`SELECT COALESCE(MAX(seq), 0) as max_seq FROM messages WHERE session_id = ?`),
 			updateAudioPath: this.db.prepare(`UPDATE messages SET audio_path = ? WHERE id = ?`),
 			deleteFromSeq: this.db.prepare(`DELETE FROM messages WHERE session_id = ? AND seq >= ?`),
-			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`)
+			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`),
+			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
 		};
 	}
 
 	async createSession(title?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
-		this.stmts.createSession.run(id, title || '', now, now, null, 'active', 0);
+		const effectiveTitle = title || this.generateDefaultTitle(now);
+		this.stmts.createSession.run(id, effectiveTitle, now, now, null, 'active', 0);
 		return (await this.getSession(id))!;
+	}
+
+	private generateDefaultTitle(now: number): string {
+		const today = new Date(now);
+		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+		const endOfDay = startOfDay + 86_400_000;
+		const { cnt } = this.stmts.countToday.get(startOfDay, endOfDay) as { cnt: number };
+		return formatSessionTitle(today, cnt + 1);
 	}
 
 	async getSession(id: string): Promise<Session | null> {

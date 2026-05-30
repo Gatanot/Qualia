@@ -5,7 +5,7 @@ import type { ModelDef } from '../provider/models';
 import { getDefaultModels } from '../provider/models';
 import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
 
-const DEFAULT_CONTEXT_WINDOW = 128_000;
+const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
 function getConfigPath(): string {
 	return join(process.cwd(), 'data', 'config.json');
@@ -20,7 +20,12 @@ const defaultConfig: AppConfig = {
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string; model?: string }): ProviderConfig {
 	const type = (p.type as ProviderConfig['type']) || 'openai';
-	const models = Array.isArray(p.models) && p.models.length > 0 ? p.models : getDefaultModels(type);
+	const defaults = getDefaultModels(type);
+	const storedModels = Array.isArray(p.models) && p.models.length > 0 ? p.models : defaults;
+	const models = storedModels.map((stored) => {
+		const def = defaults.find((d) => d.id === stored.id);
+		return def ? { ...stored, contextWindow: def.contextWindow, name: def.name } : stored;
+	});
 	const activeModel = p.activeModel || p.model || models[0]?.id || '';
 
 	return {

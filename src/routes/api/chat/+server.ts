@@ -83,7 +83,11 @@ export async function POST({ request }: { request: Request }) {
 
 				try {
 					for await (const event of agent.run(sid!, message, buildResult, clientMessageId)) {
-						send(event);
+						if (event.type === 'done') {
+							send({ ...event, contextWindow: providerConfig.contextWindow });
+						} else {
+							send(event);
+						}
 					}
 				} catch (e) {
 					send({ type: 'error', message: (e as Error).message || '未知错误' });
