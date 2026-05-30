@@ -17,6 +17,7 @@
 	let focusTrigger = $state(0);
 	let inputQueue: string[] = $state([]);
 	let abortController: AbortController | null = null;
+	let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let nearBottom = $state(true);
 	let lastUserMessage = $state('');
 	let messagesEl = $state<HTMLDivElement>();
@@ -157,6 +158,7 @@
 			currentAssistant = null;
 		}
 		abortController = null;
+		streamReader = null;
 		streaming = false;
 		focusTrigger++;
 		scrollToBottom();
@@ -169,6 +171,8 @@
 
 	function stopAI() {
 		abortController?.abort();
+		streamReader?.cancel().catch(() => {});
+		streamReader = null;
 	}
 
 	function handleConfirm(confirmId: string, approved: boolean) {
@@ -270,6 +274,7 @@
 		streaming = true;
 		const controller = new AbortController();
 		abortController = controller;
+		streamReader = null;
 
 		try {
 			const res = await fetch('/api/chat', {
@@ -301,6 +306,7 @@
 			}
 
 			const reader = res.body!.getReader();
+			streamReader = reader;
 			const decoder = new TextDecoder();
 			let buffer = '';
 
@@ -334,6 +340,7 @@
 					currentAssistant = null;
 				}
 				abortController = null;
+				streamReader = null;
 				streaming = false;
 				focusTrigger++;
 				if (inputQueue.length > 0) sendMessage(inputQueue.shift());
