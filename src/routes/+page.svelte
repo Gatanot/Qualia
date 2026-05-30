@@ -19,13 +19,7 @@
 	const SCROLL_THRESHOLD = 150;
 
 	$effect(() => {
-		loadSessions().then(() => {
-			if (!$activeId && $sessions.length === 0) {
-				createSession();
-			} else if (!$activeId) {
-				setActive($sessions[0].id);
-			}
-		});
+		loadSessions();
 	});
 
 	function checkNearBottom(): boolean {
@@ -167,6 +161,12 @@
 		}
 
 		if (!queuedText) { input = ''; focusTrigger++; }
+
+		if (!$activeId) {
+			const session = await createSession();
+			if (!session) return;
+		}
+
 		lastUserMessage = text;
 		const userMsgId = crypto.randomUUID();
 
