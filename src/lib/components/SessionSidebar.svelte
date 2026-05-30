@@ -65,10 +65,10 @@
 			<span class="material-symbols-rounded">menu</span>
 		</button>
 		{#if !collapsed}
-			<div class="brand">
+			<a href="/" class="brand">
 				<span class="material-symbols-rounded brand-icon">spa</span>
 				<span class="brand-name">Qualia</span>
-			</div>
+			</a>
 		{/if}
 	</div>
 
@@ -189,6 +189,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding-left: 0.5rem;
+		text-decoration: none;
 	}
 
 	.brand-icon {
