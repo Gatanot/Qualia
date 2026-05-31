@@ -86,7 +86,7 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 
 ## Context window & forking
 
-- `ContextBuilder` loads up to **50 recent messages** from history.
+- `ContextBuilder` loads **all** messages from history (no artificial limit — the token-based fork mechanism is the sole gatekeeper).
 - When `contextWindow - token_count < 20000`, triggers `forkSession()` — creates a new session with `parent_id` pointing to the original. Summary generation is not yet implemented (placeholder text).
 - `ProviderConfig.contextWindow` is optional — the chat API route backfills it from the active model's `contextWindow` (via `getContextWindow()`) before passing to `ContextBuilder`.
 

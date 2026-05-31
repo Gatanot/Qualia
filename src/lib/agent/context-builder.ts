@@ -94,7 +94,7 @@ export class ContextBuilder {
 
 		messages.push({ role: 'system', content: systemContent });
 
-		const history = await storage.getMessages(sessionId, { limit: 50 });
+		const history = await storage.getMessages(sessionId);
 		for (const msg of history) {
 			const m: Message = {
 				role: msg.role,
