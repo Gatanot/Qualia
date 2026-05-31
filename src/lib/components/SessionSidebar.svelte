@@ -135,7 +135,7 @@
 		</div>
 
 		<div class="sidebar-footer">
-			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
+			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'} onclick={() => (mobileOpen = false)}>
 				<span class="material-symbols-rounded">settings</span>
 				设置
 			</a>
