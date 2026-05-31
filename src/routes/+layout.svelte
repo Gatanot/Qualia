@@ -32,7 +32,7 @@
 			<button class="icon-btn" onclick={toggleSidebar}>
 				<span class="material-symbols-rounded">menu</span>
 			</button>
-			<span class="app-title">Qualia</span>
+			<a href="/" class="app-title">Qualia</a>
 			<a href="/" class="icon-btn new-chat-btn">
 				<span class="material-symbols-rounded">add_comment</span>
 			</a>
@@ -89,6 +89,11 @@
 		font-weight: 500;
 		font-size: 1.1rem;
 		color: #4A4542;
+		text-decoration: none;
+	}
+
+	.app-title:hover {
+		color: #7B8C7C;
 	}
 
 	.icon-btn {

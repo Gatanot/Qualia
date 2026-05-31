@@ -2,6 +2,7 @@
 	import type { AppConfig, ProviderConfig } from '$lib/config';
 	import { getDefaultModels } from '$lib/provider';
 	import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent/prompts';
+	import { loadSessions } from '$lib/session-store';
 
 	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
 	let loading = $state(true);
@@ -13,6 +14,7 @@
 
 	$effect(() => {
 		loadConfig();
+		loadSessions();
 	});
 
 	let formModels = $derived(getDefaultModels(formType));
