@@ -23,6 +23,7 @@
 	let messagesEl = $state<HTMLDivElement>();
 	let loadedSessionId = $state('');
 	let contextWindow = $state<number | undefined>(undefined);
+	let customIcon = $state(false);
 	const SCROLL_THRESHOLD = 150;
 
 	const cumulativeUsage = $derived.by(() => {
@@ -49,6 +50,7 @@
 				if (model?.contextWindow) {
 					contextWindow = model.contextWindow;
 				}
+				customIcon = config.customBrandIcon === true;
 			})
 			.catch(() => {});
 	});
@@ -520,7 +522,7 @@
 <div class="chat-container">
 	<div class="messages" class:welcome={messages.length === 0} bind:this={messagesEl}>
 		{#if messages.length === 0}
-			<EmptyState />
+			<EmptyState customIcon={customIcon} />
 		{/if}
 
 		{#each messages as msg (msg.id)}

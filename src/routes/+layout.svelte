@@ -6,6 +6,7 @@
 	let { children } = $props();
 
 	let sidebarOpen = $state(false);
+	let customIcon = $state(false);
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -17,10 +18,15 @@
 
 	$effect(() => {
 		initTheme();
+		fetch('/api/config')
+			.then((r) => r.json())
+			.then((c) => { customIcon = c.customBrandIcon === true; })
+			.catch(() => {});
 	});
 </script>
 
 <svelte:head>
+	<title>Qualia</title>
 	<link rel="icon" href={favicon} />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
@@ -29,7 +35,7 @@
 </svelte:head>
 
 <div class="app">
-	<SessionSidebar bind:mobileOpen={sidebarOpen} />
+	<SessionSidebar bind:mobileOpen={sidebarOpen} customIcon={customIcon} />
 
 	<div class="main-wrapper">
 		<header class="app-header">

@@ -15,7 +15,8 @@ const defaultConfig: AppConfig = {
 	providers: [],
 	activeProvider: '',
 	storageEnabled: false,
-	systemPrompt: DEFAULT_SYSTEM_PROMPT
+	systemPrompt: DEFAULT_SYSTEM_PROMPT,
+	customBrandIcon: false
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string; model?: string }): ProviderConfig {
@@ -58,7 +59,8 @@ export function readConfig(): AppConfig {
 				: [],
 			activeProvider: parsed.activeProvider || '',
 			storageEnabled: parsed.storageEnabled !== false,
-			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT
+			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
+			customBrandIcon: parsed.customBrandIcon === true
 		};
 	} catch {
 		return { ...defaultConfig };

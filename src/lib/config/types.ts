@@ -21,4 +21,5 @@ export interface AppConfig {
 	activeProvider: string;
 	storageEnabled: boolean;
 	systemPrompt: string;
+	customBrandIcon: boolean;
 }

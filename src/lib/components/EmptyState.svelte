@@ -1,6 +1,14 @@
+<script lang="ts">
+	let { customIcon = false }: { customIcon?: boolean } = $props();
+</script>
+
 <div class="empty-state">
 	<div class="empty-icon-container">
-		<span class="material-symbols-rounded empty-icon">spa</span>
+		{#if customIcon}
+			<img src="/api/brand-icon" alt="头像" class="empty-img" />
+		{:else}
+			<span class="material-symbols-rounded empty-icon">spa</span>
+		{/if}
 	</div>
 	<h2>Qualia</h2>
 	<p>你的虚拟伙伴，随时倾听</p>
@@ -33,12 +41,19 @@
 		align-items: center;
 		justify-content: center;
 		margin-bottom: 0.75rem;
+		overflow: hidden;
 		box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.6), 0 8px 24px rgba(61, 56, 52, 0.06);
 	}
 
 	.empty-icon {
 		font-size: 52px;
 		color: var(--accent);
+	}
+
+	.empty-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.empty-state h2 {

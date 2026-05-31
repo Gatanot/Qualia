@@ -4,8 +4,9 @@
 	import StorageToggle from '$lib/components/settings/StorageToggle.svelte';
 	import PromptEditor from '$lib/components/settings/PromptEditor.svelte';
 	import ProviderManager from '$lib/components/settings/ProviderManager.svelte';
+	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '' });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false });
 	let loading = $state(true);
 
 	$effect(() => {
@@ -56,15 +57,20 @@
 	}
 </script>
 
-<svelte:head>
-	<title>设置 — Qualia</title>
-</svelte:head>
-
 <div class="settings">
 	<div class="settings-inner">
 		<h1>设置</h1>
 
 		<StorageToggle enabled={config.storageEnabled} ontoggle={toggleStorage} />
+
+		<section class="section">
+			<h2>头像</h2>
+			<AvatarEditor
+				customBrandIcon={config.customBrandIcon}
+				onsave={() => loadConfig()}
+				onreset={() => loadConfig()}
+			/>
+		</section>
 
 		<PromptEditor bind:systemPrompt={config.systemPrompt} onsave={saveSystemPrompt} />
 
@@ -98,5 +104,16 @@
 		color: var(--text-primary);
 		font-weight: 500;
 		letter-spacing: -0.02em;
+	}
+
+	.section {
+		margin-bottom: 3rem;
+	}
+
+	.section h2 {
+		font-size: 1.25rem;
+		margin: 0 0 1.25rem;
+		color: var(--text-primary);
+		font-weight: 500;
 	}
 </style>

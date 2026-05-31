@@ -9,6 +9,7 @@
 	let hasProvider = $state(false);
 	let checkedProvider = $state(false);
 	let showNoProviderHint = $state(false);
+	let customIcon = $state(false);
 
 	$effect(() => {
 		loadSessions();
@@ -17,6 +18,7 @@
 			.then((config) => {
 				hasProvider = !!(config.activeProvider && config.providers?.length > 0);
 				checkedProvider = true;
+				customIcon = config.customBrandIcon === true;
 			})
 			.catch(() => { checkedProvider = true; });
 	});
@@ -44,7 +46,7 @@
 
 <div class="root-page">
 	<div class="welcome-area">
-		<EmptyState />
+		<EmptyState customIcon={customIcon} />
 		<div class="input-anchor">
 			<ChatInput
 				bind:value={input}

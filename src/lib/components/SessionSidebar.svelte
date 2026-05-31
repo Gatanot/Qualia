@@ -6,23 +6,30 @@
 	import SearchDialog from './SearchDialog.svelte';
 	import { getTheme, toggleTheme } from '$lib/theme';
 
-	let { mobileOpen = $bindable(false) } = $props();
+	let { mobileOpen = $bindable(false), customIcon = false }: {
+		mobileOpen: boolean;
+		customIcon?: boolean;
+	} = $props();
 
 	let editingId = $state<string | null>(null);
 	let editTitle = $state('');
 	let searchOpen = $state(false);
 	let themeIcon = $state(getTheme() === 'dark' ? 'light_mode' : 'dark_mode');
 
+	import { afterNavigate } from '$app/navigation';
+
+	afterNavigate(() => {
+		mobileOpen = false;
+	});
+
 	function handleSelect(session: Session) {
 		goto('/chat/' + session.id);
-		mobileOpen = false;
 	}
 
 	async function handleNew() {
 		const session = await createSession();
 		if (session) {
 			goto('/chat/' + session.id);
-			mobileOpen = false;
 		}
 	}
 
@@ -75,7 +82,11 @@
 <div class="sidebar" class:mobile-open={mobileOpen}>
 	<div class="sidebar-header">
 		<a href="/" class="brand">
-			<span class="material-symbols-rounded brand-icon">spa</span>
+			{#if customIcon}
+				<img src="/api/brand-icon" alt="" class="brand-img" />
+			{:else}
+				<span class="material-symbols-rounded brand-icon">spa</span>
+			{/if}
 			<span class="brand-name">Qualia</span>
 		</a>
 	</div>
@@ -135,7 +146,7 @@
 		</div>
 
 		<div class="sidebar-footer">
-			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'} onclick={() => (mobileOpen = false)}>
+			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
 				<span class="material-symbols-rounded">settings</span>
 				设置
 			</a>
@@ -194,6 +205,13 @@
 	.brand-icon {
 		font-size: 24px;
 		color: var(--accent);
+	}
+
+	.brand-img {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		object-fit: cover;
 	}
 
 	.brand-name {
