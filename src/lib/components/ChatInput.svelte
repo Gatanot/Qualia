@@ -97,12 +97,12 @@
 		gap: 0.5rem;
 		margin-bottom: 0.75rem;
 		padding: 0.5rem 1.25rem;
-		background: #FFFDFC;
-		border: 1px solid #EBE6DF;
+		background: var(--bg-surface);
+		border: 1px solid var(--border-subtle);
 		border-radius: 100px;
 		font-size: 0.85rem;
-		color: #8E857D;
-		box-shadow: 0 4px 12px rgba(74, 69, 66, 0.03);
+		color: var(--text-secondary);
+		box-shadow: var(--shadow-sm);
 		width: fit-content;
 		margin-left: auto;
 		margin-right: auto;
@@ -110,7 +110,7 @@
 
 	.queue-icon {
 		font-size: 18px;
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	.queue-text {
@@ -121,7 +121,7 @@
 		display: flex;
 		gap: 0.75rem;
 		padding: 0.5rem 0.5rem 0.5rem 1.5rem;
-		background: #FFFFFF;
+		background: var(--bg-surface);
 		border-radius: 32px;
 		align-items: flex-end;
 		box-shadow: 0 8px 32px rgba(74, 69, 66, 0.08), 0 2px 8px rgba(74, 69, 66, 0.04);
@@ -131,7 +131,7 @@
 
 	.input-bar:focus-within {
 		box-shadow: 0 12px 48px rgba(74, 69, 66, 0.12), 0 4px 16px rgba(74, 69, 66, 0.06);
-		border-color: #D3D0C8;
+		border-color: var(--border-focus);
 		transform: translateY(-1px);
 	}
 
@@ -145,11 +145,11 @@
 		resize: none;
 		line-height: 1.6;
 		outline: none;
-		color: #4A4542;
+		color: var(--text-primary);
 	}
 
 	.chat-input::placeholder {
-		color: #A6A098;
+		color: var(--text-muted);
 	}
 
 	.send-btn {
@@ -157,8 +157,8 @@
 		height: 52px;
 		border-radius: 50%;
 		border: none;
-		background: #7B8C7C;
-		color: #FFFFFF;
+		background: var(--accent);
+		color: var(--text-on-accent);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -169,17 +169,17 @@
 	}
 
 	.send-btn.stop-btn {
-		background: #D37D7A;
+		background: var(--stop-bg);
 	}
 
 	.send-btn:hover:not(:disabled) {
-		background: #627463;
+		background: var(--accent-hover);
 		transform: translateY(-2px);
 		box-shadow: 0 6px 16px rgba(123, 140, 124, 0.25);
 	}
 
 	.send-btn.stop-btn:hover {
-		background: #B8625F;
+		background: var(--stop-hover);
 		box-shadow: 0 6px 16px rgba(211, 125, 122, 0.25);
 	}
 
@@ -189,8 +189,8 @@
 	}
 
 	.send-btn:disabled {
-		background: #EDEBE4;
-		color: #B5B0A8;
+		background: var(--bg-disabled);
+		color: var(--text-disabled);
 		cursor: default;
 		box-shadow: none;
 	}

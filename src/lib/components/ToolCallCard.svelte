@@ -66,18 +66,18 @@
 
 <style>
 	.tool-call {
-		background: #FFFFFF;
-		border: 1px solid rgba(215, 210, 200, 0.6);
+		background: var(--bg-surface);
+		border: 1px solid var(--border-accent);
 		border-radius: 16px;
 		padding: 0.75rem 1rem;
 		font-size: 0.85rem;
 		transition: border-color 0.2s, background 0.2s;
-		box-shadow: 0 2px 4px rgba(74, 69, 66, 0.02);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.tool-call.tool-done {
 		border-color: rgba(123, 140, 124, 0.2);
-		background: #F8FAF8;
+		background: var(--bg-surface-alt);
 	}
 
 	.tool-header {
@@ -90,12 +90,12 @@
 
 	.tool-icon {
 		font-size: 18px !important;
-		color: #D4A373;
+		color: var(--warm-accent);
 		flex-shrink: 0;
 	}
 
 	.tool-done .tool-icon {
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	.tool-summary {
@@ -108,12 +108,12 @@
 
 	.tool-name {
 		font-weight: 500;
-		color: #4A4542;
+		color: var(--text-primary);
 		flex-shrink: 0;
 	}
 
 	.tool-command {
-		color: #706862;
+		color: var(--text-mid);
 		font-size: 0.8rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -123,7 +123,7 @@
 
 	.expand-icon {
 		font-size: 20px;
-		color: #A39B93;
+		color: var(--text-muted);
 		flex-shrink: 0;
 		transition: transform 0.2s;
 	}
@@ -131,12 +131,12 @@
 	.tool-args pre {
 		margin: 0.75rem 0 0;
 		padding: 0.6rem 0.85rem;
-		background: #F4F1EA;
+		background: var(--bg-tool);
 		border-radius: 8px;
 		font-size: 0.8rem;
 		overflow-x: auto;
 		white-space: pre-wrap;
-		color: #706862;
+		color: var(--text-mid);
 	}
 
 	.tool-output {
@@ -145,19 +145,19 @@
 		gap: 0.5rem;
 		margin-top: 0.6rem;
 		font-size: 0.8rem;
-		color: #706862;
+		color: var(--text-mid);
 		max-height: 200px;
 		overflow-y: auto;
 		white-space: pre-wrap;
 		font-family: 'Roboto Mono', monospace;
 	}
-	
+
 	.tool-output::-webkit-scrollbar, .tool-args pre::-webkit-scrollbar {
 		width: 4px;
 		height: 4px;
 	}
 	.tool-output::-webkit-scrollbar-thumb, .tool-args pre::-webkit-scrollbar-thumb {
-		background-color: rgba(166, 155, 147, 0.3);
+		background-color: var(--scrollbar);
 		border-radius: 10px;
 	}
 
@@ -167,6 +167,6 @@
 	}
 
 	.tool-error {
-		color: #B71C1C;
+		color: var(--danger-text);
 	}
 </style>

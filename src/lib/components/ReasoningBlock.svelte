@@ -27,8 +27,8 @@
 
 <style>
 	.reasoning {
-		background: #F8F6F0;
-		border: 1px solid rgba(215, 210, 200, 0.6);
+		background: var(--bg-reasoning);
+		border: 1px solid var(--border-accent);
 		border-radius: 16px;
 		font-size: 0.9rem;
 		transition: border-color 0.2s, background 0.2s;
@@ -36,7 +36,7 @@
 	}
 
 	.reasoning.done {
-		background: #F2EEE5;
+		background: var(--bg-done);
 	}
 
 	.reasoning-header {
@@ -50,17 +50,17 @@
 
 	.reasoning-icon {
 		font-size: 18px;
-		color: #8E857D;
+		color: var(--text-secondary);
 	}
 
 	.reasoning-label {
 		font-weight: 500;
-		color: #8E857D;
+		color: var(--text-secondary);
 	}
 
 	.reasoning-dot {
 		font-size: 8px;
-		color: #D4A373;
+		color: var(--warm-accent);
 		animation: pulse 1s infinite;
 	}
 
@@ -71,25 +71,25 @@
 
 	.expand-icon {
 		font-size: 18px;
-		color: #A39B93;
+		color: var(--text-muted);
 		margin-left: auto;
 	}
 
 	.reasoning-content {
 		padding: 0 0.85rem 0.85rem;
-		color: #8E857D;
+		color: var(--text-secondary);
 		white-space: pre-wrap;
 		line-height: 1.6;
 		font-style: italic;
 		max-height: 300px;
 		overflow-y: auto;
 	}
-	
+
 	.reasoning-content::-webkit-scrollbar {
 		width: 4px;
 	}
 	.reasoning-content::-webkit-scrollbar-thumb {
-		background-color: rgba(166, 155, 147, 0.3);
+		background-color: var(--scrollbar);
 		border-radius: 10px;
 	}
 </style>

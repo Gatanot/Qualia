@@ -61,7 +61,6 @@
 			loadMessages(sessionId).then((records) => {
 				if ($page.params.sessionId !== sessionId) return;
 				messages = recordsToUIMessages(records);
-				// send pending first message from home page
 				const pending = $pendingFirstMessage;
 				if (pending && records.length === 0) {
 					pendingFirstMessage.set('');
@@ -327,7 +326,6 @@
 						const event = JSON.parse(data);
 						await handleSSEEvent(event);
 					} catch {
-						// skip
 					}
 				}
 			}
@@ -597,7 +595,7 @@
 		bottom: 0;
 		margin-top: auto;
 		z-index: 10;
-		background: linear-gradient(to top, #FBF9F6 70%, transparent);
+		background: linear-gradient(to top, var(--bg-page) 70%, transparent);
 		padding-top: 0.75rem;
 	}
 
@@ -608,14 +606,14 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
-		border: 1px solid rgba(230, 226, 216, 0.6);
-		background: #FFFFFF;
-		color: #3D3834;
+		border: 1px solid var(--border-strong);
+		background: var(--bg-surface);
+		color: var(--text-darker);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.1);
+		box-shadow: var(--shadow-md);
 		z-index: 20;
 		transition: transform 0.15s, box-shadow 0.15s;
 		animation: scrollFadeIn 0.2s ease;
@@ -641,8 +639,8 @@
 		gap: 0.35rem;
 		padding: 0.5rem 0;
 		font-size: 0.72rem;
-		color: #A39B93;
-		border-top: 1px solid rgba(230, 226, 216, 0.4);
+		color: var(--text-muted);
+		border-top: 1px solid var(--border-subtle);
 	}
 
 	.stats-label {
@@ -651,19 +649,19 @@
 
 	.stats-value {
 		font-weight: 600;
-		color: #706862;
+		color: var(--text-mid);
 	}
 
 	.stats-sep {
-		color: #D5CFC6;
+		color: var(--scrollbar);
 	}
 
 	.stats-max {
-		color: #706862;
+		color: var(--text-mid);
 	}
 
 	.stats-pct {
-		color: #5E7163;
+		color: var(--accent-link);
 		font-weight: 500;
 	}
 </style>

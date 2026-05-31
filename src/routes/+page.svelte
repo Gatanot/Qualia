@@ -91,11 +91,11 @@
 		gap: 0.5rem;
 		margin-top: 1rem;
 		padding: 0.85rem 1.25rem;
-		background: #FFF8E1;
+		background: var(--bg-info);
 		border: 1px solid rgba(255, 193, 7, 0.3);
 		border-radius: 16px;
 		font-size: 0.95rem;
-		color: #6D5E00;
+		color: var(--info-text);
 		animation: fadeIn 0.3s ease-out;
 	}
 
@@ -105,7 +105,7 @@
 	}
 
 	.hint-link {
-		color: #7B8C7C;
+		color: var(--accent);
 		font-weight: 500;
 		text-decoration: underline;
 		text-underline-offset: 2px;

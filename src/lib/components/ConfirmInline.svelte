@@ -24,12 +24,12 @@
 
 <style>
 	.confirm-inline {
-		background: #FFF9E6;
-		border: 1px solid #FFE699;
+		background: var(--warn-bg);
+		border: 1px solid var(--warn-border);
 		border-radius: 20px;
 		padding: 1rem 1.25rem;
 		font-size: 0.9rem;
-		box-shadow: 0 2px 8px rgba(61, 56, 52, 0.04);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.confirm-header {
@@ -41,17 +41,17 @@
 
 	.confirm-icon {
 		font-size: 20px;
-		color: #D4A373;
+		color: var(--warm-accent);
 	}
 
 	.confirm-label {
 		font-weight: 500;
-		color: #706862;
+		color: var(--text-mid);
 	}
 
 	.confirm-message {
 		margin: 0 0 1rem;
-		color: #4A4542;
+		color: var(--text-primary);
 		font-size: 0.95rem;
 		line-height: 1.6;
 		white-space: pre-wrap;
@@ -74,28 +74,28 @@
 		cursor: pointer;
 		transition: transform 0.15s, background-color 0.2s, box-shadow 0.2s;
 	}
-	
+
 	.btn:active {
 		transform: scale(0.98);
 	}
 
 	.btn-primary {
-		background: #7B8C7C;
-		color: #FFFFFF;
+		background: var(--accent);
+		color: var(--text-on-accent);
 		box-shadow: 0 2px 4px rgba(123, 140, 124, 0.2);
 	}
 
 	.btn-primary:hover {
-		background: #627463;
+		background: var(--accent-hover);
 		box-shadow: 0 4px 8px rgba(123, 140, 124, 0.3);
 	}
 
 	.btn-outline {
-		background: #F0EBE1;
-		color: #706862;
+		background: var(--bg-table);
+		color: var(--text-mid);
 	}
 
 	.btn-outline:hover {
-		background: #E6E2D8;
+		background: var(--border-input);
 	}
 </style>

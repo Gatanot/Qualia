@@ -104,7 +104,7 @@
 	.search-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(61, 56, 52, 0.3);
+		background: var(--overlay-heavy);
 		backdrop-filter: blur(2px);
 		display: flex;
 		align-items: flex-start;
@@ -118,9 +118,9 @@
 		width: 100%;
 		max-width: 480px;
 		max-height: 70vh;
-		background: #FFFFFF;
+		background: var(--bg-surface);
 		border-radius: 20px;
-		box-shadow: 0 12px 48px rgba(61, 56, 52, 0.12);
+		box-shadow: var(--shadow-lg);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -132,12 +132,12 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 1rem 1.25rem;
-		border-bottom: 1px solid rgba(215, 210, 200, 0.4);
+		border-bottom: 1px solid var(--border);
 	}
 
 	.search-icon {
 		font-size: 20px;
-		color: #A6A098;
+		color: var(--text-muted);
 		flex-shrink: 0;
 	}
 
@@ -147,12 +147,12 @@
 		outline: none;
 		font-size: 1rem;
 		font-family: inherit;
-		color: #4A4542;
+		color: var(--text-primary);
 		background: transparent;
 	}
 
 	.search-input::placeholder {
-		color: #C5BFB5;
+		color: var(--text-placeholder);
 	}
 
 	.clear-btn {
@@ -161,7 +161,7 @@
 		border: none;
 		border-radius: 50%;
 		background: transparent;
-		color: #A6A098;
+		color: var(--text-muted);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -171,7 +171,7 @@
 	}
 
 	.clear-btn:hover {
-		background: #F2EEE5;
+		background: var(--bg-surface-hover);
 	}
 
 	.clear-btn .material-symbols-rounded {
@@ -190,14 +190,14 @@
 	}
 
 	.search-results::-webkit-scrollbar-thumb {
-		background: #D5CFC6;
+		background: var(--scrollbar);
 		border-radius: 4px;
 	}
 
 	.empty-hint {
 		padding: 2.5rem 1rem;
 		text-align: center;
-		color: #A6A098;
+		color: var(--text-muted);
 		font-size: 0.95rem;
 	}
 
@@ -210,7 +210,7 @@
 		cursor: pointer;
 		transition: background 0.2s;
 		font-size: 0.95rem;
-		color: #4A4542;
+		color: var(--text-primary);
 		background: none;
 		border: none;
 		width: 100%;
@@ -219,12 +219,12 @@
 	}
 
 	.search-item:hover {
-		background: #F2EEE5;
+		background: var(--bg-surface-hover);
 	}
 
 	.session-icon {
 		font-size: 18px;
-		color: #A6A098;
+		color: var(--text-muted);
 		flex-shrink: 0;
 	}
 
@@ -242,7 +242,7 @@
 
 	.session-time {
 		font-size: 0.75rem;
-		color: #A6A098;
+		color: var(--text-muted);
 		margin-top: 0.15rem;
 	}
 

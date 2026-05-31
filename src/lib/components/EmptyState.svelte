@@ -13,7 +13,7 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
-		color: #8E857D;
+		color: var(--text-secondary);
 		gap: 0.75rem;
 		animation: fadeIn 1s cubic-bezier(0.2, 0, 0, 1) forwards;
 		opacity: 0;
@@ -27,7 +27,7 @@
 	.empty-icon-container {
 		width: 110px;
 		height: 110px;
-		background: #F2EEE5;
+		background: var(--bg-done);
 		border-radius: 50%;
 		display: flex;
 		align-items: center;
@@ -38,21 +38,21 @@
 
 	.empty-icon {
 		font-size: 52px;
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	.empty-state h2 {
 		margin: 0;
 		font-weight: 300;
 		font-size: 2.25rem;
-		color: #4A4542;
+		color: var(--text-primary);
 		letter-spacing: 0.04em;
 	}
 
 	.empty-state p {
 		margin: 0;
 		font-size: 1.15rem;
-		color: #8E857D;
+		color: var(--text-secondary);
 		font-weight: 400;
 	}
 </style>

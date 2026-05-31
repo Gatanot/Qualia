@@ -31,7 +31,6 @@
 		try {
 			await navigator.clipboard.writeText(getUserText());
 		} catch {
-			// fallback for insecure context
 		}
 	}
 
@@ -160,13 +159,13 @@
 	.message-role {
 		font-size: 0.85rem;
 		font-weight: 500;
-		color: #8E857D;
+		color: var(--text-secondary);
 		padding: 0 0.5rem;
 		margin-bottom: 0.1rem;
 	}
 
 	.message-content {
-		background: #FFFFFF;
+		background: var(--bg-surface);
 		border-radius: 4px 24px 24px 24px;
 		padding: 1.25rem 1.5rem;
 		font-size: 1.05rem;
@@ -174,23 +173,22 @@
 		white-space: pre-wrap;
 		word-break: break-word;
 		box-shadow: 0 4px 20px rgba(74, 69, 66, 0.04), 0 1px 3px rgba(74, 69, 66, 0.02);
-		color: #4A4542;
+		color: var(--text-primary);
 	}
 
 	.message-row.user .message-content {
-		background: #7B8C7C;
-		color: #FFFFFF;
+		background: var(--accent);
+		color: var(--text-on-accent);
 		border-radius: 24px 4px 24px 24px;
 		box-shadow: 0 4px 20px rgba(123, 140, 124, 0.15), 0 1px 3px rgba(123, 140, 124, 0.1);
 	}
 
 	.message-row.error .message-content {
-		background: #FCE8E6;
-		color: #B71C1C;
+		background: var(--danger-bg);
+		color: var(--danger-text);
 		border-radius: 4px 20px 20px 20px;
 	}
 
-	/* Markdown rendered overrides */
 	.message-content.markdown-body {
 		white-space: normal;
 	}
@@ -228,23 +226,23 @@
 	:global(.markdown-body code:not(pre code)) {
 		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 		font-size: 0.88em;
-		background: #F4F1EA;
+		background: var(--bg-tool);
 		padding: 0.2em 0.5em;
 		border-radius: 6px;
-		color: #7B8C7C;
+		color: var(--accent);
 		font-weight: 500;
 	}
 
 	:global(.message-row.user .markdown-body code:not(pre code)) {
 		background: rgba(255, 255, 255, 0.15);
-		color: #E8E3D9;
+		color: var(--code-text-alt);
 	}
 
 	.markdown-body :global(pre) {
 		margin: 0.75rem 0;
 		padding: 1rem;
 		border-radius: 12px;
-		background: #2D2A27;
+		background: var(--bg-code);
 		overflow-x: auto;
 		position: relative;
 	}
@@ -255,7 +253,7 @@
 		line-height: 1.55;
 		background: none;
 		padding: 0;
-		color: #E6DCCE;
+		color: var(--code-text);
 	}
 
 	.markdown-body :global(.code-lang) {
@@ -275,10 +273,10 @@
 	.markdown-body :global(blockquote) {
 		margin: 0.75rem 0;
 		padding: 0.75rem 1.25rem;
-		border-left: 4px solid #7B8C7C;
-		background: #F8F6F0;
+		border-left: 4px solid var(--accent);
+		background: var(--bg-reasoning);
 		border-radius: 0 12px 12px 0;
-		color: #8E857D;
+		color: var(--text-secondary);
 		font-style: italic;
 	}
 
@@ -289,7 +287,7 @@
 	.message-row.user .markdown-body :global(blockquote) {
 		border-left-color: rgba(255, 255, 255, 0.3);
 		background: rgba(255, 255, 255, 0.08);
-		color: #E8E3D9;
+		color: var(--code-text-alt);
 	}
 
 	.markdown-body :global(table) {
@@ -300,30 +298,30 @@
 	}
 
 	.markdown-body :global(th) {
-		background: #F0EBE1;
+		background: var(--bg-table);
 		padding: 0.5rem 0.75rem;
 		text-align: left;
 		font-weight: 500;
-		border-bottom: 2px solid #E6E2D8;
+		border-bottom: 2px solid var(--border-table);
 	}
 
 	.markdown-body :global(td) {
 		padding: 0.5rem 0.75rem;
-		border-bottom: 1px solid #F0EBE1;
+		border-bottom: 1px solid var(--bg-table);
 	}
 
 	.markdown-body :global(a) {
-		color: #5E7163;
+		color: var(--accent-link);
 		text-decoration: underline;
 	}
 
 	.message-row.user .markdown-body :global(a) {
-		color: #E8E3D9;
+		color: var(--code-text-alt);
 	}
 
 	.markdown-body :global(hr) {
 		border: none;
-		border-top: 1px solid #E6E2D8;
+		border-top: 1px solid var(--border-table);
 		margin: 1rem 0;
 	}
 
@@ -332,8 +330,8 @@
 	}
 
 	.error-recovery {
-		background: #FFF9E6;
-		border: 1px solid #FFE699;
+		background: var(--warn-bg);
+		border: 1px solid var(--warn-border);
 		border-radius: 12px;
 		padding: 1rem 1.25rem;
 		display: flex;
@@ -344,7 +342,7 @@
 	.recovery-msg {
 		margin: 0;
 		font-size: 0.9rem;
-		color: #706862;
+		color: var(--text-mid);
 		line-height: 1.5;
 	}
 
@@ -358,10 +356,10 @@
 		align-items: center;
 		gap: 0.4rem;
 		padding: 0.45rem 1rem;
-		border: 1px solid rgba(230, 226, 216, 0.6);
+		border: 1px solid var(--border-strong);
 		border-radius: 100px;
-		background: #FFFFFF;
-		color: #3D3834;
+		background: var(--bg-surface);
+		color: var(--text-darker);
 		cursor: pointer;
 		font-size: 0.85rem;
 		font-weight: 500;
@@ -370,7 +368,7 @@
 	}
 
 	.btn-recovery:hover {
-		background: #F0EBE1;
+		background: var(--bg-table);
 	}
 
 	.btn-recovery:active {
@@ -378,7 +376,7 @@
 	}
 
 	.btn-recovery-secondary {
-		background: #FAF8F5;
+		background: var(--bg-secondary-btn);
 	}
 
 	.btn-recovery .material-symbols-rounded {
@@ -405,7 +403,7 @@
 		border: none;
 		border-radius: 8px;
 		background: transparent;
-		color: #A39B93;
+		color: var(--text-muted);
 		cursor: pointer;
 		font-family: inherit;
 		font-size: 0.8rem;
@@ -413,13 +411,13 @@
 	}
 
 	.action-btn:hover {
-		background: #F0EBE1;
-		color: #3D3834;
+		background: var(--bg-table);
+		color: var(--text-darker);
 	}
 
 	.action-btn.confirm {
-		background: #FFF3E0;
-		color: #E65100;
+		background: var(--warn-card-bg);
+		color: var(--warn-card-text);
 	}
 
 	.action-btn .material-symbols-rounded {
@@ -433,7 +431,7 @@
 	.cursor {
 		animation: blink 0.7s infinite;
 		font-weight: 700;
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	@keyframes blink {

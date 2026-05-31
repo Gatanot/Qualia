@@ -4,12 +4,14 @@
 	import { sessions, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 	import SearchDialog from './SearchDialog.svelte';
+	import { getTheme, toggleTheme } from '$lib/theme';
 
 	let { mobileOpen = $bindable(false) } = $props();
 
 	let editingId = $state<string | null>(null);
 	let editTitle = $state('');
 	let searchOpen = $state(false);
+	let themeIcon = $state(getTheme() === 'dark' ? 'light_mode' : 'dark_mode');
 
 	function handleSelect(session: Session) {
 		goto('/chat/' + session.id);
@@ -52,6 +54,11 @@
 		} else if (e.key === 'Escape') {
 			cancelEdit();
 		}
+	}
+
+	function handleToggleTheme() {
+		toggleTheme();
+		themeIcon = getTheme() === 'dark' ? 'light_mode' : 'dark_mode';
 	}
 
 	function formatTime(ts: number): string {
@@ -136,6 +143,9 @@
 				<span class="material-symbols-rounded">search</span>
 				搜索
 			</button>
+			<button class="footer-link theme-btn" onclick={handleToggleTheme} title="切换主题">
+				<span class="material-symbols-rounded">{themeIcon}</span>
+			</button>
 		</div>
 </div>
 
@@ -148,8 +158,8 @@
 		left: 0;
 		bottom: 0;
 		width: 280px;
-		background: #F3F0E9;
-		border-right: 1px solid rgba(215, 210, 200, 0.4);
+		background: var(--bg-sidebar);
+		border-right: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
 		transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
@@ -183,13 +193,13 @@
 
 	.brand-icon {
 		font-size: 24px;
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	.brand-name {
 		font-weight: 500;
 		font-size: 1.15rem;
-		color: #4A4542;
+		color: var(--text-primary);
 		letter-spacing: 0.02em;
 	}
 
@@ -200,7 +210,7 @@
 		padding: 0.5rem 1rem 0.25rem 1.15rem;
 		font-size: 0.75rem;
 		font-weight: 600;
-		color: #A6A098;
+		color: var(--text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -211,7 +221,7 @@
 		border: none;
 		border-radius: 8px;
 		background: transparent;
-		color: #A6A098;
+		color: var(--text-muted);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -220,8 +230,8 @@
 	}
 
 	.new-btn:hover {
-		background: #E8E4DB;
-		color: #4A4542;
+		background: var(--bg-surface-press);
+		color: var(--text-primary);
 	}
 
 	.session-list {
@@ -246,25 +256,25 @@
 		cursor: pointer;
 		transition: background 0.2s;
 		font-size: 0.95rem;
-		color: #4A4542;
+		color: var(--text-primary);
 	}
 
 	.session-item:hover {
-		background: #EAE6DD;
+		background: var(--bg-surface-active);
 	}
 
 	.session-item.active {
-		background: #DFD9CE;
+		background: var(--bg-surface-press);
 	}
 
 	.session-icon {
 		font-size: 18px;
-		color: #A6A098;
+		color: var(--text-muted);
 		flex-shrink: 0;
 	}
 
 	.session-item.active .session-icon {
-		color: #7B8C7C;
+		color: var(--accent);
 	}
 
 	.session-info {
@@ -282,19 +292,19 @@
 	.session-title-input {
 		width: 100%;
 		padding: 0.2rem 0.4rem;
-		border: 1px solid #7B8C7C;
+		border: 1px solid var(--accent);
 		border-radius: 6px;
-		background: #FFFFFF;
+		background: var(--bg-surface);
 		font-family: inherit;
 		font-size: 0.92rem;
-		color: #4A4542;
+		color: var(--text-primary);
 		outline: none;
 		box-sizing: border-box;
 	}
 
 	.session-time {
 		font-size: 0.75rem;
-		color: #A6A098;
+		color: var(--text-muted);
 		margin-top: 0.15rem;
 	}
 
@@ -304,7 +314,7 @@
 		border: none;
 		border-radius: 6px;
 		background: transparent;
-		color: #A6A098;
+		color: var(--text-muted);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -319,15 +329,15 @@
 	}
 
 	.delete-btn:hover {
-		background: #FCE8E6;
-		color: #D32F2F;
+		background: var(--danger-bg);
+		color: var(--danger-btn);
 	}
 
 	.sidebar-footer {
 		display: flex;
 		gap: 0.25rem;
 		padding: 0.75rem;
-		border-top: 1px solid rgba(215, 210, 200, 0.4);
+		border-top: 1px solid var(--border);
 	}
 
 	.footer-link {
@@ -336,13 +346,13 @@
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem;
 		border-radius: 12px;
-		color: #8E857D;
+		color: var(--text-secondary);
 		text-decoration: none;
 		font-size: 0.9rem;
 		transition: background 0.2s, color 0.2s;
 	}
 
-	.search-btn {
+	.search-btn, .theme-btn {
 		background: none;
 		border: none;
 		cursor: pointer;
@@ -350,7 +360,7 @@
 	}
 
 	.footer-link:hover, .footer-link.active {
-		background: #EAE6DD;
-		color: #4A4542;
+		background: var(--bg-surface-active);
+		color: var(--text-primary);
 	}
 </style>
