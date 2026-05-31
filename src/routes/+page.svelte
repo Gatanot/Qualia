@@ -6,16 +6,33 @@
 
 	let input = $state('');
 	let sending = $state(false);
+	let hasProvider = $state(false);
+	let checkedProvider = $state(false);
+	let showNoProviderHint = $state(false);
 
 	$effect(() => {
 		loadSessions();
+		fetch('/api/config')
+			.then((r) => r.json())
+			.then((config) => {
+				hasProvider = !!(config.activeProvider && config.providers?.length > 0);
+				checkedProvider = true;
+			})
+			.catch(() => { checkedProvider = true; });
 	});
 
 	async function handleSend() {
 		const text = input.trim();
 		if (!text || sending) return;
+
+		if (checkedProvider && !hasProvider) {
+			showNoProviderHint = true;
+			return;
+		}
+
 		sending = true;
 		input = '';
+		showNoProviderHint = false;
 
 		const session = await createSession();
 		if (!session) { sending = false; return; }
@@ -36,6 +53,12 @@
 				onsend={handleSend}
 				onstop={() => {}}
 			/>
+			{#if showNoProviderHint}
+				<div class="no-provider-hint">
+					<span class="material-symbols-rounded hint-icon">info</span>
+					<span>尚未配置 AI 供应商，请先前往 <a href="/settings" class="hint-link">设置</a> 添加</span>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -60,5 +83,36 @@
 
 	.input-anchor {
 		width: 100%;
+	}
+
+	.no-provider-hint {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 1rem;
+		padding: 0.85rem 1.25rem;
+		background: #FFF8E1;
+		border: 1px solid rgba(255, 193, 7, 0.3);
+		border-radius: 16px;
+		font-size: 0.95rem;
+		color: #6D5E00;
+		animation: fadeIn 0.3s ease-out;
+	}
+
+	.hint-icon {
+		font-size: 20px;
+		flex-shrink: 0;
+	}
+
+	.hint-link {
+		color: #7B8C7C;
+		font-weight: 500;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(6px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 </style>
