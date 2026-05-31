@@ -1,0 +1,258 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import type { Session } from '$lib/storage';
+
+	let { sessions, open = $bindable(false) } = $props<{
+		sessions: Session[];
+		open: boolean;
+	}>();
+
+	let keyword = $state('');
+	let inputEl = $state<HTMLInputElement>();
+
+	function handleSelect(session: Session) {
+		open = false;
+		goto('/chat/' + session.id);
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			if (keyword) {
+				keyword = '';
+			} else {
+				open = false;
+			}
+		}
+	}
+
+	let filtered = $derived.by(() => {
+		const kw = keyword.trim().toLowerCase();
+		if (!kw) return sessions;
+		return sessions.filter((s: Session) => s.title.toLowerCase().includes(kw));
+	});
+
+	function formatTime(ts: number): string {
+		const d = new Date(ts);
+		const now = new Date();
+		const diff = now.getTime() - d.getTime();
+		if (diff < 86400000) {
+			return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+		}
+		return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+	}
+
+	$effect(() => {
+		if (open) {
+			keyword = '';
+			requestAnimationFrame(() => inputEl?.focus());
+		}
+	});
+</script>
+
+{#if open}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
+	<div class="search-overlay" onclick={() => (open = false)} role="dialog">
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div class="search-panel" onclick={(e: MouseEvent) => e.stopPropagation()} role="document">
+			<div class="search-header">
+				<span class="material-symbols-rounded search-icon">search</span>
+				<input
+					bind:this={inputEl}
+					class="search-input"
+					type="text"
+					placeholder="搜索对话标题..."
+					bind:value={keyword}
+					onkeydown={handleKeydown}
+					autocomplete="off"
+				/>
+				{#if keyword}
+					<button class="clear-btn" onclick={() => { keyword = ''; inputEl?.focus(); }}>
+						<span class="material-symbols-rounded">close</span>
+					</button>
+				{/if}
+			</div>
+
+			<div class="search-results">
+				{#if keyword && filtered.length === 0}
+					<div class="empty-hint">未找到匹配的对话</div>
+				{:else if !keyword && sessions.length === 0}
+					<div class="empty-hint">暂无对话</div>
+				{:else}
+					{#each filtered as session (session.id)}
+						<button
+							class="search-item"
+							onclick={() => handleSelect(session)}
+						>
+							<span class="material-symbols-rounded session-icon">chat_bubble</span>
+							<div class="session-info">
+								<div class="session-title">{session.title}</div>
+								<div class="session-time">{formatTime(session.updated_at)}</div>
+							</div>
+						</button>
+					{/each}
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<style>
+	.search-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(61, 56, 52, 0.3);
+		backdrop-filter: blur(2px);
+		display: flex;
+		align-items: flex-start;
+		justify-content: center;
+		padding-top: 12vh;
+		z-index: 100;
+		animation: fadeIn 0.15s ease-out;
+	}
+
+	.search-panel {
+		width: 100%;
+		max-width: 480px;
+		max-height: 70vh;
+		background: #FFFFFF;
+		border-radius: 20px;
+		box-shadow: 0 12px 48px rgba(61, 56, 52, 0.12);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		animation: slideDown 0.2s cubic-bezier(0.2, 0, 0, 1);
+	}
+
+	.search-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1rem 1.25rem;
+		border-bottom: 1px solid rgba(215, 210, 200, 0.4);
+	}
+
+	.search-icon {
+		font-size: 20px;
+		color: #A6A098;
+		flex-shrink: 0;
+	}
+
+	.search-input {
+		flex: 1;
+		border: none;
+		outline: none;
+		font-size: 1rem;
+		font-family: inherit;
+		color: #4A4542;
+		background: transparent;
+	}
+
+	.search-input::placeholder {
+		color: #C5BFB5;
+	}
+
+	.clear-btn {
+		width: 28px;
+		height: 28px;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: #A6A098;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		transition: background 0.2s;
+	}
+
+	.clear-btn:hover {
+		background: #F2EEE5;
+	}
+
+	.clear-btn .material-symbols-rounded {
+		font-size: 18px;
+	}
+
+	.search-results {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0.5rem;
+		max-height: 50vh;
+	}
+
+	.search-results::-webkit-scrollbar {
+		width: 4px;
+	}
+
+	.search-results::-webkit-scrollbar-thumb {
+		background: #D5CFC6;
+		border-radius: 4px;
+	}
+
+	.empty-hint {
+		padding: 2.5rem 1rem;
+		text-align: center;
+		color: #A6A098;
+		font-size: 0.95rem;
+	}
+
+	.search-item {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.65rem 0.85rem;
+		border-radius: 12px;
+		cursor: pointer;
+		transition: background 0.2s;
+		font-size: 0.95rem;
+		color: #4A4542;
+		background: none;
+		border: none;
+		width: 100%;
+		text-align: left;
+		font-family: inherit;
+	}
+
+	.search-item:hover {
+		background: #F2EEE5;
+	}
+
+	.session-icon {
+		font-size: 18px;
+		color: #A6A098;
+		flex-shrink: 0;
+	}
+
+	.session-info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.session-title {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 0.92rem;
+	}
+
+	.session-time {
+		font-size: 0.75rem;
+		color: #A6A098;
+		margin-top: 0.15rem;
+	}
+
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	@keyframes slideDown {
+		from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+		to { opacity: 1; transform: translateY(0) scale(1); }
+	}
+</style>

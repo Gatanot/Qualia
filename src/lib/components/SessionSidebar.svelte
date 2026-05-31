@@ -3,11 +3,13 @@
 	import { goto } from '$app/navigation';
 	import { sessions, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
+	import SearchDialog from './SearchDialog.svelte';
 
 	let { mobileOpen = $bindable(false) } = $props();
 
 	let editingId = $state<string | null>(null);
 	let editTitle = $state('');
+	let searchOpen = $state(false);
 
 	function handleSelect(session: Session) {
 		goto('/chat/' + session.id);
@@ -130,8 +132,14 @@
 				<span class="material-symbols-rounded">settings</span>
 				设置
 			</a>
+			<button class="footer-link search-btn" onclick={() => (searchOpen = true)}>
+				<span class="material-symbols-rounded">search</span>
+				搜索
+			</button>
 		</div>
 </div>
+
+<SearchDialog sessions={$sessions} bind:open={searchOpen} />
 
 <style>
 	.sidebar {
@@ -316,6 +324,8 @@
 	}
 
 	.sidebar-footer {
+		display: flex;
+		gap: 0.25rem;
 		padding: 0.75rem;
 		border-top: 1px solid rgba(215, 210, 200, 0.4);
 	}
@@ -330,6 +340,13 @@
 		text-decoration: none;
 		font-size: 0.9rem;
 		transition: background 0.2s, color 0.2s;
+	}
+
+	.search-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-family: inherit;
 	}
 
 	.footer-link:hover, .footer-link.active {
