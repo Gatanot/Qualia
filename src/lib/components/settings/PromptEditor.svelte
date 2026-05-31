@@ -121,12 +121,12 @@
 		background: var(--accent);
 		color: var(--text-on-accent);
 		border-color: var(--accent);
-		box-shadow: 0 4px 12px rgba(123, 140, 124, 0.15);
+		box-shadow: var(--shadow-accent-btn);
 	}
 
 	.btn-primary:hover {
 		background: var(--accent-hover);
 		border-color: var(--accent-hover);
-		box-shadow: 0 6px 16px rgba(123, 140, 124, 0.25);
+		box-shadow: var(--shadow-accent-btn-hover);
 	}
 </style>

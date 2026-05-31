@@ -172,7 +172,7 @@
 		line-height: 1.75;
 		white-space: pre-wrap;
 		word-break: break-word;
-		box-shadow: 0 4px 20px rgba(74, 69, 66, 0.04), 0 1px 3px rgba(74, 69, 66, 0.02);
+		box-shadow: var(--shadow-bubble);
 		color: var(--text-primary);
 	}
 
@@ -180,7 +180,7 @@
 		background: var(--accent);
 		color: var(--text-on-accent);
 		border-radius: 24px 4px 24px 24px;
-		box-shadow: 0 4px 20px rgba(123, 140, 124, 0.15), 0 1px 3px rgba(123, 140, 124, 0.1);
+		box-shadow: var(--shadow-bubble-user);
 	}
 
 	.message-row.error .message-content {

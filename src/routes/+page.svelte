@@ -92,7 +92,7 @@
 		margin-top: 1rem;
 		padding: 0.85rem 1.25rem;
 		background: var(--bg-info);
-		border: 1px solid rgba(255, 193, 7, 0.3);
+		border: 1px solid var(--warn-border);
 		border-radius: 16px;
 		font-size: 0.95rem;
 		color: var(--info-text);

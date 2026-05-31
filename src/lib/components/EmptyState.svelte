@@ -33,7 +33,7 @@
 		align-items: center;
 		justify-content: center;
 		margin-bottom: 0.75rem;
-		box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.6), 0 8px 24px rgba(74, 69, 66, 0.06);
+		box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.6), 0 8px 24px rgba(61, 56, 52, 0.06);
 	}
 
 	.empty-icon {

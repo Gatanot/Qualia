@@ -76,7 +76,7 @@
 	}
 
 	.tool-call.tool-done {
-		border-color: rgba(123, 140, 124, 0.2);
+		border-color: var(--border-accent);
 		background: var(--bg-surface-alt);
 	}
 

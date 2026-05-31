@@ -621,7 +621,7 @@
 
 	.scroll-btn:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(61, 56, 52, 0.15);
+		box-shadow: var(--shadow-md);
 	}
 
 	.scroll-btn .material-symbols-rounded {

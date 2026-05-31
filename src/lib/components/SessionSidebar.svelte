@@ -172,7 +172,7 @@
 
 	.sidebar.mobile-open {
 		transform: translateX(0);
-		box-shadow: 2px 0 12px rgba(74, 69, 66, 0.15);
+		box-shadow: var(--shadow-sidebar);
 	}
 
 	.sidebar-header {

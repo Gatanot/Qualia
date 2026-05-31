@@ -82,12 +82,12 @@
 	.btn-primary {
 		background: var(--accent);
 		color: var(--text-on-accent);
-		box-shadow: 0 2px 4px rgba(123, 140, 124, 0.2);
+		box-shadow: var(--shadow-accent-btn-active);
 	}
 
 	.btn-primary:hover {
 		background: var(--accent-hover);
-		box-shadow: 0 4px 8px rgba(123, 140, 124, 0.3);
+		box-shadow: var(--shadow-accent-btn-hover);
 	}
 
 	.btn-outline {

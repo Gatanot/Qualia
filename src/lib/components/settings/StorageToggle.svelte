@@ -88,7 +88,7 @@
 		border-radius: 50%;
 		background: var(--bg-surface);
 		transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-knob);
 	}
 
 	.toggle.on .toggle-knob {

@@ -318,13 +318,13 @@
 		background: var(--accent);
 		color: var(--text-on-accent);
 		border-color: var(--accent);
-		box-shadow: 0 4px 12px rgba(123, 140, 124, 0.15);
+		box-shadow: var(--shadow-accent-btn);
 	}
 
 	.btn-primary:hover {
 		background: var(--accent-hover);
 		border-color: var(--accent-hover);
-		box-shadow: 0 6px 16px rgba(123, 140, 124, 0.25);
+		box-shadow: var(--shadow-accent-btn-hover);
 	}
 
 	.btn-danger {
@@ -419,7 +419,7 @@
 		max-width: 480px;
 		max-height: 90vh;
 		overflow-y: auto;
-		box-shadow: 0 12px 48px rgba(61, 56, 52, 0.15);
+		box-shadow: var(--shadow-modal);
 		animation: modalScale 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
 	}
 
