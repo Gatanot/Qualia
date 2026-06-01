@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { sessions, createSession, setSessionTitle, deleteSession } from '$lib/session-store';
+	import { sessions, setSessionTitle, deleteSession } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 	import SearchDialog from './SearchDialog.svelte';
 	import { getTheme, toggleTheme } from '$lib/theme';
@@ -26,11 +26,8 @@
 		goto('/chat/' + session.id);
 	}
 
-	async function handleNew() {
-		const session = await createSession();
-		if (session) {
-			goto('/chat/' + session.id);
-		}
+	function handleNew() {
+		goto('/');
 	}
 
 	function startEdit(session: Session) {

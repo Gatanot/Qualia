@@ -34,7 +34,8 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 src/lib/
 ├── agent/           # ContextBuilder + AgentLoop + prompts + types
 ├── assets/          # Static assets (favicon.svg)
-├── components/      # Svelte UI components + UIMessage/ContentBlock types
+├── components/      # Svelte UI components + settings/ subdirectory
+│   └── types.ts     # UIMessage/ContentBlock types
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
 ├── provider/        # OpenAI + DeepSeek API clients; factory: createProvider({ type })
 │   └── models.ts    # ModelDef list for each provider (with contextWindow)
@@ -44,13 +45,15 @@ src/lib/
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
 ├── chat-confirm.ts  # Shared Map<string, Promise> for pending confirmations
 ├── markdown.ts      # Markdown renderer (marked) with highlight.js code blocks
-└── session-store.ts # Client-side Svelte stores for session list + CRUD helpers
+├── session-store.ts # Client-side Svelte stores for session list + CRUD helpers
+└── theme.ts         # Light/dark theme management (localStorage + media query)
 ```
 
 `src/lib/` code is server-side **unless** imported by a `.svelte` component.
 `session-store.ts` is the key exception — it's client-side only (uses `writable` stores).
 
 API routes:
+- `api/brand-icon/+server.ts` — `GET`/`POST`/`DELETE` custom brand icon (uploaded to `data/brand-icon`)
 - `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
 - `api/config/+server.ts` — `GET`/`PUT` config CRUD
