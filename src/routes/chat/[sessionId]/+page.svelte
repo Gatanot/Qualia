@@ -65,6 +65,7 @@
 			loadMessages(sessionId).then((records) => {
 				if ($page.params.sessionId !== sessionId) return;
 				messages = recordsToUIMessages(records);
+				forceScrollToBottom();
 				const pending = $pendingFirstMessage;
 				if (pending && records.length === 0) {
 					pendingFirstMessage.set('');
