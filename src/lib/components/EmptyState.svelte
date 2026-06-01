@@ -42,7 +42,7 @@
 		justify-content: center;
 		margin-bottom: 0.75rem;
 		overflow: hidden;
-		box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.6), 0 8px 24px rgba(61, 56, 52, 0.06);
+		box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.4), var(--shadow-md);
 	}
 
 	.empty-icon {
@@ -58,7 +58,8 @@
 
 	.empty-state h2 {
 		margin: 0;
-		font-weight: 300;
+		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-weight: 700;
 		font-size: 2.25rem;
 		color: var(--text-primary);
 		letter-spacing: 0.04em;

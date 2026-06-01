@@ -212,10 +212,11 @@
 	}
 
 	.brand-name {
-		font-weight: 500;
-		font-size: 1.15rem;
+		font-weight: 700;
+		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-size: 1.25rem;
 		color: var(--text-primary);
-		letter-spacing: 0.02em;
+		letter-spacing: 0.03em;
 	}
 
 	.section-label {

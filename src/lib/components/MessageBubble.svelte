@@ -169,7 +169,8 @@
 		border-radius: 4px 24px 24px 24px;
 		padding: 1.25rem 1.5rem;
 		font-size: 1.05rem;
-		line-height: 1.75;
+		line-height: 1.8;
+		letter-spacing: 0.01em;
 		white-space: pre-wrap;
 		word-break: break-word;
 		box-shadow: var(--shadow-bubble);
@@ -199,13 +200,15 @@
 	.markdown-body :global(h4),
 	.markdown-body :global(h5),
 	.markdown-body :global(h6) {
-		margin: 1.25rem 0 0.5rem;
-		line-height: 1.3;
+		margin: 1.5rem 0 0.75rem;
+		line-height: 1.4;
 		color: inherit;
+		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-weight: 700;
 	}
-	.markdown-body :global(h1) { font-size: 1.4rem; }
-	.markdown-body :global(h2) { font-size: 1.25rem; }
-	.markdown-body :global(h3) { font-size: 1.1rem; }
+	.markdown-body :global(h1) { font-size: 1.5rem; }
+	.markdown-body :global(h2) { font-size: 1.35rem; }
+	.markdown-body :global(h3) { font-size: 1.15rem; }
 
 	.markdown-body :global(p) {
 		margin: 0 0 0.75rem;
@@ -271,13 +274,15 @@
 	}
 
 	.markdown-body :global(blockquote) {
-		margin: 0.75rem 0;
-		padding: 0.75rem 1.25rem;
-		border-left: 4px solid var(--accent);
+		margin: 1rem 0;
+		padding: 0.75rem 1.5rem;
+		border-left: 3px solid var(--accent);
 		background: var(--bg-reasoning);
-		border-radius: 0 12px 12px 0;
+		border-radius: 4px 12px 12px 4px;
 		color: var(--text-secondary);
-		font-style: italic;
+		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-style: normal;
+		font-size: 1.05rem;
 	}
 
 	.markdown-body :global(blockquote:last-child) {
