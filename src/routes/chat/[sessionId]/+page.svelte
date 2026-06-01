@@ -28,9 +28,11 @@
 
 	const cumulativeUsage = $derived.by(() => {
 		let total = 0;
-		for (const msg of messages) {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
 			if (msg.role === 'assistant' && msg.usage) {
 				total = msg.usage.total_tokens;
+				break;
 			}
 		}
 		const pct = contextWindow && total > 0 ? ((total / contextWindow) * 100).toFixed(1) : null;
