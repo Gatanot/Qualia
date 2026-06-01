@@ -18,6 +18,10 @@ export interface Session {
 	status: 'active' | 'archived';
 	/** 缓存的全会话 Token 总数 */
 	token_count: number;
+	/** 会话摘要 */
+	summary: string;
+	/** 上次生成摘要的时间戳（Unix 毫秒），null 表示从未生成 */
+	last_summarized_at: number | null;
 }
 
 /**
@@ -100,6 +104,15 @@ export interface Storage {
 
 	/** 设置会话标题（不更新 updated_at） */
 	setSessionTitle(sessionId: string, title: string): Promise<void>;
+
+	/** 获取超过 idleMs 未活动且需要生成摘要的会话 */
+	getStaleSessions(idleMs: number): Promise<Session[]>;
+	/** 获取会话中 seq 大于指定值的消息（用于增量处理） */
+	getMessagesSinceSeq(sessionId: string, seq: number): Promise<MessageRecord[]>;
+	/** 更新会话摘要 */
+	updateSummary(sessionId: string, summary: string): Promise<void>;
+	/** 获取今天 last_summarized_at 有变化的会话 */
+	getTodayUpdatedSessions(): Promise<Session[]>;
 
 	/** 设置消息的 TTS 音频路径 */
 	setAudioPath(messageId: string, path: string): Promise<void>;

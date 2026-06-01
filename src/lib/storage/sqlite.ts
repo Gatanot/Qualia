@@ -26,6 +26,8 @@ interface SessionRow {
 	parent_id: string | null;
 	status: string;
 	token_count: number;
+	summary: string;
+	last_summarized_at: number | null;
 }
 
 /**
@@ -55,7 +57,9 @@ export class SQLiteStorage implements Storage {
 				updated_at  INTEGER NOT NULL,
 				parent_id   TEXT,
 				status      TEXT NOT NULL DEFAULT 'active',
-				token_count INTEGER NOT NULL DEFAULT 0
+				token_count INTEGER NOT NULL DEFAULT 0,
+				summary     TEXT NOT NULL DEFAULT '',
+				last_summarized_at INTEGER
 			);
 			CREATE TABLE IF NOT EXISTS messages (
 				id                 TEXT PRIMARY KEY,
@@ -75,11 +79,24 @@ export class SQLiteStorage implements Storage {
 			CREATE INDEX IF NOT EXISTS idx_messages_session_seq
 				ON messages(session_id, seq);
 		`);
+
+		this.migrate();
+	}
+
+	private migrate(): void {
+		const cols = this.db.pragma('table_info(sessions)') as Array<{ name: string }>;
+		const columnNames = new Set(cols.map((c) => c.name));
+		if (!columnNames.has('summary')) {
+			this.db.exec(`ALTER TABLE sessions ADD COLUMN summary TEXT NOT NULL DEFAULT ''`);
+		}
+		if (!columnNames.has('last_summarized_at')) {
+			this.db.exec(`ALTER TABLE sessions ADD COLUMN last_summarized_at INTEGER`);
+		}
 	}
 
 	private prepareStatements() {
 		return {
-			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count) VALUES (?, ?, ?, ?, ?, ?, ?)`),
+			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count, summary, last_summarized_at) VALUES (?, ?, ?, ?, ?, ?, ?, '', NULL)`),
 			getSession: this.db.prepare(`SELECT * FROM sessions WHERE id = ?`),
 			listAllSessions: this.db.prepare(`SELECT * FROM sessions ORDER BY updated_at DESC`),
 			deleteSession: this.db.prepare(`DELETE FROM sessions WHERE id = ?`),
@@ -87,12 +104,16 @@ export class SQLiteStorage implements Storage {
 			updateSession: this.db.prepare(`UPDATE sessions SET title = ?, updated_at = ?, token_count = ? WHERE id = ?`),
 			insertMessage: this.db.prepare(`INSERT INTO messages (id, session_id, role, content, reasoning_content, tool_calls, tool_call_id, name, usage, audio_path, created_at, seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			getMessages: this.db.prepare(`SELECT * FROM messages WHERE session_id = ? AND (? IS NULL OR seq < ?) ORDER BY seq ASC`),
+			getMessagesSinceSeq: this.db.prepare(`SELECT * FROM messages WHERE session_id = ? AND seq > ? ORDER BY seq ASC`),
 			getMessage: this.db.prepare(`SELECT * FROM messages WHERE id = ?`),
 			deleteMessage: this.db.prepare(`DELETE FROM messages WHERE id = ?`),
 			getMaxSeq: this.db.prepare(`SELECT COALESCE(MAX(seq), 0) as max_seq FROM messages WHERE session_id = ?`),
 			updateAudioPath: this.db.prepare(`UPDATE messages SET audio_path = ? WHERE id = ?`),
 			deleteFromSeq: this.db.prepare(`DELETE FROM messages WHERE session_id = ? AND seq >= ?`),
 			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`),
+			updateSummary: this.db.prepare(`UPDATE sessions SET summary = ?, last_summarized_at = ? WHERE id = ?`),
+			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > 0) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
+			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
 		};
 	}
@@ -220,6 +241,29 @@ export class SQLiteStorage implements Storage {
 		this.stmts.updateAudioPath.run(path, messageId);
 	}
 
+	async getStaleSessions(idleMs: number): Promise<Session[]> {
+		const now = Date.now();
+		const rows = this.stmts.getStaleSessions.all(now, idleMs) as SessionRow[];
+		return rows.map((row) => this.rowToSession(row));
+	}
+
+	async getMessagesSinceSeq(sessionId: string, seq: number): Promise<MessageRecord[]> {
+		const rows = this.stmts.getMessagesSinceSeq.all(sessionId, seq) as MessageRow[];
+		return rows.map((row) => this.rowToMessage(row));
+	}
+
+	async updateSummary(sessionId: string, summary: string): Promise<void> {
+		this.stmts.updateSummary.run(summary, Date.now(), sessionId);
+	}
+
+	async getTodayUpdatedSessions(): Promise<Session[]> {
+		const now = new Date();
+		const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const endOfDay = startOfDay + 86_400_000;
+		const rows = this.stmts.getTodayUpdated.all(startOfDay, endOfDay) as SessionRow[];
+		return rows.map((row) => this.rowToSession(row));
+	}
+
 	private rowToSession(row: SessionRow): Session {
 		return {
 			id: row.id,
@@ -228,7 +272,9 @@ export class SQLiteStorage implements Storage {
 			updated_at: row.updated_at,
 			parent_id: row.parent_id,
 			status: row.status as 'active' | 'archived',
-			token_count: row.token_count
+			token_count: row.token_count,
+			summary: row.summary || '',
+			last_summarized_at: row.last_summarized_at ?? null
 		};
 	}
 

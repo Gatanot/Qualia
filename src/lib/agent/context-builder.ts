@@ -53,8 +53,8 @@ export class ContextBuilder {
 		providerConfig: ProviderConfig,
 		systemPrompt?: string
 	): Promise<BuildResult> {
-		// TODO: 实现 LLM 总结旧对话
-		const summary = `（历史对话总结功能尚未实现，来自会话 ${sessionId}）`;
+		const parentSession = await storage.getSession(sessionId);
+		const summary = parentSession?.summary || `（尚未生成会话摘要，来自会话 ${sessionId}）`;
 
 		const newSession = await storage.forkSession(sessionId, summary);
 

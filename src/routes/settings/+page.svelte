@@ -5,8 +5,9 @@
 	import PromptEditor from '$lib/components/settings/PromptEditor.svelte';
 	import ProviderManager from '$lib/components/settings/ProviderManager.svelte';
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
+	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryIdleHours: 8, summaryIntervalMin: 30 });
 	let loading = $state(true);
 
 	$effect(() => {
@@ -55,6 +56,17 @@
 			activeProvider: updated.activeProvider as string
 		};
 	}
+
+	async function saveSummarize() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
 </script>
 
 <div class="settings">
@@ -62,6 +74,13 @@
 		<h1>设置</h1>
 
 		<StorageToggle enabled={config.storageEnabled} ontoggle={toggleStorage} />
+
+		<SummarizeSettings
+			bind:enabled={config.autoSummarize}
+			bind:idleHours={config.summaryIdleHours}
+			bind:intervalMin={config.summaryIntervalMin}
+			onchange={saveSummarize}
+		/>
 
 		<section class="section">
 			<h2>头像</h2>

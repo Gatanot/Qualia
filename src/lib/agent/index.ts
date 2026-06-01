@@ -10,5 +10,7 @@
 
 export { AgentLoop } from './loop';
 export { ContextBuilder } from './context-builder';
+export { generateSummary } from './summarizer';
+export { generateDiary } from './diary';
 export type { AgentEvent, BuildResult, ConfirmFn } from './types';
 export { DEFAULT_SYSTEM_PROMPT } from './prompts';

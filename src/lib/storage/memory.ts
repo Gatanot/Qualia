@@ -30,7 +30,9 @@ export class MemoryStorage implements Storage {
 			updated_at: now,
 			parent_id: null,
 			status: 'active',
-			token_count: 0
+			token_count: 0,
+			summary: '',
+			last_summarized_at: null
 		};
 		this.sessions.set(id, session);
 		this.messages.set(id, []);
@@ -156,6 +158,48 @@ export class MemoryStorage implements Storage {
 	async setSessionTitle(sessionId: string, title: string): Promise<void> {
 		const session = this.sessions.get(sessionId);
 		if (session) session.title = title;
+	}
+
+	async getStaleSessions(idleMs: number): Promise<Session[]> {
+		const now = Date.now();
+		const result: Session[] = [];
+		for (const s of this.sessions.values()) {
+			if (s.status !== 'active') continue;
+			if (now - s.updated_at <= idleMs) continue;
+			if (s.last_summarized_at !== null && s.last_summarized_at >= s.updated_at) continue;
+			const msgs = this.messages.get(s.id);
+			if (!msgs || msgs.length === 0) continue;
+			result.push(s);
+		}
+		result.sort((a, b) => a.updated_at - b.updated_at);
+		return result;
+	}
+
+	async getMessagesSinceSeq(sessionId: string, seq: number): Promise<MessageRecord[]> {
+		const list = this.messages.get(sessionId) || [];
+		return list.filter((m) => m.seq > seq);
+	}
+
+	async updateSummary(sessionId: string, summary: string): Promise<void> {
+		const session = this.sessions.get(sessionId);
+		if (session) {
+			session.summary = summary;
+			session.last_summarized_at = Date.now();
+		}
+	}
+
+	async getTodayUpdatedSessions(): Promise<Session[]> {
+		const now = new Date();
+		const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const endOfDay = startOfDay + 86_400_000;
+		const result: Session[] = [];
+		for (const s of this.sessions.values()) {
+			if (s.summary && s.last_summarized_at && s.last_summarized_at >= startOfDay && s.last_summarized_at < endOfDay) {
+				result.push(s);
+			}
+		}
+		result.sort((a, b) => (a.last_summarized_at || 0) - (b.last_summarized_at || 0));
+		return result;
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {

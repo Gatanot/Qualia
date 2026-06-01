@@ -16,7 +16,10 @@ const defaultConfig: AppConfig = {
 	activeProvider: '',
 	storageEnabled: false,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
-	customBrandIcon: false
+	customBrandIcon: false,
+	autoSummarize: true,
+	summaryIdleHours: 8,
+	summaryIntervalMin: 30
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string; model?: string }): ProviderConfig {
@@ -60,7 +63,10 @@ export function readConfig(): AppConfig {
 			activeProvider: parsed.activeProvider || '',
 			storageEnabled: parsed.storageEnabled !== false,
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
-			customBrandIcon: parsed.customBrandIcon === true
+			customBrandIcon: parsed.customBrandIcon === true,
+			autoSummarize: parsed.autoSummarize !== false,
+			summaryIdleHours: typeof parsed.summaryIdleHours === 'number' ? parsed.summaryIdleHours : 8,
+			summaryIntervalMin: typeof parsed.summaryIntervalMin === 'number' ? parsed.summaryIntervalMin : 30
 		};
 	} catch {
 		return { ...defaultConfig };

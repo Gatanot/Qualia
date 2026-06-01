@@ -22,4 +22,7 @@ export interface AppConfig {
 	storageEnabled: boolean;
 	systemPrompt: string;
 	customBrandIcon: boolean;
+	autoSummarize: boolean;
+	summaryIdleHours: number;
+	summaryIntervalMin: number;
 }
