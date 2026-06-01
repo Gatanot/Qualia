@@ -22,6 +22,8 @@ export interface Session {
 	summary: string;
 	/** 上次生成摘要的时间戳（Unix 毫秒），null 表示从未生成 */
 	last_summarized_at: number | null;
+	/** 会话创建时 memory.md 的快照 */
+	memory_snapshot: string;
 }
 
 /**
@@ -69,8 +71,8 @@ export interface MessageQueryOptions {
  * 上层代码通过工厂函数创建，无需关心底层实现。
  */
 export interface Storage {
-	/** 创建新会话 */
-	createSession(title?: string): Promise<Session>;
+	/** 创建新会话（可选 memory 快照） */
+	createSession(title?: string, memorySnapshot?: string): Promise<Session>;
 	/** 获取会话 */
 	getSession(id: string): Promise<Session | null>;
 	/** 列出所有会话（按更新时间倒序） */
@@ -113,6 +115,8 @@ export interface Storage {
 	updateSummary(sessionId: string, summary: string): Promise<void>;
 	/** 获取今天 last_summarized_at 有变化的会话 */
 	getTodayUpdatedSessions(): Promise<Session[]>;
+	/** 设置会话的 memory 快照 */
+	setMemorySnapshot(sessionId: string, snapshot: string): Promise<void>;
 
 	/** 设置消息的 TTS 音频路径 */
 	setAudioPath(messageId: string, path: string): Promise<void>;

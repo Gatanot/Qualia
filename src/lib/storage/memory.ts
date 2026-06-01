@@ -13,7 +13,7 @@ export class MemoryStorage implements Storage {
 	private messageById = new Map<string, MessageRecord>();
 	private seqCounter = new Map<string, number>();
 
-	async createSession(title?: string): Promise<Session> {
+	async createSession(title?: string, memorySnapshot?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const today = new Date(now);
@@ -32,7 +32,8 @@ export class MemoryStorage implements Storage {
 			status: 'active',
 			token_count: 0,
 			summary: '',
-			last_summarized_at: null
+			last_summarized_at: null,
+			memory_snapshot: memorySnapshot || ''
 		};
 		this.sessions.set(id, session);
 		this.messages.set(id, []);
@@ -200,6 +201,13 @@ export class MemoryStorage implements Storage {
 		}
 		result.sort((a, b) => (a.last_summarized_at || 0) - (b.last_summarized_at || 0));
 		return result;
+	}
+
+	async setMemorySnapshot(sessionId: string, snapshot: string): Promise<void> {
+		const session = this.sessions.get(sessionId);
+		if (session) {
+			session.memory_snapshot = snapshot;
+		}
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {

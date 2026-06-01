@@ -28,6 +28,7 @@ interface SessionRow {
 	token_count: number;
 	summary: string;
 	last_summarized_at: number | null;
+	memory_snapshot: string;
 }
 
 /**
@@ -59,7 +60,8 @@ export class SQLiteStorage implements Storage {
 				status      TEXT NOT NULL DEFAULT 'active',
 				token_count INTEGER NOT NULL DEFAULT 0,
 				summary     TEXT NOT NULL DEFAULT '',
-				last_summarized_at INTEGER
+				last_summarized_at INTEGER,
+				memory_snapshot TEXT NOT NULL DEFAULT ''
 			);
 			CREATE TABLE IF NOT EXISTS messages (
 				id                 TEXT PRIMARY KEY,
@@ -92,11 +94,14 @@ export class SQLiteStorage implements Storage {
 		if (!columnNames.has('last_summarized_at')) {
 			this.db.exec(`ALTER TABLE sessions ADD COLUMN last_summarized_at INTEGER`);
 		}
+		if (!columnNames.has('memory_snapshot')) {
+			this.db.exec(`ALTER TABLE sessions ADD COLUMN memory_snapshot TEXT NOT NULL DEFAULT ''`);
+		}
 	}
 
 	private prepareStatements() {
 		return {
-			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count, summary, last_summarized_at) VALUES (?, ?, ?, ?, ?, ?, ?, '', NULL)`),
+			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count, summary, last_summarized_at, memory_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, '', NULL, ?)`),
 			getSession: this.db.prepare(`SELECT * FROM sessions WHERE id = ?`),
 			listAllSessions: this.db.prepare(`SELECT * FROM sessions ORDER BY updated_at DESC`),
 			deleteSession: this.db.prepare(`DELETE FROM sessions WHERE id = ?`),
@@ -115,15 +120,16 @@ export class SQLiteStorage implements Storage {
 			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > ?) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
+			setMemorySnapshot: this.db.prepare(`UPDATE sessions SET memory_snapshot = ? WHERE id = ?`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
 		};
 	}
 
-	async createSession(title?: string): Promise<Session> {
+	async createSession(title?: string, memorySnapshot?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const effectiveTitle = title || this.generateDefaultTitle(now);
-		this.stmts.createSession.run(id, effectiveTitle, now, now, null, 'active', 0);
+		this.stmts.createSession.run(id, effectiveTitle, now, now, null, 'active', 0, memorySnapshot || '');
 		return (await this.getSession(id))!;
 	}
 
@@ -270,6 +276,10 @@ export class SQLiteStorage implements Storage {
 		return rows.map((row) => this.rowToSession(row));
 	}
 
+	async setMemorySnapshot(sessionId: string, snapshot: string): Promise<void> {
+		this.stmts.setMemorySnapshot.run(snapshot, sessionId);
+	}
+
 	private rowToSession(row: SessionRow): Session {
 		return {
 			id: row.id,
@@ -280,7 +290,8 @@ export class SQLiteStorage implements Storage {
 			status: row.status as 'active' | 'archived',
 			token_count: row.token_count,
 			summary: row.summary || '',
-			last_summarized_at: row.last_summarized_at ?? null
+			last_summarized_at: row.last_summarized_at ?? null,
+			memory_snapshot: row.memory_snapshot || ''
 		};
 	}
 

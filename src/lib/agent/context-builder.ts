@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Message } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
@@ -14,13 +16,33 @@ const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 /** 剩余窗口低于此阈值（20K token）触发自动分叉 */
 const FORK_THRESHOLD = 20_000;
 
+const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
+
+function readMemoryFile(): string {
+	try {
+		if (existsSync(MEMORY_PATH)) {
+			return readFileSync(MEMORY_PATH, 'utf-8').trim();
+		}
+	} catch {
+	}
+	return '';
+}
+
+function formatMemorySection(content: string): string {
+	if (!content) return '';
+	return `\n\n## 用户信息\n\n以下是关于你和用户的已知信息，请据此调整你的行为：\n\n${content}`;
+}
+
 /**
  * ContextBuilder — 上下文构建器
  *
  * 负责拼装发给 LLM 的 messages 数组：
- * 1. 系统提示词（用户自定义 + 工具描述注入）
+ * 1. 系统提示词（用户自定义 + 工具描述注入 + memory 快照）
  * 2. 会话历史消息
  * 3. 当前用户输入
+ *
+ * memory 在会话首次构建时从 memory.md 读取并存入 session.memory_snapshot，
+ * 后续构建直接使用快照，保证 system 消息稳定、缓存持续命中。
  *
  * 当剩余上下文窗口低于 20K token 时自动分叉会话。
  */
@@ -72,6 +94,19 @@ export class ContextBuilder {
 		};
 	}
 
+	private async resolveMemory(sessionId: string, storage: Storage): Promise<string> {
+		const session = await storage.getSession(sessionId);
+		if (session?.memory_snapshot) {
+			return session.memory_snapshot;
+		}
+
+		const content = readMemoryFile();
+		if (session) {
+			await storage.setMemorySnapshot(sessionId, content);
+		}
+		return content;
+	}
+
 	private async buildMessages(
 		sessionId: string,
 		userMessage: string,
@@ -91,6 +126,9 @@ export class ContextBuilder {
 				.join('\n');
 			systemContent += TOOL_PROMPT_SUFFIX;
 		}
+
+		const memoryContent = await this.resolveMemory(sessionId, storage);
+		systemContent += formatMemorySection(memoryContent);
 
 		messages.push({ role: 'system', content: systemContent });
 

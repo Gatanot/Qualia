@@ -1,7 +1,7 @@
 import type { AIProvider, Message } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool } from '$lib/tool';
+import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
 
 const _registry = new ToolRegistry();
@@ -9,6 +9,7 @@ _registry.register(readFileTool);
 _registry.register(writeFileTool);
 _registry.register(deleteFileTool);
 _registry.register(execTool);
+_registry.register(writeMemoryTool);
 export const _toolDefs = _registry.getDefinitions();
 
 export function buildSystemMessage(): Message {

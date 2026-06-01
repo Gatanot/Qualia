@@ -1,7 +1,7 @@
 import { readConfig, getActiveProvider, getContextWindow } from '$lib/config';
 import { createProvider } from '$lib/provider';
 import { createStorage } from '$lib/storage';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool } from '$lib/tool';
+import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
@@ -43,6 +43,7 @@ export async function POST({ request }: { request: Request }) {
 		registry.register(writeFileTool);
 		registry.register(deleteFileTool);
 		registry.register(execTool);
+		registry.register(writeMemoryTool);
 
 		const contextBuilder = new ContextBuilder();
 
