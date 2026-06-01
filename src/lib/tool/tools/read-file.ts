@@ -112,8 +112,8 @@ export const readFileTool: ToolDef = {
 
 			const endIdx = Math.min(startIdx + limit, totalLines);
 			const slice = lines.slice(startIdx, endIdx);
-			const outputLines = totalLines !== slice.length;
-			const rangeLabel = `(第 ${offset}-${startIdx + slice.length} 行 / 共 ${totalLines} 行${outputLines ? '，已达文件末尾' : ''})`;
+			const atEnd = endIdx >= totalLines;
+			const rangeLabel = `(第 ${offset}-${startIdx + slice.length} 行 / 共 ${totalLines} 行${atEnd ? '，已达文件末尾' : ''})`;
 
 			return {
 				success: true,
