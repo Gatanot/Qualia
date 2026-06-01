@@ -9,9 +9,9 @@ _registry.register(readFileTool);
 _registry.register(writeFileTool);
 _registry.register(deleteFileTool);
 _registry.register(execTool);
-const _toolDefs = _registry.getDefinitions();
+export const _toolDefs = _registry.getDefinitions();
 
-function buildSystemMessage(): Message {
+export function buildSystemMessage(): Message {
 	let content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
 	if (_toolDefs.length > 0) {
 		content += TOOL_PROMPT_PREFIX;

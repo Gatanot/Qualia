@@ -2,6 +2,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AIProvider, Message } from '$lib/provider';
 import type { Storage } from '$lib/storage';
+import { buildSystemMessage, _toolDefs } from './summarizer';
 
 const DIARY_DIR = join(process.cwd(), 'data', 'diary');
 
@@ -19,14 +20,6 @@ function ensureDiaryDir(): void {
 	}
 }
 
-const DIARY_SYSTEM_PROMPT = `你是一个日记助手。你的任务是根据当天的会话摘要，撰写一篇简洁的日记条目。
-
-要求：
-1. 用中文，亲切自然
-2. 记录当天和用户一起完成了什么、有哪些重要交流
-3. 不要流水账式罗列，而是提炼出有意义的片段
-4. 格式：## YYYY年MM月DD日`;
-
 export async function generateDiary(
 	provider: AIProvider,
 	storage: Storage
@@ -43,18 +36,18 @@ export async function generateDiary(
 	if (summaries.length === 0) return;
 
 	const messages: Message[] = [
-		{ role: 'system', content: DIARY_SYSTEM_PROMPT },
+		buildSystemMessage(),
 		{
 			role: 'user',
-			content: `以下是今天各会话的摘要，请据此撰写日记：\n\n${summaries.join('\n\n')}`
+			content: `以下是今天各会话的摘要，请据此撰写一篇日记，记录当天和我一起完成了什么、有哪些重要交流。\n\n${summaries.join('\n\n')}`
 		}
 	];
 
 	const response = await provider.chat({
 		messages,
+		tools: _toolDefs,
 		max_tokens: 2000,
-		temperature: 0.5,
-		tool_choice: 'none'
+		temperature: 0.5
 	});
 
 	const diaryContent = response.content;
