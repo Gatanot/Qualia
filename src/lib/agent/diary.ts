@@ -53,7 +53,8 @@ export async function generateDiary(
 	const response = await provider.chat({
 		messages,
 		max_tokens: 2000,
-		temperature: 0.5
+		temperature: 0.5,
+		tool_choice: 'none'
 	});
 
 	const diaryContent = response.content;

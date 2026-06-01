@@ -112,7 +112,7 @@ export class SQLiteStorage implements Storage {
 			deleteFromSeq: this.db.prepare(`DELETE FROM messages WHERE session_id = ? AND seq >= ?`),
 			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`),
 			updateSummary: this.db.prepare(`UPDATE sessions SET summary = ?, last_summarized_at = ? WHERE id = ?`),
-			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > 0) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
+			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > ?) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
 		};

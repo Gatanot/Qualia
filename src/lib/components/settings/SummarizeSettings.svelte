@@ -6,6 +6,9 @@
 		onchange: () => void;
 	} = $props();
 
+	let generating = $state(false);
+	let resultMsg = $state('');
+
 	function handleToggle() {
 		enabled = !enabled;
 		onchange();
@@ -24,6 +27,30 @@
 		if (v >= 5 && v <= 120) {
 			intervalMin = v;
 			onchange();
+		}
+	}
+
+	async function handleGenerate() {
+		if (generating) return;
+		generating = true;
+		resultMsg = '';
+		try {
+			const res = await fetch('/api/summarize', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ force: true })
+			});
+			if (res.ok) {
+				const data = await res.json();
+				resultMsg = `已为 ${data.summarized} 个会话生成摘要` + (data.diary ? '，并撰写日记' : '');
+			} else {
+				const err = await res.json();
+				resultMsg = err.error || '生成失败';
+			}
+		} catch {
+			resultMsg = '请求失败';
+		} finally {
+			generating = false;
 		}
 	}
 </script>
@@ -88,6 +115,27 @@
 				/>
 				<span class="number-unit">分钟</span>
 			</div>
+		</div>
+
+		<div class="setting-row sub action-row">
+			<div class="setting-label">
+				<div class="setting-title">立即生成</div>
+				<div class="setting-desc">
+					{#if resultMsg}
+						{resultMsg}
+					{:else}
+						跳过空闲阈值，立即为所有有消息的会话生成摘要和日记
+					{/if}
+				</div>
+			</div>
+			<button class="generate-btn" onclick={handleGenerate} disabled={generating}>
+				{#if generating}
+					<span class="spinner"></span>
+					生成中
+				{:else}
+					执行
+				{/if}
+			</button>
 		</div>
 	{/if}
 </section>
@@ -193,5 +241,50 @@
 	.number-unit {
 		font-size: 0.9rem;
 		color: var(--text-secondary);
+	}
+
+	.action-row {
+		align-items: center;
+	}
+
+	.generate-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1.25rem;
+		border: 1px solid var(--accent);
+		border-radius: 10px;
+		background: transparent;
+		color: var(--accent);
+		font-family: inherit;
+		font-size: 0.95rem;
+		font-weight: 500;
+		cursor: pointer;
+		flex-shrink: 0;
+		margin-left: 1.5rem;
+		transition: background 0.2s, color 0.2s;
+	}
+
+	.generate-btn:hover:not(:disabled) {
+		background: var(--accent);
+		color: var(--bg-page);
+	}
+
+	.generate-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.spinner {
+		width: 14px;
+		height: 14px;
+		border: 2px solid var(--border-hover);
+		border-top-color: var(--accent);
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 </style>
