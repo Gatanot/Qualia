@@ -9,7 +9,7 @@ export interface SummarizeResult {
 	diary: boolean;
 }
 
-export async function runSummarizeJob(force?: boolean): Promise<SummarizeResult> {
+export async function runSummarizeJob(force?: boolean, idleMs?: number | null): Promise<SummarizeResult> {
 	const config = readConfig();
 	if (!config.storageEnabled) {
 		throw new Error('对话存储未开启');
@@ -23,8 +23,16 @@ export async function runSummarizeJob(force?: boolean): Promise<SummarizeResult>
 	const provider = createProvider(providerConfig);
 	const storage = createStorage({ enabled: true });
 
-	const idleMs = force ? -1 : (config.summaryIdleHours || 8) * 60 * 60 * 1000;
-	const staleSessions = await storage.getStaleSessions(idleMs);
+	let effectiveIdleMs: number | null;
+	if (force) {
+		effectiveIdleMs = -1;
+	} else if (idleMs !== undefined) {
+		effectiveIdleMs = idleMs;
+	} else {
+		effectiveIdleMs = (config.summaryIdleHours || 8) * 60 * 60 * 1000;
+	}
+
+	const staleSessions = await storage.getStaleSessions(effectiveIdleMs);
 
 	let summarized = 0;
 	for (const session of staleSessions) {

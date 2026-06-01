@@ -105,8 +105,8 @@ export interface Storage {
 	/** 设置会话标题（不更新 updated_at） */
 	setSessionTitle(sessionId: string, title: string): Promise<void>;
 
-	/** 获取超过 idleMs 未活动且需要生成摘要的会话 */
-	getStaleSessions(idleMs: number): Promise<Session[]>;
+	/** 获取超过 idleMs 未活动且需要生成摘要的会话。idleMs 为 null 时返回所有需要摘要的会话 */
+	getStaleSessions(idleMs: number | null): Promise<Session[]>;
 	/** 获取会话中 seq 大于指定值的消息（用于增量处理） */
 	getMessagesSinceSeq(sessionId: string, seq: number): Promise<MessageRecord[]>;
 	/** 更新会话摘要 */

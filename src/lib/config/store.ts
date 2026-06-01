@@ -18,7 +18,9 @@ const defaultConfig: AppConfig = {
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
 	customBrandIcon: false,
 	autoSummarize: true,
+	summaryMode: 'idle',
 	summaryIdleHours: 8,
+	summaryScheduleHour: 2,
 	summaryIntervalMin: 30
 };
 
@@ -65,7 +67,9 @@ export function readConfig(): AppConfig {
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
 			customBrandIcon: parsed.customBrandIcon === true,
 			autoSummarize: parsed.autoSummarize !== false,
+			summaryMode: parsed.summaryMode === 'scheduled' ? 'scheduled' : 'idle',
 			summaryIdleHours: typeof parsed.summaryIdleHours === 'number' ? parsed.summaryIdleHours : 8,
+			summaryScheduleHour: typeof parsed.summaryScheduleHour === 'number' ? parsed.summaryScheduleHour : 2,
 			summaryIntervalMin: typeof parsed.summaryIntervalMin === 'number' ? parsed.summaryIntervalMin : 30
 		};
 	} catch {

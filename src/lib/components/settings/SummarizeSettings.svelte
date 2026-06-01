@@ -1,7 +1,16 @@
 <script lang="ts">
-	let { enabled = $bindable(false), idleHours = $bindable(8), intervalMin = $bindable(30), onchange }: {
+	let {
+		enabled = $bindable(false),
+		mode = $bindable<'idle' | 'scheduled'>('idle'),
+		idleHours = $bindable(8),
+		scheduleHour = $bindable(2),
+		intervalMin = $bindable(30),
+		onchange
+	}: {
 		enabled: boolean;
+		mode: 'idle' | 'scheduled';
 		idleHours: number;
+		scheduleHour: number;
 		intervalMin: number;
 		onchange: () => void;
 	} = $props();
@@ -14,10 +23,23 @@
 		onchange();
 	}
 
+	function handleModeChange(newMode: 'idle' | 'scheduled') {
+		mode = newMode;
+		onchange();
+	}
+
 	function handleIdleChange(e: Event) {
 		const v = parseInt((e.target as HTMLInputElement).value);
 		if (v >= 1 && v <= 48) {
 			idleHours = v;
+			onchange();
+		}
+	}
+
+	function handleScheduleChange(e: Event) {
+		const v = parseInt((e.target as HTMLInputElement).value);
+		if (v >= 0 && v <= 23) {
+			scheduleHour = v;
 			onchange();
 		}
 	}
@@ -62,9 +84,13 @@
 			<div class="setting-title">自动生成</div>
 			<div class="setting-desc">
 				{#if enabled}
-					空闲会话超过设定时间后自动生成摘要，并汇总当天日记
+					{#if mode === 'idle'}
+						会话空闲 {idleHours} 小时后自动生成摘要
+					{:else}
+						每天 {scheduleHour}:00 自动生成摘要和日记
+					{/if}
 				{:else}
-					已关闭 — 不会自动生成会话摘要和日记
+					已关闭
 				{/if}
 			</div>
 		</div>
@@ -81,28 +107,67 @@
 	{#if enabled}
 		<div class="setting-row sub">
 			<div class="setting-label">
-				<div class="setting-title">空闲阈值</div>
-				<div class="setting-desc">
-					会话超过此时间未活动时生成摘要
-				</div>
+				<div class="setting-title">生成模式</div>
 			</div>
-			<div class="number-input">
-				<input
-					type="number"
-					min="1"
-					max="48"
-					value={idleHours}
-					oninput={handleIdleChange}
-				/>
-				<span class="number-unit">小时</span>
+			<div class="mode-group">
+				<button
+					class="mode-btn"
+					class:active={mode === 'idle'}
+					onclick={() => handleModeChange('idle')}
+				>空闲触发</button>
+				<button
+					class="mode-btn"
+					class:active={mode === 'scheduled'}
+					onclick={() => handleModeChange('scheduled')}
+				>定时</button>
 			</div>
 		</div>
+
+		{#if mode === 'idle'}
+			<div class="setting-row sub">
+				<div class="setting-label">
+					<div class="setting-title">空闲阈值</div>
+					<div class="setting-desc">
+						会话超过此时间未活动时生成摘要
+					</div>
+				</div>
+				<div class="number-input">
+					<input
+						type="number"
+						min="1"
+						max="48"
+						value={idleHours}
+						oninput={handleIdleChange}
+					/>
+					<span class="number-unit">小时</span>
+				</div>
+			</div>
+		{:else}
+			<div class="setting-row sub">
+				<div class="setting-label">
+					<div class="setting-title">执行时刻</div>
+					<div class="setting-desc">
+						每天此时自动为所有会话生成摘要和日记
+					</div>
+				</div>
+				<div class="number-input">
+					<input
+						type="number"
+						min="0"
+						max="23"
+						value={scheduleHour}
+						oninput={handleScheduleChange}
+					/>
+					<span class="number-unit">时</span>
+				</div>
+			</div>
+		{/if}
 
 		<div class="setting-row sub">
 			<div class="setting-label">
 				<div class="setting-title">扫描间隔</div>
 				<div class="setting-desc">
-					后台检查空闲会话的频率
+					后台检查触发条件的频率
 				</div>
 			</div>
 			<div class="number-input">
@@ -124,7 +189,7 @@
 					{#if resultMsg}
 						{resultMsg}
 					{:else}
-						跳过空闲阈值，立即为所有有消息的会话生成摘要和日记
+						立即为所有有消息的会话生成摘要和日记
 					{/if}
 				</div>
 			</div>
@@ -211,6 +276,35 @@
 
 	.toggle.on .toggle-knob {
 		transform: translateX(24px);
+	}
+
+	.mode-group {
+		display: flex;
+		border: 1px solid var(--border-strong);
+		border-radius: 10px;
+		overflow: hidden;
+		flex-shrink: 0;
+		margin-left: 1.5rem;
+	}
+
+	.mode-btn {
+		padding: 0.4rem 1rem;
+		border: none;
+		background: transparent;
+		color: var(--text-secondary);
+		font-family: inherit;
+		font-size: 0.9rem;
+		cursor: pointer;
+		transition: background 0.2s, color 0.2s;
+	}
+
+	.mode-btn:first-child {
+		border-right: 1px solid var(--border-strong);
+	}
+
+	.mode-btn.active {
+		background: var(--accent);
+		color: var(--bg-page);
 	}
 
 	.number-input {

@@ -113,6 +113,7 @@ export class SQLiteStorage implements Storage {
 			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`),
 			updateSummary: this.db.prepare(`UPDATE sessions SET summary = ?, last_summarized_at = ? WHERE id = ?`),
 			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > ?) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
+			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
 		};
@@ -241,9 +242,14 @@ export class SQLiteStorage implements Storage {
 		this.stmts.updateAudioPath.run(path, messageId);
 	}
 
-	async getStaleSessions(idleMs: number): Promise<Session[]> {
-		const now = Date.now();
-		const rows = this.stmts.getStaleSessions.all(now, idleMs) as SessionRow[];
+	async getStaleSessions(idleMs: number | null): Promise<Session[]> {
+		let rows: SessionRow[];
+		if (idleMs === null) {
+			rows = this.stmts.getAllUnsummarized.all() as SessionRow[];
+		} else {
+			const now = Date.now();
+			rows = this.stmts.getStaleSessions.all(now, idleMs) as SessionRow[];
+		}
 		return rows.map((row) => this.rowToSession(row));
 	}
 

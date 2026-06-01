@@ -160,12 +160,12 @@ export class MemoryStorage implements Storage {
 		if (session) session.title = title;
 	}
 
-	async getStaleSessions(idleMs: number): Promise<Session[]> {
+	async getStaleSessions(idleMs: number | null): Promise<Session[]> {
 		const now = Date.now();
 		const result: Session[] = [];
 		for (const s of this.sessions.values()) {
 			if (s.status !== 'active') continue;
-			if (now - s.updated_at <= idleMs) continue;
+			if (idleMs !== null && now - s.updated_at <= idleMs) continue;
 			if (s.last_summarized_at !== null && s.last_summarized_at >= s.updated_at) continue;
 			const msgs = this.messages.get(s.id);
 			if (!msgs || msgs.length === 0) continue;

@@ -23,6 +23,8 @@ export interface AppConfig {
 	systemPrompt: string;
 	customBrandIcon: boolean;
 	autoSummarize: boolean;
+	summaryMode: 'idle' | 'scheduled';
 	summaryIdleHours: number;
+	summaryScheduleHour: number;
 	summaryIntervalMin: number;
 }

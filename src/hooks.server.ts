@@ -2,6 +2,12 @@ import { readConfig } from '$lib/config';
 import { runSummarizeJob } from '$lib/agent/background';
 
 let running = false;
+let lastScheduledDate = '';
+
+function getToday(): string {
+	const d = new Date();
+	return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
 
 async function runBackgroundTasks() {
 	if (running) return;
@@ -11,7 +17,16 @@ async function runBackgroundTasks() {
 		const config = readConfig();
 		if (!config.autoSummarize) return;
 
-		await runSummarizeJob();
+		if (config.summaryMode === 'scheduled') {
+			const now = new Date();
+			const today = getToday();
+			if (now.getHours() >= (config.summaryScheduleHour || 2) && today !== lastScheduledDate) {
+				lastScheduledDate = today;
+				await runSummarizeJob(false, null);
+			}
+		} else {
+			await runSummarizeJob();
+		}
 	} catch {
 	} finally {
 		running = false;

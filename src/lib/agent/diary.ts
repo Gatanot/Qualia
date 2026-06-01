@@ -7,10 +7,14 @@ import { buildSystemMessage, _toolDefs } from './summarizer';
 const DIARY_DIR = join(process.cwd(), 'data', 'diary');
 
 function getTodayFile(): string {
-	const today = new Date();
-	const y = today.getFullYear();
-	const m = String(today.getMonth() + 1).padStart(2, '0');
-	const d = String(today.getDate()).padStart(2, '0');
+	const now = new Date();
+	let date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	if (now.getHours() < 8) {
+		date = new Date(date.getTime() - 86_400_000);
+	}
+	const y = date.getFullYear();
+	const m = String(date.getMonth() + 1).padStart(2, '0');
+	const d = String(date.getDate()).padStart(2, '0');
 	return join(DIARY_DIR, `${y}-${m}-${d}.md`);
 }
 

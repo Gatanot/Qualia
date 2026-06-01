@@ -7,7 +7,7 @@
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryIdleHours: 8, summaryIntervalMin: 30 });
+	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
 	let loading = $state(true);
 
 	$effect(() => {
@@ -77,7 +77,9 @@
 
 		<SummarizeSettings
 			bind:enabled={config.autoSummarize}
+			bind:mode={config.summaryMode}
 			bind:idleHours={config.summaryIdleHours}
+			bind:scheduleHour={config.summaryScheduleHour}
 			bind:intervalMin={config.summaryIntervalMin}
 			onchange={saveSummarize}
 		/>
