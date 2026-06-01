@@ -30,7 +30,7 @@
 		let total = 0;
 		for (const msg of messages) {
 			if (msg.role === 'assistant' && msg.usage) {
-				total += msg.usage.total_tokens;
+				total = msg.usage.total_tokens;
 			}
 		}
 		const pct = contextWindow && total > 0 ? ((total / contextWindow) * 100).toFixed(1) : null;
