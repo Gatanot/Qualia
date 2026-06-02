@@ -1,7 +1,8 @@
-import type { AIProvider, Message } from '$lib/provider';
+import type { AIProvider, Message, Usage } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
+import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
 
 const _registry = new ToolRegistry();
@@ -22,6 +23,70 @@ export function buildSystemMessage(): Message {
 		content += TOOL_PROMPT_SUFFIX;
 	}
 	return { role: 'system', content };
+}
+
+const MAX_TOOL_ITERATIONS = 10;
+
+export async function completeWithToolLoop(
+	provider: AIProvider,
+	messages: Message[],
+	maxTokens: number,
+	temperature: number
+): Promise<{ content: string; usage?: Usage }> {
+	const tools = _toolDefs;
+
+	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+		const response = await provider.chat({
+			messages,
+			tools: tools.length > 0 ? tools : undefined,
+			max_tokens: maxTokens,
+			temperature
+		});
+
+		if (!response.tool_calls || response.tool_calls.length === 0) {
+			return { content: response.content || '', usage: response.usage };
+		}
+
+		messages.push({
+			role: 'assistant',
+			content: response.content || '',
+			tool_calls: response.tool_calls
+		});
+
+		for (const tc of response.tool_calls) {
+			let args: Record<string, unknown> = {};
+			try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
+
+			try {
+				const result = await _registry.execute(tc.function.name, args, process.cwd());
+				messages.push({
+					role: 'tool',
+					content: result.output || result.error || '',
+					tool_call_id: tc.id,
+					name: tc.function.name
+				});
+			} catch (error) {
+				if (error instanceof PendingConfirmation) {
+					messages.push({
+						role: 'tool',
+						content: `后台任务无法执行需确认的操作: ${error.reason}`,
+						tool_call_id: tc.id,
+						name: error.toolName
+					});
+				} else {
+					const errMsg = (error as Error).message;
+					messages.push({
+						role: 'tool',
+						content: `工具执行异常: ${errMsg}`,
+						tool_call_id: tc.id,
+						name: tc.function.name
+					});
+				}
+			}
+		}
+	}
+
+	return { content: '' };
 }
 
 export async function generateSummary(
@@ -54,18 +119,13 @@ export async function generateSummary(
 
 	messages.push({ role: 'user', content: userInstruction });
 
-	const response = await provider.chat({
-		messages,
-		tools: _toolDefs,
-		max_tokens: 2000,
-		temperature: 0.3
-	});
+	const { content, usage } = await completeWithToolLoop(provider, messages, 2000, 0.3);
 
-	if (response.usage) {
-		const hit = response.usage.prompt_cache_hit_tokens ?? 0;
-		const miss = response.usage.prompt_cache_miss_tokens ?? 0;
-		console.log(`[summarize] session=${sessionId} messages=${records.length} hit=${hit} miss=${miss} total_tokens=${response.usage.total_tokens}`);
+	if (usage) {
+		const hit = usage.prompt_cache_hit_tokens ?? 0;
+		const miss = usage.prompt_cache_miss_tokens ?? 0;
+		console.log(`[summarize] session=${sessionId} messages=${records.length} hit=${hit} miss=${miss} total_tokens=${usage.total_tokens}`);
 	}
 
-	return response.content || '';
+	return content || '';
 }

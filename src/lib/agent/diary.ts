@@ -2,7 +2,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AIProvider, Message } from '$lib/provider';
 import type { Storage } from '$lib/storage';
-import { buildSystemMessage, _toolDefs } from './summarizer';
+import { buildSystemMessage, completeWithToolLoop } from './summarizer';
 
 const DIARY_DIR = join(process.cwd(), 'data', 'diary');
 
@@ -47,14 +47,7 @@ export async function generateDiary(
 		}
 	];
 
-	const response = await provider.chat({
-		messages,
-		tools: _toolDefs,
-		max_tokens: 2000,
-		temperature: 0.5
-	});
-
-	const diaryContent = response.content;
+	const { content: diaryContent } = await completeWithToolLoop(provider, messages, 2000, 0.5);
 	if (!diaryContent) return;
 
 	ensureDiaryDir();
