@@ -50,6 +50,10 @@ export async function POST({ request }: { request: Request }) {
 		const onConfirm: ConfirmFn = async (_conf, confirmId) => {
 			return new Promise((resolve) => {
 				pendingConfirms.set(confirmId, { resolve });
+				request.signal.addEventListener('abort', () => {
+					pendingConfirms.delete(confirmId);
+					resolve(false);
+				}, { once: true });
 			});
 		};
 

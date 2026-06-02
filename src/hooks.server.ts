@@ -3,6 +3,7 @@ import { runSummarizeJob } from '$lib/agent/background';
 
 let running = false;
 let lastScheduledDate = '';
+let timerId: ReturnType<typeof setTimeout> | null = null;
 
 function getToday(): string {
 	const d = new Date();
@@ -33,8 +34,22 @@ async function runBackgroundTasks() {
 
 		const config = readConfig();
 		const intervalMin = config.summaryIntervalMin || 30;
-		setTimeout(runBackgroundTasks, intervalMin * 60 * 1000);
+		timerId = setTimeout(runBackgroundTasks, intervalMin * 60 * 1000);
 	}
 }
 
+function cleanup() {
+	if (timerId) {
+		clearTimeout(timerId);
+		timerId = null;
+	}
+	running = false;
+}
+
 runBackgroundTasks();
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => {
+		cleanup();
+	});
+}
