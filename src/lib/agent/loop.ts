@@ -151,19 +151,13 @@ export class AgentLoop {
 					return;
 				}
 
-				await this.storage.addMessage(effectiveSessionId, {
-					session_id: effectiveSessionId,
-					role: 'assistant',
-					content: fullContent || '',
-					tool_calls: resolvedToolCalls,
-					usage: totalUsage
-				});
-
 				messages.push({
 					role: 'assistant',
 					content: fullContent || '',
 					tool_calls: resolvedToolCalls
 				});
+
+				const toolResultMsgs: Array<{ role: 'tool'; content: string; tool_call_id: string; name: string }> = [];
 
 				for (const tc of resolvedToolCalls) {
 					let args: Record<string, unknown> = {};
@@ -176,20 +170,9 @@ export class AgentLoop {
 
 						yield { type: 'tool_result', name: tc.function.name, success: result.success, output: result.output };
 
-						await this.storage.addMessage(effectiveSessionId, {
-							session_id: effectiveSessionId,
-							role: 'tool',
-							content: result.output || result.error || '',
-							tool_call_id: tc.id,
-							name: tc.function.name
-						});
-
-						messages.push({
-							role: 'tool',
-							content: result.output || result.error || '',
-							tool_call_id: tc.id,
-							name: tc.function.name
-						});
+						const content = result.output || result.error || '';
+						toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: tc.function.name });
+						messages.push({ role: 'tool', content, tool_call_id: tc.id, name: tc.function.name });
 					} catch (error) {
 						if (error instanceof PendingConfirmation) {
 							const confirmId = crypto.randomUUID();
@@ -204,35 +187,47 @@ export class AgentLoop {
 										process.cwd()
 									);
 									yield { type: 'tool_result', name: error.toolName, success: retryResult.success, output: retryResult.output };
-									await this.storage.addMessage(effectiveSessionId, {
-										session_id: effectiveSessionId,
-										role: 'tool',
-										content: retryResult.output || retryResult.error || '',
-										tool_call_id: tc.id,
-										name: error.toolName
-									});
-									messages.push({
-										role: 'tool',
-										content: retryResult.output || retryResult.error || '',
-										tool_call_id: tc.id,
-										name: error.toolName
-									});
+									const content = retryResult.output || retryResult.error || '';
+									toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
+									messages.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
 								} catch (retryError) {
 									const errMsg = (retryError as Error).message;
 									yield { type: 'tool_result', name: error.toolName, success: false, output: errMsg };
+									toolResultMsgs.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
 									messages.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
 								}
 							} else {
 								const cancelMsg = '用户取消了此操作';
 								yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
+								toolResultMsgs.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
 								messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
 							}
 						} else {
 							const errMsg = (error as Error).message;
 							yield { type: 'tool_result', name: tc.function.name, success: false, output: errMsg };
+							toolResultMsgs.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
 							messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
 						}
 					}
+				}
+
+				// Persist assistant + all tool results atomically after all tools complete
+				await this.storage.addMessage(effectiveSessionId, {
+					session_id: effectiveSessionId,
+					role: 'assistant',
+					content: fullContent || '',
+					tool_calls: resolvedToolCalls,
+					usage: totalUsage
+				});
+
+				for (const t of toolResultMsgs) {
+					await this.storage.addMessage(effectiveSessionId, {
+						session_id: effectiveSessionId,
+						role: 'tool',
+						content: t.content,
+						tool_call_id: t.tool_call_id,
+						name: t.name
+					});
 				}
 			}
 		} catch (error) {
