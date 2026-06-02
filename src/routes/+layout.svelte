@@ -2,6 +2,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import SessionSidebar from '$lib/components/SessionSidebar.svelte';
 	import { initTheme } from '$lib/theme';
+	import 'katex/dist/katex.min.css';
 
 	let { children } = $props();
 
@@ -320,6 +321,15 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 		border-radius: 2px;
+	}
+
+	:global(.math-block) {
+		margin: 0.75rem 0;
+		overflow-x: auto;
+	}
+
+	:global([data-theme="dark"] .katex) {
+		color: var(--text-primary);
 	}
 
 	.app {

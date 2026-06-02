@@ -220,6 +220,10 @@ export class AgentLoop {
 					usage: totalUsage
 				});
 
+				if (totalUsage) {
+					await this.storage.updateTokenCount(effectiveSessionId, totalUsage.total_tokens);
+				}
+
 				for (const t of toolResultMsgs) {
 					await this.storage.addMessage(effectiveSessionId, {
 						session_id: effectiveSessionId,
