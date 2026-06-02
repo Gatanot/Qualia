@@ -27,17 +27,20 @@ export class AgentLoop {
 	private storage: Storage;
 	private registry: ToolRegistry;
 	private onConfirm: ConfirmFn;
+	private signal?: AbortSignal;
 
 	constructor(
 		provider: AIProvider,
 		storage: Storage,
 		registry: ToolRegistry,
-		onConfirm: ConfirmFn
+		onConfirm: ConfirmFn,
+		signal?: AbortSignal
 	) {
 		this.provider = provider;
 		this.storage = storage;
 		this.registry = registry;
 		this.onConfirm = onConfirm;
+		this.signal = signal;
 	}
 
 	async *run(sessionId: string, userMessage: string, buildResult: BuildResult, userMessageId?: string): AsyncGenerator<AgentEvent> {
@@ -64,6 +67,10 @@ export class AgentLoop {
 
 		try {
 			while (true) {
+				if (this.signal?.aborted) {
+					break;
+				}
+
 				let fullContent = '';
 				let collectedToolCalls: Map<number, ToolCall> = new Map();
 				let chunkUsage: Usage | undefined;
@@ -160,6 +167,10 @@ export class AgentLoop {
 				const toolResultMsgs: Array<{ role: 'tool'; content: string; tool_call_id: string; name: string }> = [];
 
 				for (const tc of resolvedToolCalls) {
+					if (this.signal?.aborted) {
+						break;
+					}
+
 					let args: Record<string, unknown> = {};
 					try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
 
@@ -177,7 +188,15 @@ export class AgentLoop {
 						if (error instanceof PendingConfirmation) {
 							const confirmId = crypto.randomUUID();
 							yield { type: 'confirm_required', confirmId, confirmation: error };
-							const approved = await this.onConfirm(error, confirmId);
+							const approved = await Promise.race([
+								this.onConfirm(error, confirmId),
+								new Promise<boolean>((resolve) => {
+									if (this.signal) {
+										const onAbort = () => resolve(false);
+										this.signal.addEventListener('abort', onAbort, { once: true });
+									}
+								})
+							]);
 
 							if (approved) {
 								try {
@@ -209,6 +228,10 @@ export class AgentLoop {
 							messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
 						}
 					}
+				}
+
+				if (this.signal?.aborted) {
+					break;
 				}
 
 				// Persist assistant + all tool results atomically after all tools complete

@@ -53,7 +53,7 @@ export async function POST({ request }: { request: Request }) {
 			});
 		};
 
-		const agent = new AgentLoop(provider, storage, registry, onConfirm);
+		const agent = new AgentLoop(provider, storage, registry, onConfirm, request.signal);
 
 		let sid = sessionId;
 		if (!sid) {
