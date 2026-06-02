@@ -116,23 +116,24 @@
 	.settings-inner {
 		max-width: 760px;
 		margin: 0 auto;
-		padding: 2.5rem 2rem;
+		padding: var(--space-3xl) var(--space-2xl);
 	}
 
 	h1 {
-		font-size: 2rem;
-		margin-bottom: 2.5rem;
+		font-size: var(--text-3xl);
+		margin-bottom: var(--space-3xl);
 		color: var(--text-primary);
 		font-weight: 500;
 		letter-spacing: -0.02em;
+		font-family: var(--font-serif);
 	}
 
 	.section {
-		margin-bottom: 3rem;
+		margin-bottom: var(--space-4xl);
 	}
 
 	.section h2 {
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		margin: 0 0 1.25rem;
 		color: var(--text-primary);
 		font-weight: 500;

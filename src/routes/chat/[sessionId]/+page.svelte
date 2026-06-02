@@ -600,17 +600,17 @@
 		bottom: 0;
 		margin-top: auto;
 		z-index: 10;
-		background: linear-gradient(to top, var(--bg-page) 70%, transparent);
-		padding-top: 0.75rem;
+		background: linear-gradient(to top, var(--bg-page) 65%, transparent);
+		padding-top: 1rem;
 	}
 
 	.scroll-btn {
 		position: absolute;
-		bottom: 100px;
-		right: 2rem;
+		bottom: 110px;
+		right: 2.5rem;
 		width: 40px;
 		height: 40px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		border: 1px solid var(--border-strong);
 		background: var(--bg-surface);
 		color: var(--text-darker);
@@ -620,21 +620,27 @@
 		justify-content: center;
 		box-shadow: var(--shadow-md);
 		z-index: 20;
-		transition: transform 0.15s, box-shadow 0.15s;
-		animation: scrollFadeIn 0.2s ease;
+		transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+		animation: scrollFadeIn 0.3s var(--ease-out);
 	}
 
 	.scroll-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: var(--shadow-md);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-lg);
+		background: var(--bg-surface-hover);
 	}
 
 	.scroll-btn .material-symbols-rounded {
 		font-size: 20px;
+		transition: transform 0.2s var(--ease-spring);
+	}
+
+	.scroll-btn:hover .material-symbols-rounded {
+		transform: translateY(-2px);
 	}
 
 	@keyframes scrollFadeIn {
-		from { opacity: 0; transform: scale(0.9) translateY(4px); }
+		from { opacity: 0; transform: scale(0.8) translateY(8px); }
 		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
@@ -643,7 +649,7 @@
 		align-items: center;
 		gap: 0.35rem;
 		padding: 0.5rem 0;
-		font-size: 0.72rem;
+		font-size: var(--text-xs);
 		color: var(--text-muted);
 		border-top: 1px solid var(--border-subtle);
 	}

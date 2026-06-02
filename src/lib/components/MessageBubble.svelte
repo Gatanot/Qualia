@@ -136,6 +136,18 @@
 		display: flex;
 		max-width: 100%;
 		margin-bottom: 0.5rem;
+		animation: msgEnter 0.35s var(--ease-out) both;
+	}
+
+	@keyframes msgEnter {
+		from {
+			opacity: 0;
+			transform: translateY(12px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.message-row.user {
@@ -157,20 +169,21 @@
 	}
 
 	.message-role {
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		color: var(--text-secondary);
 		padding: 0 0.5rem;
 		margin-bottom: 0.1rem;
+		letter-spacing: 0.02em;
 	}
 
 	.message-content {
 		background: var(--bg-surface);
-		border-radius: 4px 24px 24px 24px;
+		border-radius: 6px 22px 22px 22px;
 		padding: 1.25rem 1.5rem;
-		font-size: 1.05rem;
-		line-height: 1.8;
-		letter-spacing: 0.01em;
+		font-size: var(--text-md);
+		line-height: 1.75;
+		letter-spacing: 0.015em;
 		white-space: pre-wrap;
 		word-break: break-word;
 		box-shadow: var(--shadow-bubble);
@@ -180,14 +193,14 @@
 	.message-row.user .message-content {
 		background: var(--accent);
 		color: var(--text-on-accent);
-		border-radius: 24px 4px 24px 24px;
+		border-radius: 22px 6px 22px 22px;
 		box-shadow: var(--shadow-bubble-user);
 	}
 
 	.message-row.error .message-content {
 		background: var(--danger-bg);
 		color: var(--danger-text);
-		border-radius: 4px 20px 20px 20px;
+		border-radius: 6px 18px 18px 18px;
 	}
 
 	.message-content.markdown-body {
@@ -201,14 +214,14 @@
 	.markdown-body :global(h5),
 	.markdown-body :global(h6) {
 		margin: 1.5rem 0 0.75rem;
-		line-height: 1.4;
+		line-height: var(--leading-snug);
 		color: inherit;
-		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-family: var(--font-serif);
 		font-weight: 700;
 	}
-	.markdown-body :global(h1) { font-size: 1.5rem; }
+	.markdown-body :global(h1) { font-size: var(--text-2xl); }
 	.markdown-body :global(h2) { font-size: 1.35rem; }
-	.markdown-body :global(h3) { font-size: 1.15rem; }
+	.markdown-body :global(h3) { font-size: var(--text-lg); }
 
 	.markdown-body :global(p) {
 		margin: 0 0 0.75rem;
@@ -223,15 +236,15 @@
 		padding-left: 1.5rem;
 	}
 	.markdown-body :global(li) {
-		margin-bottom: 0.25rem;
+		margin-bottom: 0.35rem;
 	}
 
 	:global(.markdown-body code:not(pre code)) {
-		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+		font-family: var(--font-mono);
 		font-size: 0.88em;
 		background: var(--bg-tool);
 		padding: 0.2em 0.5em;
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		color: var(--accent);
 		font-weight: 500;
 	}
@@ -243,17 +256,17 @@
 
 	.markdown-body :global(pre) {
 		margin: 0.75rem 0;
-		padding: 1rem;
-		border-radius: 12px;
+		padding: 1.25rem;
+		border-radius: var(--radius-md);
 		background: var(--bg-code);
 		overflow-x: auto;
 		position: relative;
 	}
 
 	.markdown-body :global(pre code.hljs) {
-		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+		font-family: var(--font-mono);
 		font-size: 0.88rem;
-		line-height: 1.55;
+		line-height: 1.6;
 		background: none;
 		padding: 0;
 		color: var(--code-text);
@@ -263,10 +276,12 @@
 		position: absolute;
 		top: 0.5rem;
 		right: 0.75rem;
-		font-size: 0.72rem;
-		color: rgba(230, 220, 206, 0.45);
-		font-family: inherit;
+		font-size: 0.7rem;
+		color: rgba(229, 218, 203, 0.4);
+		font-family: var(--font-sans);
 		pointer-events: none;
+		letter-spacing: 0.03em;
+		text-transform: uppercase;
 	}
 
 	.message-row.user .markdown-body :global(pre) {
@@ -278,11 +293,12 @@
 		padding: 0.75rem 1.5rem;
 		border-left: 3px solid var(--accent);
 		background: var(--bg-reasoning);
-		border-radius: 4px 12px 12px 4px;
+		border-radius: 4px var(--radius-md) var(--radius-md) 4px;
 		color: var(--text-secondary);
-		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+		font-family: var(--font-serif);
 		font-style: normal;
-		font-size: 1.05rem;
+		font-size: var(--text-md);
+		line-height: var(--leading-relaxed);
 	}
 
 	.markdown-body :global(blockquote:last-child) {
@@ -318,6 +334,12 @@
 	.markdown-body :global(a) {
 		color: var(--accent-link);
 		text-decoration: underline;
+		text-underline-offset: 3px;
+		transition: color 0.2s var(--ease-out);
+	}
+
+	.markdown-body :global(a:hover) {
+		color: var(--accent-hover);
 	}
 
 	.message-row.user .markdown-body :global(a) {
@@ -334,10 +356,15 @@
 		font-weight: 600;
 	}
 
+	.markdown-body :global(img) {
+		max-width: 100%;
+		border-radius: var(--radius-md);
+	}
+
 	.error-recovery {
 		background: var(--warn-bg);
 		border: 1px solid var(--warn-border);
-		border-radius: 12px;
+		border-radius: var(--radius-md);
 		padding: 1rem 1.25rem;
 		display: flex;
 		flex-direction: column;
@@ -362,14 +389,14 @@
 		gap: 0.4rem;
 		padding: 0.45rem 1rem;
 		border: 1px solid var(--border-strong);
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		background: var(--bg-surface);
 		color: var(--text-darker);
 		cursor: pointer;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		font-family: inherit;
-		transition: transform 0.15s, background 0.2s;
+		transition: transform 0.15s var(--ease-out), background 0.2s var(--ease-out);
 	}
 
 	.btn-recovery:hover {
@@ -377,7 +404,7 @@
 	}
 
 	.btn-recovery:active {
-		transform: scale(0.98);
+		transform: scale(0.97);
 	}
 
 	.btn-recovery-secondary {
@@ -392,7 +419,7 @@
 		display: flex;
 		gap: 0.25rem;
 		opacity: 0;
-		transition: opacity 0.15s;
+		transition: opacity 0.2s var(--ease-out);
 		justify-content: flex-end;
 	}
 
@@ -406,13 +433,13 @@
 		gap: 0.25rem;
 		padding: 0.25rem 0.5rem;
 		border: none;
-		border-radius: 8px;
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
 		font-family: inherit;
 		font-size: 0.8rem;
-		transition: background 0.15s, color 0.15s;
+		transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
 	}
 
 	.action-btn:hover {
@@ -434,13 +461,14 @@
 	}
 
 	.cursor {
-		animation: blink 0.7s infinite;
+		animation: cursorBlink 1s ease-in-out infinite;
 		font-weight: 700;
 		color: var(--accent);
 	}
 
-	@keyframes blink {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0; }
+	@keyframes cursorBlink {
+		0%, 40% { opacity: 1; }
+		50%, 90% { opacity: 0; }
+		100% { opacity: 1; }
 	}
 </style>

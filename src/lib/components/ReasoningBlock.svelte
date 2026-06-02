@@ -29,9 +29,9 @@
 	.reasoning {
 		background: var(--bg-reasoning);
 		border: 1px solid var(--border-accent);
-		border-radius: 16px;
+		border-radius: var(--radius-lg);
 		font-size: 0.9rem;
-		transition: border-color 0.2s, background 0.2s;
+		transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out);
 		overflow: hidden;
 	}
 
@@ -43,9 +43,14 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.6rem 0.85rem;
+		padding: 0.65rem 0.85rem;
 		cursor: pointer;
 		user-select: none;
+		transition: background 0.2s var(--ease-out);
+	}
+
+	.reasoning-header:hover {
+		background: var(--bg-surface-hover);
 	}
 
 	.reasoning-icon {
@@ -56,33 +61,37 @@
 	.reasoning-label {
 		font-weight: 500;
 		color: var(--text-secondary);
+		font-size: 0.85rem;
+		letter-spacing: 0.02em;
 	}
 
 	.reasoning-dot {
 		font-size: 8px;
 		color: var(--warm-accent);
-		animation: pulse 1s infinite;
+		animation: pulse 1.2s ease-in-out infinite;
 	}
 
 	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.3; }
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.35; transform: scale(0.85); }
 	}
 
 	.expand-icon {
 		font-size: 18px;
 		color: var(--text-muted);
 		margin-left: auto;
+		transition: transform 0.25s var(--ease-out);
 	}
 
 	.reasoning-content {
 		padding: 0 0.85rem 0.85rem;
 		color: var(--text-secondary);
 		white-space: pre-wrap;
-		line-height: 1.6;
+		line-height: var(--leading-relaxed);
 		font-style: italic;
 		max-height: 300px;
 		overflow-y: auto;
+		font-size: 0.88rem;
 	}
 
 	.reasoning-content::-webkit-scrollbar {

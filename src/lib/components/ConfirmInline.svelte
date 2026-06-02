@@ -26,10 +26,16 @@
 	.confirm-inline {
 		background: var(--warn-bg);
 		border: 1px solid var(--warn-border);
-		border-radius: 20px;
+		border-radius: var(--radius-xl);
 		padding: 1rem 1.25rem;
 		font-size: 0.9rem;
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-xs);
+		animation: msgEnter 0.3s var(--ease-out) both;
+	}
+
+	@keyframes msgEnter {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.confirm-header {
@@ -52,8 +58,8 @@
 	.confirm-message {
 		margin: 0 0 1rem;
 		color: var(--text-primary);
-		font-size: 0.95rem;
-		line-height: 1.6;
+		font-size: var(--text-base);
+		line-height: var(--leading-relaxed);
 		white-space: pre-wrap;
 		word-break: break-word;
 	}
@@ -66,17 +72,17 @@
 
 	.btn {
 		padding: 0.5rem 1.5rem;
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		border: none;
 		font-family: inherit;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		cursor: pointer;
-		transition: transform 0.15s, background-color 0.2s, box-shadow 0.2s;
+		transition: transform 0.15s var(--ease-out), background-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 	}
 
 	.btn:active {
-		transform: scale(0.98);
+		transform: scale(0.97);
 	}
 
 	.btn-primary {
@@ -97,5 +103,6 @@
 
 	.btn-outline:hover {
 		background: var(--border-input);
+		color: var(--text-primary);
 	}
 </style>

@@ -33,7 +33,7 @@
 	.section { margin-bottom: 3rem; }
 
 	h2 {
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		margin: 0;
 		color: var(--text-primary);
 		font-weight: 500;
@@ -45,16 +45,16 @@
 		align-items: center;
 		padding: 1.5rem;
 		border: 1px solid var(--border-strong);
-		border-radius: 20px;
+		border-radius: var(--radius-xl);
 		background: var(--bg-surface);
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-xs);
 	}
 
 	.setting-title {
 		font-weight: 500;
 		color: var(--text-primary);
 		margin-bottom: 0.4rem;
-		font-size: 1.05rem;
+		font-size: var(--text-md);
 	}
 
 	.setting-desc {
@@ -67,11 +67,11 @@
 		position: relative;
 		width: 52px;
 		height: 28px;
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		border: none;
 		background: var(--border-hover);
 		cursor: pointer;
-		transition: background 0.3s;
+		transition: background 0.3s var(--ease-in-out);
 		flex-shrink: 0;
 	}
 
@@ -85,9 +85,9 @@
 		left: 3px;
 		width: 22px;
 		height: 22px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		background: var(--bg-surface);
-		transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+		transition: transform 0.3s var(--ease-in-out);
 		box-shadow: var(--shadow-knob);
 	}
 

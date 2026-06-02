@@ -77,7 +77,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2rem;
+		gap: 2.25rem;
 		width: 100%;
 		max-width: 700px;
 		padding: 2rem;
@@ -95,10 +95,10 @@
 		padding: 0.85rem 1.25rem;
 		background: var(--bg-info);
 		border: 1px solid var(--warn-border);
-		border-radius: 16px;
-		font-size: 0.95rem;
+		border-radius: var(--radius-lg);
+		font-size: var(--text-base);
 		color: var(--info-text);
-		animation: fadeIn 0.3s ease-out;
+		animation: hintEnter 0.35s var(--ease-out);
 	}
 
 	.hint-icon {
@@ -111,10 +111,15 @@
 		font-weight: 500;
 		text-decoration: underline;
 		text-underline-offset: 2px;
+		transition: color 0.2s var(--ease-out);
 	}
 
-	@keyframes fadeIn {
-		from { opacity: 0; transform: translateY(6px); }
+	.hint-link:hover {
+		color: var(--accent-hover);
+	}
+
+	@keyframes hintEnter {
+		from { opacity: 0; transform: translateY(8px); }
 		to { opacity: 1; transform: translateY(0); }
 	}
 </style>

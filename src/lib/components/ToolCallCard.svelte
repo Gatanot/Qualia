@@ -68,15 +68,15 @@
 	.tool-call {
 		background: var(--bg-surface);
 		border: 1px solid var(--border-accent);
-		border-radius: 16px;
+		border-radius: var(--radius-lg);
 		padding: 0.75rem 1rem;
-		font-size: 0.85rem;
-		transition: border-color 0.2s, background 0.2s;
-		box-shadow: var(--shadow-sm);
+		font-size: var(--text-sm);
+		transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
+		box-shadow: var(--shadow-xs);
 	}
 
 	.tool-call.tool-done {
-		border-color: var(--border-accent);
+		border-color: var(--border-subtle);
 		background: var(--bg-surface-alt);
 	}
 
@@ -88,10 +88,15 @@
 		user-select: none;
 	}
 
+	.tool-header:hover .expand-icon {
+		color: var(--text-mid);
+	}
+
 	.tool-icon {
 		font-size: 18px !important;
 		color: var(--warm-accent);
 		flex-shrink: 0;
+		transition: color 0.25s var(--ease-out);
 	}
 
 	.tool-done .tool-icon {
@@ -118,25 +123,26 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-family: 'Roboto Mono', monospace;
+		font-family: var(--font-mono);
 	}
 
 	.expand-icon {
 		font-size: 20px;
 		color: var(--text-muted);
 		flex-shrink: 0;
-		transition: transform 0.2s;
+		transition: transform 0.25s var(--ease-out), color 0.2s var(--ease-out);
 	}
 
 	.tool-args pre {
 		margin: 0.75rem 0 0;
-		padding: 0.6rem 0.85rem;
+		padding: 0.65rem 0.85rem;
 		background: var(--bg-tool);
-		border-radius: 8px;
+		border-radius: var(--radius-sm);
 		font-size: 0.8rem;
 		overflow-x: auto;
 		white-space: pre-wrap;
 		color: var(--text-mid);
+		font-family: var(--font-mono);
 	}
 
 	.tool-output {
@@ -149,7 +155,7 @@
 		max-height: 200px;
 		overflow-y: auto;
 		white-space: pre-wrap;
-		font-family: 'Roboto Mono', monospace;
+		font-family: var(--font-mono);
 	}
 
 	.tool-output::-webkit-scrollbar, .tool-args pre::-webkit-scrollbar {

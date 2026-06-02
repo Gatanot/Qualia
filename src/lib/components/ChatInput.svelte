@@ -70,7 +70,7 @@
 			bind:this={textareaEl}
 			onkeydown={handleKeydown}
 			oninput={handleInput}
-			placeholder="输入消息... Shift+Enter 换行"
+			placeholder="想说点什么... Shift+Enter 换行"
 			rows={1}
 		></textarea>
 		<button
@@ -99,13 +99,19 @@
 		padding: 0.5rem 1.25rem;
 		background: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
-		border-radius: 100px;
-		font-size: 0.85rem;
+		border-radius: var(--radius-pill);
+		font-size: var(--text-sm);
 		color: var(--text-secondary);
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-xs);
 		width: fit-content;
 		margin-left: auto;
 		margin-right: auto;
+		animation: fadeSlideUp 0.3s var(--ease-out);
+	}
+
+	@keyframes fadeSlideUp {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.queue-icon {
@@ -126,13 +132,13 @@
 		align-items: flex-end;
 		box-shadow: var(--shadow-elevate);
 		border: 1px solid var(--border-subtle);
-		transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+		transition: box-shadow 0.3s var(--ease-out), border-color 0.3s var(--ease-out), transform 0.3s var(--ease-out);
 	}
 
 	.input-bar:focus-within {
 		box-shadow: var(--shadow-elevate-focus);
 		border-color: var(--border-focus);
-		transform: translateY(-1px);
+		transform: translateY(-2px);
 	}
 
 	.chat-input {
@@ -141,21 +147,23 @@
 		border: none;
 		background: transparent;
 		font-family: inherit;
-		font-size: 1.05rem;
+		font-size: var(--text-md);
 		resize: none;
-		line-height: 1.6;
+		line-height: var(--leading-normal);
 		outline: none;
 		color: var(--text-primary);
 	}
 
 	.chat-input::placeholder {
-		color: var(--text-muted);
+		color: var(--text-placeholder);
+		font-style: italic;
+		opacity: 0.7;
 	}
 
 	.send-btn {
 		width: 52px;
 		height: 52px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		border: none;
 		background: var(--accent);
 		color: var(--text-on-accent);
@@ -164,17 +172,19 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		transition: background 0.25s ease, transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s ease;
+		transition: background 0.25s var(--ease-out), transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-out);
 		margin-bottom: 2px;
+		box-shadow: var(--shadow-accent-btn);
 	}
 
 	.send-btn.stop-btn {
 		background: var(--stop-bg);
+		box-shadow: var(--shadow-accent-btn);
 	}
 
 	.send-btn:hover:not(:disabled) {
 		background: var(--accent-hover);
-		transform: translateY(-2px);
+		transform: translateY(-2px) scale(1.05);
 		box-shadow: var(--shadow-accent-btn-hover);
 	}
 
@@ -184,7 +194,7 @@
 	}
 
 	.send-btn:active:not(:disabled) {
-		transform: translateY(0);
+		transform: translateY(0) scale(0.96);
 		box-shadow: var(--shadow-accent-btn-active);
 	}
 
@@ -197,5 +207,14 @@
 
 	.send-btn .material-symbols-rounded {
 		font-size: 24px;
+		transition: transform 0.25s var(--ease-spring);
+	}
+
+	.send-btn:hover:not(:disabled) .material-symbols-rounded {
+		transform: rotate(-15deg);
+	}
+
+	.send-btn.stop-btn:hover .material-symbols-rounded {
+		transform: rotate(0deg);
 	}
 </style>

@@ -209,7 +209,7 @@
 	.section { margin-bottom: 3rem; }
 
 	h2 {
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		margin: 0 0 1.25rem;
 		color: var(--text-primary);
 		font-weight: 500;
@@ -221,14 +221,14 @@
 		align-items: center;
 		padding: 1.5rem;
 		border: 1px solid var(--border-strong);
-		border-radius: 20px;
+		border-radius: var(--radius-xl);
 		background: var(--bg-surface);
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-xs);
 	}
 
 	.setting-row.sub {
 		margin-top: 0.75rem;
-		border-radius: 16px;
+		border-radius: var(--radius-lg);
 		padding: 1.25rem 1.5rem;
 	}
 
@@ -236,7 +236,7 @@
 		font-weight: 500;
 		color: var(--text-primary);
 		margin-bottom: 0.4rem;
-		font-size: 1.05rem;
+		font-size: var(--text-md);
 	}
 
 	.setting-desc {
@@ -249,11 +249,11 @@
 		position: relative;
 		width: 52px;
 		height: 28px;
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		border: none;
 		background: var(--border-hover);
 		cursor: pointer;
-		transition: background 0.3s;
+		transition: background 0.3s var(--ease-in-out);
 		flex-shrink: 0;
 		margin-left: 1.5rem;
 	}
@@ -268,9 +268,9 @@
 		left: 3px;
 		width: 22px;
 		height: 22px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		background: var(--bg-surface);
-		transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+		transition: transform 0.3s var(--ease-in-out);
 		box-shadow: var(--shadow-knob);
 	}
 
@@ -295,7 +295,7 @@
 		font-family: inherit;
 		font-size: 0.9rem;
 		cursor: pointer;
-		transition: background 0.2s, color 0.2s;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
 	}
 
 	.mode-btn:first-child {
@@ -322,10 +322,11 @@
 		border-radius: 10px;
 		background: var(--bg-page);
 		color: var(--text-primary);
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 		font-family: inherit;
 		text-align: center;
 		outline: none;
+		transition: border-color 0.2s var(--ease-out);
 	}
 
 	.number-input input:focus {
@@ -351,17 +352,22 @@
 		background: transparent;
 		color: var(--accent);
 		font-family: inherit;
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 		font-weight: 500;
 		cursor: pointer;
 		flex-shrink: 0;
 		margin-left: 1.5rem;
-		transition: background 0.2s, color 0.2s;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.15s var(--ease-out);
 	}
 
 	.generate-btn:hover:not(:disabled) {
 		background: var(--accent);
 		color: var(--bg-page);
+		transform: translateY(-1px);
+	}
+
+	.generate-btn:active:not(:disabled) {
+		transform: translateY(0) scale(0.97);
 	}
 
 	.generate-btn:disabled {
@@ -374,7 +380,7 @@
 		height: 14px;
 		border: 2px solid var(--border-hover);
 		border-top-color: var(--accent);
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		animation: spin 0.6s linear infinite;
 	}
 

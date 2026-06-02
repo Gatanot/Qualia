@@ -32,7 +32,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 
 ```
 src/lib/
-├── agent/           # ContextBuilder + AgentLoop + prompts + types
+├── agent/           # ContextBuilder + AgentLoop + summarizer + diary + background + prompts + types
 ├── assets/          # Static assets (favicon.svg)
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
@@ -40,7 +40,7 @@ src/lib/
 ├── provider/        # OpenAI + DeepSeek API clients; factory: createProvider({ type })
 │   └── models.ts    # ModelDef list for each provider (with contextWindow)
 ├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
-├── tool/            # ToolRegistry + 4 tools (read_file/write_file/delete_file/exec)
+├── tool/            # ToolRegistry + 5 tools (read_file/write_file/delete_file/exec/write_memory)
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
 ├── chat-confirm.ts  # Shared Map<string, Promise> for pending confirmations
@@ -59,6 +59,7 @@ API routes:
 - `api/config/+server.ts` — `GET`/`PUT` config CRUD
 - `api/sessions/+server.ts` — `GET` list / `POST` create, setTitle, delete, getMessages
 - `api/messages/+server.ts` — `POST` deleteFrom a given messageId
+- `api/summarize/+server.ts` — `POST` trigger summarization job (force or automatic)
 
 Chat pages at `/` (new chat) and `/chat/[sessionId]`. Settings at `/settings`.
 Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, renders SessionSidebar.
@@ -78,6 +79,20 @@ Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, rend
 ## AgentLoop error handling
 
 LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The loop yields `retrying` and `retry_exhausted` events. On `retry_exhausted`, the chat ends with partial content.
+
+## Auto-summarize background system
+
+`hooks.server.ts` runs a polling loop (`runBackgroundTasks`) that periodically triggers summarization. Controlled by config fields:
+
+| Field | Purpose |
+|-------|---------|
+| `autoSummarize` | Master toggle |
+| `summaryMode` | `'idle'` (after N hours) or `'scheduled'` (at a fixed hour daily) |
+| `summaryIdleHours` | Idle threshold in hours (default 8) |
+| `summaryScheduleHour` | Hour of day for scheduled runs (default 2) |
+| `summaryIntervalMin` | Polling interval in minutes (default 30) |
+
+The summarize job calls `generateSummary` (consolidates chat history) then `generateDiary` (generates a diary entry). Both require `storageEnabled: true` and a configured provider.
 
 ## Tool safety
 

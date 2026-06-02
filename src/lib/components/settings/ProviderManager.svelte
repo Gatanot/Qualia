@@ -265,7 +265,7 @@
 	.section { margin-bottom: 3rem; }
 
 	h2 {
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		margin: 0;
 		color: var(--text-primary);
 		font-weight: 500;
@@ -287,22 +287,22 @@
 		color: var(--danger-text);
 		background: var(--danger-bg);
 		padding: 1rem 1.25rem;
-		border-radius: 12px;
+		border-radius: var(--radius-md);
 		margin-bottom: 1rem;
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 	}
 
 	.btn {
 		padding: 0.5rem 1.25rem;
 		border: 1px solid var(--border-accent);
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		cursor: pointer;
 		font-size: 0.9rem;
 		font-weight: 500;
 		font-family: inherit;
-		transition: transform 0.15s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+		transition: transform 0.15s var(--ease-out), background-color 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 	}
 
 	.btn:hover {
@@ -311,7 +311,7 @@
 	}
 
 	.btn:active {
-		transform: scale(0.98);
+		transform: scale(0.97);
 	}
 
 	.btn-primary {
@@ -340,7 +340,7 @@
 
 	.btn-sm {
 		padding: 0.4rem 1rem;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 	}
 
 	.provider-list {
@@ -355,10 +355,10 @@
 		align-items: center;
 		padding: 1.5rem;
 		border: 1px solid var(--border);
-		border-radius: 24px;
+		border-radius: var(--radius-2xl);
 		background: var(--bg-surface);
-		transition: all 0.25s ease;
-		box-shadow: var(--shadow-sm);
+		transition: all 0.25s var(--ease-out);
+		box-shadow: var(--shadow-xs);
 	}
 
 	.provider-card.active {
@@ -374,15 +374,15 @@
 		align-items: center;
 		gap: 0.6rem;
 		margin-bottom: 0.5rem;
-		font-size: 1.05rem;
+		font-size: var(--text-md);
 	}
 
 	.badge {
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		background: var(--accent);
 		color: var(--text-on-accent);
 		padding: 0.25rem 0.8rem;
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		font-weight: 500;
 	}
 
@@ -405,6 +405,7 @@
 		inset: 0;
 		background: var(--overlay-heavy);
 		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -413,24 +414,24 @@
 
 	.modal {
 		background: var(--bg-surface);
-		border-radius: 28px;
+		border-radius: var(--radius-3xl);
 		padding: 2.5rem;
 		width: 100%;
 		max-width: 480px;
 		max-height: 90vh;
 		overflow-y: auto;
 		box-shadow: var(--shadow-modal);
-		animation: modalScale 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+		animation: modalScale 0.25s var(--ease-out) forwards;
 	}
 
 	@keyframes modalScale {
-		from { opacity: 0; transform: scale(0.95) translateY(10px); }
+		from { opacity: 0; transform: scale(0.94) translateY(12px); }
 		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
 	.modal h3 {
 		margin: 0 0 1.75rem;
-		font-size: 1.5rem;
+		font-size: var(--text-2xl);
 		font-weight: 500;
 		color: var(--text-primary);
 	}
@@ -438,7 +439,7 @@
 	form label {
 		display: block;
 		margin-bottom: 1.25rem;
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 		color: var(--text-secondary);
 		font-weight: 500;
 	}
@@ -449,12 +450,12 @@
 		margin-top: 0.5rem;
 		padding: 0.85rem 1rem;
 		border: 1px solid var(--border-accent);
-		border-radius: 12px;
+		border-radius: var(--radius-md);
 		background: var(--bg-input);
 		font-size: 1rem;
 		color: var(--text-primary);
 		box-sizing: border-box;
-		transition: all 0.2s;
+		transition: all 0.25s var(--ease-out);
 		font-family: inherit;
 	}
 

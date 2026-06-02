@@ -167,10 +167,10 @@
 		bottom: 0;
 		width: 280px;
 		background: var(--bg-sidebar);
-		border-right: 1px solid var(--border);
+		border-right: 1px solid var(--border-subtle);
 		display: flex;
 		flex-direction: column;
-		transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+		transition: transform 0.35s var(--ease-out);
 		overflow: hidden;
 		height: 100%;
 		z-index: 50;
@@ -197,6 +197,11 @@
 		gap: 0.5rem;
 		padding-left: 0;
 		text-decoration: none;
+		transition: opacity 0.2s var(--ease-out);
+	}
+
+	.brand:hover {
+		opacity: 0.8;
 	}
 
 	.brand-icon {
@@ -207,14 +212,14 @@
 	.brand-img {
 		width: 28px;
 		height: 28px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		object-fit: cover;
 	}
 
 	.brand-name {
 		font-weight: 700;
-		font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
-		font-size: 1.25rem;
+		font-family: var(--font-serif);
+		font-size: var(--text-xl);
 		color: var(--text-primary);
 		letter-spacing: 0.03em;
 	}
@@ -224,30 +229,35 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.5rem 1rem 0.25rem 1.15rem;
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 		color: var(--text-muted);
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.06em;
 	}
 
 	.new-btn {
 		width: 30px;
 		height: 30px;
 		border: none;
-		border-radius: 8px;
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: background 0.2s, color 0.2s;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.15s var(--ease-out);
 	}
 
 	.new-btn:hover {
 		background: var(--bg-surface-press);
 		color: var(--text-primary);
+		transform: scale(1.1);
+	}
+
+	.new-btn:active {
+		transform: scale(0.95);
 	}
 
 	.session-list {
@@ -256,27 +266,35 @@
 		padding: 0.5rem 0.75rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 3px;
 	}
 
 	.session-list::-webkit-scrollbar {
-		display: none;
+		width: 4px;
+	}
+	.session-list::-webkit-scrollbar-thumb {
+		background-color: var(--scrollbar);
+		border-radius: 10px;
 	}
 
 	.session-item {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		padding: 0.65rem 0.85rem;
-		border-radius: 12px;
+		padding: 0.7rem 0.85rem;
+		border-radius: var(--radius-md);
 		cursor: pointer;
-		transition: background 0.2s;
-		font-size: 0.95rem;
+		transition: background 0.2s var(--ease-out), transform 0.15s var(--ease-out);
+		font-size: var(--text-base);
 		color: var(--text-primary);
 	}
 
 	.session-item:hover {
 		background: var(--bg-surface-active);
+	}
+
+	.session-item:active {
+		transform: scale(0.985);
 	}
 
 	.session-item.active {
@@ -287,6 +305,7 @@
 		font-size: 18px;
 		color: var(--text-muted);
 		flex-shrink: 0;
+		transition: color 0.2s var(--ease-out);
 	}
 
 	.session-item.active .session-icon {
@@ -303,6 +322,11 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-size: 0.92rem;
+		font-weight: 400;
+	}
+
+	.session-item.active .session-title {
+		font-weight: 500;
 	}
 
 	.session-title-input {
@@ -319,9 +343,10 @@
 	}
 
 	.session-time {
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		color: var(--text-muted);
-		margin-top: 0.15rem;
+		margin-top: 0.2rem;
+		font-weight: 400;
 	}
 
 	.delete-btn {
@@ -337,7 +362,7 @@
 		justify-content: center;
 		flex-shrink: 0;
 		opacity: 0;
-		transition: opacity 0.2s, background 0.2s, color 0.2s;
+		transition: opacity 0.2s var(--ease-out), background 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.15s var(--ease-out);
 	}
 
 	.session-item:hover .delete-btn {
@@ -347,13 +372,18 @@
 	.delete-btn:hover {
 		background: var(--danger-bg);
 		color: var(--danger-btn);
+		transform: scale(1.1);
+	}
+
+	.delete-btn:active {
+		transform: scale(0.9);
 	}
 
 	.sidebar-footer {
 		display: flex;
 		gap: 0.25rem;
 		padding: 0.75rem;
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--border-subtle);
 	}
 
 	.footer-link {
@@ -361,11 +391,11 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem;
-		border-radius: 12px;
+		border-radius: var(--radius-md);
 		color: var(--text-secondary);
 		text-decoration: none;
 		font-size: 0.9rem;
-		transition: background 0.2s, color 0.2s;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
 	}
 
 	.search-btn, .theme-btn {

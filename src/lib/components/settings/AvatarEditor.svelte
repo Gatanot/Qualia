@@ -240,15 +240,15 @@
 		gap: 1.25rem;
 		padding: 1.25rem 1.5rem;
 		border: 1px solid var(--border-strong);
-		border-radius: 20px;
+		border-radius: var(--radius-xl);
 		background: var(--bg-surface);
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-xs);
 	}
 
 	.brand-icon-preview {
 		width: 56px;
 		height: 56px;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		background: var(--bg-done);
 		display: flex;
 		align-items: center;
@@ -276,19 +276,19 @@
 	.btn {
 		padding: 0.5rem 1.25rem;
 		border: 1px solid var(--border-accent);
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		cursor: pointer;
 		font-size: 0.9rem;
 		font-weight: 500;
 		font-family: inherit;
-		transition: transform 0.15s, background-color 0.2s;
+		transition: transform 0.15s var(--ease-out), background-color 0.2s var(--ease-out);
 	}
 
 	.btn:hover { background: var(--bg-surface-hover); }
-	.btn:active { transform: scale(0.98); }
-	.btn-sm { padding: 0.4rem 1rem; font-size: 0.85rem; }
+	.btn:active { transform: scale(0.97); }
+	.btn-sm { padding: 0.4rem 1rem; font-size: var(--text-sm); }
 	.btn-primary {
 		background: var(--accent);
 		color: var(--text-on-accent);
@@ -317,6 +317,7 @@
 		inset: 0;
 		background: var(--overlay-heavy);
 		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -325,24 +326,24 @@
 
 	.modal {
 		background: var(--bg-surface);
-		border-radius: 28px;
+		border-radius: var(--radius-3xl);
 		padding: 2.5rem;
 		width: 100%;
 		max-width: 420px;
 		max-height: 90vh;
 		overflow-y: auto;
 		box-shadow: var(--shadow-modal);
-		animation: modalScale 0.2s cubic-bezier(0.2, 0, 0, 1) forwards;
+		animation: modalScale 0.25s var(--ease-out) forwards;
 	}
 
 	@keyframes modalScale {
-		from { opacity: 0; transform: scale(0.95) translateY(10px); }
+		from { opacity: 0; transform: scale(0.94) translateY(12px); }
 		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
 	.modal h3 {
 		margin: 0 0 1.75rem;
-		font-size: 1.5rem;
+		font-size: var(--text-2xl);
 		font-weight: 500;
 		color: var(--text-primary);
 	}
@@ -351,6 +352,69 @@
 		display: flex;
 		justify-content: center;
 		padding: 3rem 0;
+	}
+
+	.upload-label {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 2.5rem 3rem;
+		border: 2px dashed var(--border-hover);
+		border-radius: var(--radius-xl);
+		cursor: pointer;
+		color: var(--text-secondary);
+		font-size: var(--text-base);
+		transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out);
+	}
+
+	.upload-label:hover {
+		border-color: var(--accent);
+		background: var(--bg-surface-alt);
+	}
+
+	.upload-icon {
+		font-size: 36px;
+		color: var(--text-muted);
+	}
+
+	.file-input {
+		display: none;
+	}
+
+	.crop-hint {
+		text-align: center;
+		color: var(--text-secondary);
+		font-size: var(--text-sm);
+		margin: 0 0 0.75rem;
+	}
+
+	.crop-container { position: relative; width: 250px; height: 250px; margin: 0 auto; cursor: grab; overflow: hidden; }
+	.crop-container:active { cursor: grabbing; }
+	.crop-image { display: none; }
+	.crop-canvas { width: 100%; height: 100%; }
+	.crop-mask {
+		position: absolute;
+		inset: 0;
+		border-radius: var(--radius-full);
+		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+		pointer-events: none;
+	}
+
+	.msg-error {
+		color: var(--danger-text);
+		background: var(--danger-bg);
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius-md);
+		margin-top: 1rem;
+		font-size: 0.9rem;
+	}
+
+	.form-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 1rem;
+		margin-top: 1.75rem;
 	}
 
 	.upload-label {

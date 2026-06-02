@@ -105,13 +105,14 @@
 		position: fixed;
 		inset: 0;
 		background: var(--overlay-heavy);
-		backdrop-filter: blur(2px);
+		backdrop-filter: blur(3px);
+		-webkit-backdrop-filter: blur(3px);
 		display: flex;
 		align-items: flex-start;
 		justify-content: center;
 		padding-top: 12vh;
 		z-index: 100;
-		animation: fadeIn 0.15s ease-out;
+		animation: fadeIn 0.2s var(--ease-out);
 	}
 
 	.search-panel {
@@ -119,12 +120,12 @@
 		max-width: 480px;
 		max-height: 70vh;
 		background: var(--bg-surface);
-		border-radius: 20px;
-		box-shadow: var(--shadow-lg);
+		border-radius: var(--radius-xl);
+		box-shadow: var(--shadow-xl);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		animation: slideDown 0.2s cubic-bezier(0.2, 0, 0, 1);
+		animation: slideDown 0.25s var(--ease-out);
 	}
 
 	.search-header {
@@ -132,7 +133,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 1rem 1.25rem;
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.search-icon {
@@ -145,7 +146,7 @@
 		flex: 1;
 		border: none;
 		outline: none;
-		font-size: 1rem;
+		font-size: var(--text-base);
 		font-family: inherit;
 		color: var(--text-primary);
 		background: transparent;
@@ -153,13 +154,14 @@
 
 	.search-input::placeholder {
 		color: var(--text-placeholder);
+		font-style: italic;
 	}
 
 	.clear-btn {
 		width: 28px;
 		height: 28px;
 		border: none;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
@@ -167,11 +169,12 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		transition: background 0.2s;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
 	}
 
 	.clear-btn:hover {
 		background: var(--bg-surface-hover);
+		color: var(--text-primary);
 	}
 
 	.clear-btn .material-symbols-rounded {
@@ -195,21 +198,21 @@
 	}
 
 	.empty-hint {
-		padding: 2.5rem 1rem;
+		padding: 3rem 1rem;
 		text-align: center;
 		color: var(--text-muted);
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 	}
 
 	.search-item {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		padding: 0.65rem 0.85rem;
-		border-radius: 12px;
+		padding: 0.7rem 0.85rem;
+		border-radius: var(--radius-md);
 		cursor: pointer;
-		transition: background 0.2s;
-		font-size: 0.95rem;
+		transition: background 0.2s var(--ease-out);
+		font-size: var(--text-base);
 		color: var(--text-primary);
 		background: none;
 		border: none;
@@ -241,9 +244,9 @@
 	}
 
 	.session-time {
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		color: var(--text-muted);
-		margin-top: 0.15rem;
+		margin-top: 0.2rem;
 	}
 
 	@keyframes fadeIn {
@@ -252,7 +255,7 @@
 	}
 
 	@keyframes slideDown {
-		from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+		from { opacity: 0; transform: translateY(-16px) scale(0.97); }
 		to { opacity: 1; transform: translateY(0) scale(1); }
 	}
 </style>

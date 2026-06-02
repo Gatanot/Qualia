@@ -37,32 +37,32 @@
 	.section { margin-bottom: 3rem; }
 
 	h2 {
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		margin: 0;
 		color: var(--text-primary);
 		font-weight: 500;
 	}
 
 	.section-desc {
-		font-size: 0.95rem;
+		font-size: var(--text-base);
 		color: var(--text-mid);
 		margin: -0.25rem 0 1.25rem;
-		line-height: 1.6;
+		line-height: var(--leading-normal);
 	}
 
 	.prompt-editor {
 		width: 100%;
 		padding: 1.25rem;
 		border: 1px solid var(--border-accent);
-		border-radius: 20px;
+		border-radius: var(--radius-xl);
 		background: var(--bg-input);
-		font-size: 0.95rem;
-		font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+		font-size: var(--text-base);
+		font-family: var(--font-mono);
 		line-height: 1.7;
 		color: var(--text-primary);
 		resize: vertical;
 		box-sizing: border-box;
-		transition: all 0.2s;
+		transition: all 0.25s var(--ease-out);
 		min-height: 240px;
 	}
 
@@ -93,14 +93,14 @@
 	.btn {
 		padding: 0.5rem 1.25rem;
 		border: 1px solid var(--border-accent);
-		border-radius: 100px;
+		border-radius: var(--radius-pill);
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		cursor: pointer;
 		font-size: 0.9rem;
 		font-weight: 500;
 		font-family: inherit;
-		transition: transform 0.15s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+		transition: transform 0.15s var(--ease-out), background-color 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 	}
 
 	.btn:hover {
@@ -109,7 +109,7 @@
 	}
 
 	.btn:active {
-		transform: scale(0.98);
+		transform: scale(0.97);
 	}
 
 	.btn:disabled {
