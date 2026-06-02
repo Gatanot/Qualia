@@ -86,6 +86,9 @@
 			{/if}
 			<span class="brand-name">Qualia</span>
 		</a>
+		<button class="collapse-btn" onclick={() => (mobileOpen = false)} title="收起侧边栏">
+			<span class="material-symbols-rounded">menu_open</span>
+		</button>
 	</div>
 
 	<div class="section-label">
@@ -193,6 +196,27 @@
 		padding: 0.85rem;
 		height: 60px;
 		box-sizing: border-box;
+	}
+
+	.collapse-btn {
+		margin-left: auto;
+		width: 32px;
+		height: 32px;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+	}
+
+	.collapse-btn:hover {
+		background: var(--bg-surface-press);
+		color: var(--text-primary);
 	}
 
 	.brand {

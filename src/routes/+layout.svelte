@@ -32,6 +32,11 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
 	<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+	{#if sidebarOpen}
+		<style>
+			html, body { overflow: hidden; }
+		</style>
+	{/if}
 </svelte:head>
 
 <div class="app">
@@ -390,7 +395,7 @@
 	}
 
 	.scrim {
-		position: absolute;
+		position: fixed;
 		top: 0;
 		left: 0;
 		right: 0;
