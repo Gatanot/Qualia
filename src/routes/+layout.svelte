@@ -383,7 +383,8 @@
 
 	main {
 		flex: 1;
-		overflow: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		background: var(--bg-page);
 		position: relative;
 	}

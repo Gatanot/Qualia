@@ -96,7 +96,7 @@
 		</div>
 
 		<div class="session-list">
-			{#each $sessions as session (session.id)}
+			{#each $sessions.slice(0, 8) as session (session.id)}
 				<div
 					class="session-item"
 					class:active={session.id === $page.params.sessionId}
@@ -140,6 +140,10 @@
 					</button>
 				</div>
 			{/each}
+			<a href="/records" class="view-all-link">
+				<span class="material-symbols-rounded view-all-icon">history</span>
+				<span class="view-all-text">查看全部记录</span>
+			</a>
 		</div>
 
 		<div class="sidebar-footer">
@@ -377,6 +381,28 @@
 
 	.delete-btn:active {
 		transform: scale(0.9);
+	}
+
+	.view-all-link {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.7rem 0.85rem;
+		border-radius: var(--radius-md);
+		text-decoration: none;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+		margin-top: 4px;
+	}
+
+	.view-all-link:hover {
+		background: var(--bg-surface-active);
+		color: var(--text-primary);
+	}
+
+	.view-all-icon {
+		font-size: 18px;
 	}
 
 	.sidebar-footer {

@@ -20,7 +20,7 @@
 	let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let nearBottom = $state(true);
 	let lastUserMessage = $state('');
-	let messagesEl = $state<HTMLDivElement>();
+	let scrollViewEl = $state<HTMLElement>();
 	let loadedSessionId = $state('');
 	let contextWindow = $state<number | undefined>(undefined);
 	let customIcon = $state(false);
@@ -125,8 +125,8 @@
 	}
 
 	function checkNearBottom(): boolean {
-		if (!messagesEl) return true;
-		const { scrollHeight, scrollTop, clientHeight } = messagesEl;
+		if (!scrollViewEl) return true;
+		const { scrollHeight, scrollTop, clientHeight } = scrollViewEl;
 		return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD;
 	}
 
@@ -136,22 +136,23 @@
 
 	function scrollToBottom() {
 		requestAnimationFrame(() => {
-			if (!messagesEl || !checkNearBottom()) return;
-			messagesEl.scrollTop = messagesEl.scrollHeight;
+			if (!scrollViewEl || !checkNearBottom()) return;
+			scrollViewEl.scrollTop = scrollViewEl.scrollHeight;
 		});
 	}
 
 	function forceScrollToBottom() {
 		nearBottom = true;
 		requestAnimationFrame(() => {
-			if (!messagesEl) return;
-			messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+			if (!scrollViewEl) return;
+			scrollViewEl.scrollTo({ top: scrollViewEl.scrollHeight, behavior: 'smooth' });
 		});
 	}
 
 	$effect(() => {
-		const el = messagesEl;
+		const el = document.querySelector('main') as HTMLElement | null;
 		if (!el) return;
+		scrollViewEl = el;
 		el.addEventListener('scroll', onPageScroll, { passive: true });
 		return () => el.removeEventListener('scroll', onPageScroll);
 	});
@@ -523,7 +524,7 @@
 </script>
 
 <div class="chat-container">
-	<div class="messages" class:welcome={messages.length === 0} bind:this={messagesEl}>
+	<div class="messages" class:welcome={messages.length === 0}>
 		{#if messages.length === 0}
 			<EmptyState customIcon={customIcon} />
 		{/if}
@@ -569,7 +570,7 @@
 	.chat-container {
 		display: flex;
 		flex-direction: column;
-		height: 100%;
+		min-height: 100%;
 		max-width: 900px;
 		margin: 0 auto;
 		position: relative;
@@ -580,12 +581,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
-		overflow-y: auto;
-		scrollbar-width: none;
-	}
-
-	.messages::-webkit-scrollbar {
-		display: none;
 	}
 
 	.messages.welcome {
