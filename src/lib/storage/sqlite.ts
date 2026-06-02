@@ -163,7 +163,7 @@ export class SQLiteStorage implements Storage {
 		const parent = await this.getSession(id);
 		if (!parent) throw new Error(`会话不存在: ${id}`);
 
-		const newSession = await this.createSession(`[分叉] ${parent.title}`);
+		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.memory_snapshot);
 		newSession.parent_id = id;
 		this.stmts.updateSession.run(newSession.title, Date.now(), 0, newSession.id);
 		this.db.prepare('UPDATE sessions SET parent_id = ? WHERE id = ?').run(id, newSession.id);

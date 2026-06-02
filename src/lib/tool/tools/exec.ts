@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import type { ToolDef, ToolResult } from '../types';
 import { classifyCommand } from '../safeguard';
 import { PendingConfirmation } from '../types';
@@ -6,6 +6,25 @@ import { PendingConfirmation } from '../types';
 const DEFAULT_TIMEOUT = 300_000;
 const MAX_ALLOWED_TIMEOUT = 3_600_000;
 const MAX_OUTPUT = 50_000;
+
+const IS_WINDOWS = process.platform === 'win32';
+
+function killProcessTree(pid: number): boolean {
+	if (IS_WINDOWS) {
+		try {
+			execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+			return true;
+		} catch {
+			return false;
+		}
+	}
+	try {
+		process.kill(-pid, 'SIGKILL');
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 /**
  * execute_command — 执行终端命令
@@ -74,8 +93,10 @@ export const execTool: ToolDef = {
 		}
 
 		return new Promise((resolve) => {
+			let resolved = false;
 			const timer = setTimeout(() => {
-				child.kill();
+				resolved = true;
+				killProcessTree(child.pid!);
 				resolve({
 					success: false,
 					output: '',
@@ -88,11 +109,11 @@ export const execTool: ToolDef = {
 				{
 					cwd: workspaceRoot,
 					maxBuffer: MAX_OUTPUT,
-					shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash',
-					timeout: timeoutMs
+					shell: IS_WINDOWS ? 'powershell.exe' : '/bin/bash'
 				},
 				(error, stdout, stderr) => {
 					clearTimeout(timer);
+					if (resolved) return;
 
 					const out = stdout?.toString() || '';
 					const err = stderr?.toString() || '';

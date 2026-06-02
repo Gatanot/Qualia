@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
 import type { ModelDef } from '../provider/models';
@@ -63,7 +63,7 @@ export function readConfig(): AppConfig {
 				? parsed.providers.map((p) => normalizeProvider(p as Partial<ProviderConfig>))
 				: [],
 			activeProvider: parsed.activeProvider || '',
-			storageEnabled: parsed.storageEnabled !== false,
+			storageEnabled: parsed.storageEnabled === true,
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
 			customBrandIcon: parsed.customBrandIcon === true,
 			autoSummarize: parsed.autoSummarize !== false,
@@ -81,6 +81,7 @@ export function readConfig(): AppConfig {
  * 持久化配置到 JSON 文件
  *
  * 自动创建 data/ 目录（如果不存在）。
+ * 使用先写临时文件再 rename 的原子写入策略，防止崩溃导致配置丢失。
  */
 export function writeConfig(config: AppConfig): void {
 	const path = getConfigPath();
@@ -90,7 +91,9 @@ export function writeConfig(config: AppConfig): void {
 		mkdirSync(dir, { recursive: true });
 	}
 
-	writeFileSync(path, JSON.stringify(config, null, '\t'), 'utf-8');
+	const tmpPath = path + '.tmp';
+	writeFileSync(tmpPath, JSON.stringify(config, null, '\t'), 'utf-8');
+	renameSync(tmpPath, path);
 }
 
 /**

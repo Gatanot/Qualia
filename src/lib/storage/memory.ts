@@ -72,7 +72,7 @@ export class MemoryStorage implements Storage {
 		const parent = this.sessions.get(id);
 		if (!parent) throw new Error(`会话不存在: ${id}`);
 
-		const newSession = await this.createSession(`[分叉] ${parent.title}`);
+		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.memory_snapshot);
 		newSession.parent_id = id;
 		this.sessions.set(newSession.id, newSession);
 

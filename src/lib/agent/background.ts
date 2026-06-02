@@ -47,7 +47,8 @@ export async function runSummarizeJob(force?: boolean, idleMs?: number | null): 
 				await storage.updateSummary(session.id, summary);
 				summarized++;
 			}
-		} catch {
+		} catch (e) {
+			console.error(`[summarize] session=${session.id} failed:`, (e as Error).message);
 		}
 	}
 
@@ -56,7 +57,8 @@ export async function runSummarizeJob(force?: boolean, idleMs?: number | null): 
 		try {
 			await generateDiary(provider, storage);
 			diary = true;
-		} catch {
+		} catch (e) {
+			console.error('[diary] failed:', (e as Error).message);
 		}
 	}
 
