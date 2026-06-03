@@ -103,10 +103,15 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 - `confirm`: throw `PendingConfirmation`, wait for user
 - `reject`: refuse (format, diskpart)
 
-## Context window & forking
+## Context window & auto-continue
 
-- `ContextBuilder` loads **all** messages from history (no artificial limit — the token-based fork mechanism is the sole gatekeeper).
-- When `contextWindow - token_count < 20000`, triggers `forkSession()` — creates a new session with `parent_id` pointing to the original. Summary generation is not yet implemented (placeholder text).
+- `ContextBuilder` loads **all** messages from history (no artificial limit).
+- After `AgentLoop` completes a reply, if `contextWindow - token_count < 20000`:
+  1. An LLM call generates a concise summary of the conversation so far.
+  2. A new continuation session is created (`[延续] xxx`) with the summary injected as a system message.
+  3. The current exchange (user message + assistant reply + tool results) is copied into the new session.
+  4. A `forked` SSE event tells the frontend to navigate to the new session.
+  5. The original session's `summary` field is also updated (benefits the diary/records system).
 - `ProviderConfig.contextWindow` is optional — the chat API route backfills it from the active model's `contextWindow` (via `getContextWindow()`) before passing to `ContextBuilder`.
 
 ## Git conventions

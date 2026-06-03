@@ -32,6 +32,8 @@ export type AgentEvent =
 export interface BuildResult {
 	/** 可直接传入 provider.chat 的消息列表 */
 	messages: Message[];
+	/** 当前模型的上下文窗口大小 */
+	contextWindow?: number;
 	/** 如果触发了分叉，包含新会话信息 */
 	forked?: { newSessionId: string };
 }

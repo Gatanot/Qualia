@@ -7,6 +7,30 @@ import type { AgentEvent, BuildResult, ConfirmFn } from './types';
 
 const MAX_LLM_RETRIES = 5;
 const RETRY_BASE_DELAY = 1000;
+const CONTEXT_WINDOW_DEFAULT = 1_048_576;
+/** 剩余窗口低于此阈值（20K token）时在回复完成后自动创建延续会话 */
+const CONTINUE_THRESHOLD = 20_000;
+
+function buildSummaryContent(messages: Message[], initialSystem: string | undefined): string {
+	const relevant = messages
+		.filter((m) => m.role !== 'system')
+		.filter((m) => m.role !== 'tool');
+
+	let header = '';
+	if (initialSystem) {
+		const short = initialSystem.slice(0, 200);
+		header = `原始系统提示词摘要: ${short}\n\n`;
+	}
+
+	const lines: string[] = [];
+	for (const m of relevant) {
+		const role = m.role === 'user' ? '用户' : 'AI';
+		const text = m.content.slice(0, 2000);
+		lines.push(`[${role}] ${text}`);
+	}
+
+	return header + lines.join('\n');
+}
 
 /**
  * AgentLoop — Agent 主循环
@@ -14,13 +38,10 @@ const RETRY_BASE_DELAY = 1000;
  * AsyncGenerator 形式的对话主循环，流程：
  * 1. 保存用户消息到 Storage
  * 2. 调用 LLM (chatStream)，内置重试（最多 5 次，指数退避）
- * 3. 流式 yield 'content' 事件
- * 4. 如 LLM 返回 tool_calls：
- *    - 执行工具
- *    - 遇 PendingConfirmation 则 yield 'confirm_required' 并 await onConfirm
- *    - yield 'tool_result'
- *    - 结果拼入 messages 继续循环
+ * 3. 流式 yield 'content' / 'reasoning' 事件
+ * 4. 如 LLM 返回 tool_calls：执行工具 → yield 'confirm_required' / 'tool_result'
  * 5. 无 tool_calls 时保存 assistant 消息，yield 'done' 结束
+ * 6. done 后若剩余上下文 < 20K，自动生成摘要并创建延续会话，yield 'forked'
  */
 export class AgentLoop {
 	private provider: AIProvider;
@@ -44,16 +65,10 @@ export class AgentLoop {
 	}
 
 	async *run(sessionId: string, userMessage: string, buildResult: BuildResult, userMessageId?: string): AsyncGenerator<AgentEvent> {
-		const effectiveSessionId = buildResult.forked?.newSessionId || sessionId;
+		const effectiveSessionId = sessionId;
+		const contextWindow = buildResult.contextWindow || CONTEXT_WINDOW_DEFAULT;
 
-		if (buildResult.forked) {
-			yield {
-				type: 'forked',
-				newSessionId: buildResult.forked.newSessionId
-			};
-		}
-
-		await this.storage.addMessage(effectiveSessionId, {
+		const userMsg = await this.storage.addMessage(effectiveSessionId, {
 			id: userMessageId,
 			session_id: effectiveSessionId,
 			role: 'user',
@@ -74,7 +89,6 @@ export class AgentLoop {
 				let collectedToolCalls: Map<number, ToolCall> = new Map();
 				let chunkUsage: Usage | undefined;
 
-				// === LLM 调用（含重试） ===
 				for (let attempt = 0; attempt <= MAX_LLM_RETRIES; attempt++) {
 					try {
 						const stream = this.provider.chatStream({
@@ -116,9 +130,8 @@ export class AgentLoop {
 							if (chunk.usage) chunkUsage = chunk.usage;
 						}
 
-						break; // LLM 调用成功
+						break;
 					} catch (llmError) {
-						// 重置当前轮的部分状态
 						fullContent = '';
 						collectedToolCalls.clear();
 						chunkUsage = undefined;
@@ -142,7 +155,7 @@ export class AgentLoop {
 				const resolvedToolCalls = Array.from(collectedToolCalls.values());
 
 				if (resolvedToolCalls.length === 0) {
-					const assistantMsg = await this.storage.addMessage(effectiveSessionId, {
+					await this.storage.addMessage(effectiveSessionId, {
 						session_id: effectiveSessionId,
 						role: 'assistant',
 						content: fullContent,
@@ -153,7 +166,20 @@ export class AgentLoop {
 						await this.storage.updateTokenCount(effectiveSessionId, totalUsage.total_tokens);
 					}
 
-					yield { type: 'done', messageId: assistantMsg.id, usage: totalUsage };
+					yield { type: 'done', messageId: crypto.randomUUID(), usage: totalUsage, contextWindow };
+
+					const tokensUsed = totalUsage?.total_tokens || 0;
+					if (tokensUsed > 0 && contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
+						const newId = await this.createContinuation(
+							effectiveSessionId,
+							userMsg,
+							messages,
+							typeof buildResult.messages[0]?.content === 'string' ? buildResult.messages[0]?.content : undefined
+						);
+						if (newId) {
+							yield { type: 'forked', newSessionId: newId };
+						}
+					}
 					return;
 				}
 
@@ -233,7 +259,6 @@ export class AgentLoop {
 					break;
 				}
 
-				// Persist assistant + all tool results atomically after all tools complete
 				await this.storage.addMessage(effectiveSessionId, {
 					session_id: effectiveSessionId,
 					role: 'assistant',
@@ -258,6 +283,76 @@ export class AgentLoop {
 			}
 		} catch (error) {
 			yield { type: 'error', message: (error as Error).message || '未知错误' };
+		}
+	}
+
+	/**
+	 * 创建延续会话
+	 *
+	 * 为当前会话生成摘要，新建子会话并在首条 system 消息中注入摘要上下文。
+	 * 同时将本轮用户消息及回复后的增量消息复制到新会话，保持展示连续性。
+	 */
+	private async createContinuation(
+		sessionId: string,
+		userMsg: { id: string; content: string; seq: number },
+		allMessages: Message[],
+		systemPrompt?: string
+	): Promise<string | null> {
+		try {
+			const parentSession = await this.storage.getSession(sessionId);
+			if (!parentSession) return null;
+
+			const rawContent = buildSummaryContent(allMessages, systemPrompt);
+
+			let summary = '';
+			try {
+				const res = await this.provider.chat({
+					messages: [
+						{ role: 'user', content: `请用中文简洁总结以下对话的关键内容（决策、修改、结论、用户偏好），用于延续对话时提供上下文。不超过 500 字，以要点形式呈现。\n\n对话内容：\n${rawContent}` }
+					],
+					max_tokens: 2000,
+					temperature: 0.3
+				});
+				summary = res.content || '';
+			} catch {
+				summary = rawContent.slice(0, 2000);
+			}
+
+			if (!summary) return null;
+
+			const newTitle = `[延续] ${parentSession.title}`;
+			const newSession = await this.storage.createSession(newTitle, parentSession.memory_snapshot);
+
+			await this.storage.addMessage(newSession.id, {
+				session_id: newSession.id,
+				role: 'system',
+				content: `【此对话延续自会话「${parentSession.title || sessionId}」，以下为之前对话的摘要】\n\n${summary}`
+			});
+
+			await this.storage.addMessage(newSession.id, {
+				session_id: newSession.id,
+				role: 'user',
+				content: userMsg.content
+			});
+
+			const recentMessages = await this.storage.getMessagesSinceSeq(sessionId, userMsg.seq);
+			for (const msg of recentMessages) {
+				await this.storage.addMessage(newSession.id, {
+					session_id: newSession.id,
+					role: msg.role,
+					content: msg.content,
+					tool_calls: msg.tool_calls,
+					tool_call_id: msg.tool_call_id,
+					name: msg.name,
+					usage: msg.usage
+				});
+			}
+
+			await this.storage.updateSummary(sessionId, summary);
+
+			return newSession.id;
+		} catch {
+			return null;
 		}
 	}
 }

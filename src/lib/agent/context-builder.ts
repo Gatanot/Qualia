@@ -13,9 +13,6 @@ import {
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
-/** 剩余窗口低于此阈值（20K token）触发自动分叉 */
-const FORK_THRESHOLD = 20_000;
-
 const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
 
 function readMemoryFile(): string {
@@ -44,7 +41,7 @@ function formatMemorySection(content: string): string {
  * memory 在会话首次构建时从 memory.md 读取并存入 session.memory_snapshot，
  * 后续构建直接使用快照，保证 system 消息稳定、缓存持续命中。
  *
- * 当剩余上下文窗口低于 20K token 时自动分叉会话。
+ * 上下文用尽后的延续逻辑已移至 AgentLoop（回复完成后检查并生成摘要新会话）。
  */
 export class ContextBuilder {
 	async build(
@@ -55,39 +52,10 @@ export class ContextBuilder {
 		providerConfig: ProviderConfig,
 		systemPrompt?: string
 	): Promise<BuildResult> {
-		const contextWindow = providerConfig.contextWindow || DEFAULT_CONTEXT_WINDOW;
-		const sessionTokenCount = await storage.getTokenCount(sessionId);
-		const remaining = contextWindow - sessionTokenCount;
-
-		if (remaining < FORK_THRESHOLD) {
-			return this.handleFork(sessionId, userMessage, storage, registry, providerConfig, systemPrompt);
-		}
-
 		const messages = await this.buildMessages(sessionId, userMessage, storage, registry, systemPrompt);
-		return { messages };
-	}
-
-	private async handleFork(
-		sessionId: string,
-		userMessage: string,
-		storage: Storage,
-		registry: ToolRegistry,
-		providerConfig: ProviderConfig,
-		systemPrompt?: string
-	): Promise<BuildResult> {
-		const newSession = await storage.forkSession(sessionId);
-
-		const messages = await this.buildMessages(
-			newSession.id,
-			userMessage,
-			storage,
-			registry,
-			systemPrompt
-		);
-
 		return {
 			messages,
-			forked: { newSessionId: newSession.id }
+			contextWindow: providerConfig.contextWindow || DEFAULT_CONTEXT_WINDOW
 		};
 	}
 
