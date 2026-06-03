@@ -7,6 +7,7 @@ import type { ProviderConfig } from '$lib/config';
 import type { BuildResult } from './types';
 import {
 	DEFAULT_SYSTEM_PROMPT,
+	SYSTEM_CONTEXT,
 	TOOL_PROMPT_PREFIX,
 	TOOL_PROMPT_SUFFIX
 } from './prompts';
@@ -83,6 +84,8 @@ export class ContextBuilder {
 
 		const tools = registry.getDefinitions();
 		let systemContent = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+
+		systemContent += SYSTEM_CONTEXT;
 
 		if (tools.length > 0) {
 			systemContent += TOOL_PROMPT_PREFIX;

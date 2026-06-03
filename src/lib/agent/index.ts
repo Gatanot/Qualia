@@ -15,4 +15,4 @@ export { generateDiary } from './diary';
 export { runSummarizeJob } from './background';
 export type { SummarizeResult } from './background';
 export type { AgentEvent, BuildResult, ConfirmFn } from './types';
-export { DEFAULT_SYSTEM_PROMPT } from './prompts';
+export { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';

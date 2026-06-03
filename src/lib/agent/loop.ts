@@ -326,7 +326,7 @@ export class AgentLoop {
 			await this.storage.addMessage(newSession.id, {
 				session_id: newSession.id,
 				role: 'system',
-				content: `【此对话延续自会话「${parentSession.title || sessionId}」，以下为之前对话的摘要】\n\n${summary}`
+				content: `[此对话延续自会话「${parentSession.title || sessionId}」，以下为之前对话的摘要]\n\n${summary}`
 			});
 
 			await this.storage.addMessage(newSession.id, {
