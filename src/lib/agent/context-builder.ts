@@ -75,10 +75,7 @@ export class ContextBuilder {
 		providerConfig: ProviderConfig,
 		systemPrompt?: string
 	): Promise<BuildResult> {
-		const parentSession = await storage.getSession(sessionId);
-		const summary = parentSession?.summary || `（尚未生成会话摘要，来自会话 ${sessionId}）`;
-
-		const newSession = await storage.forkSession(sessionId, summary);
+		const newSession = await storage.forkSession(sessionId);
 
 		const messages = await this.buildMessages(
 			newSession.id,
@@ -90,7 +87,7 @@ export class ContextBuilder {
 
 		return {
 			messages,
-			forked: { newSessionId: newSession.id, summary }
+			forked: { newSessionId: newSession.id }
 		};
 	}
 

@@ -7,8 +7,19 @@
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
 
+	const TABS = [
+		{ id: 'general', label: '常规' },
+		{ id: 'provider', label: '供应商' },
+		{ id: 'prompt', label: '提示词' },
+		{ id: 'avatar', label: '头像' },
+		{ id: 'summary', label: '摘要' }
+	] as const;
+
+	type TabId = (typeof TABS)[number]['id'];
+
 	let config: AppConfig = $state({ providers: [], activeProvider: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
 	let loading = $state(true);
+	let activeTab: TabId = $state('general');
 
 	$effect(() => {
 		loadConfig();
@@ -73,34 +84,50 @@
 	<div class="settings-inner">
 		<h1>设置</h1>
 
-		<StorageToggle enabled={config.storageEnabled} ontoggle={toggleStorage} />
+		<nav class="tab-bar">
+			{#each TABS as tab}
+				<button
+					class="tab-btn"
+					class:active={activeTab === tab.id}
+					onclick={() => (activeTab = tab.id)}
+				>
+					{tab.label}
+				</button>
+			{/each}
+		</nav>
 
-		<SummarizeSettings
-			bind:enabled={config.autoSummarize}
-			bind:mode={config.summaryMode}
-			bind:idleHours={config.summaryIdleHours}
-			bind:scheduleHour={config.summaryScheduleHour}
-			bind:intervalMin={config.summaryIntervalMin}
-			onchange={saveSummarize}
-		/>
-
-		<section class="section">
-			<h2>头像</h2>
-			<AvatarEditor
-				customBrandIcon={config.customBrandIcon}
-				onsave={() => loadConfig()}
-				onreset={() => loadConfig()}
-			/>
-		</section>
-
-		<PromptEditor bind:systemPrompt={config.systemPrompt} onsave={saveSystemPrompt} />
-
-		<ProviderManager
-			providers={config.providers}
-			activeProvider={config.activeProvider}
-			loading={loading}
-			onconfigchange={onProvidersChange}
-		/>
+		<div class="tab-content">
+			{#if activeTab === 'general'}
+				<StorageToggle enabled={config.storageEnabled} ontoggle={toggleStorage} />
+			{:else if activeTab === 'provider'}
+				<ProviderManager
+					providers={config.providers}
+					activeProvider={config.activeProvider}
+					loading={loading}
+					onconfigchange={onProvidersChange}
+				/>
+			{:else if activeTab === 'prompt'}
+				<PromptEditor bind:systemPrompt={config.systemPrompt} onsave={saveSystemPrompt} />
+			{:else if activeTab === 'avatar'}
+				<section class="section">
+					<h2>头像</h2>
+					<AvatarEditor
+						customBrandIcon={config.customBrandIcon}
+						onsave={() => loadConfig()}
+						onreset={() => loadConfig()}
+					/>
+				</section>
+			{:else if activeTab === 'summary'}
+				<SummarizeSettings
+					bind:enabled={config.autoSummarize}
+					bind:mode={config.summaryMode}
+					bind:idleHours={config.summaryIdleHours}
+					bind:scheduleHour={config.summaryScheduleHour}
+					bind:intervalMin={config.summaryIntervalMin}
+					onchange={saveSummarize}
+				/>
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -126,6 +153,52 @@
 		font-weight: 500;
 		letter-spacing: -0.02em;
 		font-family: var(--font-serif);
+	}
+
+	.tab-bar {
+		display: flex;
+		gap: 0;
+		border-bottom: 1px solid var(--border-subtle);
+		margin-bottom: var(--space-3xl);
+	}
+
+	.tab-btn {
+		position: relative;
+		padding: 0.75rem 1.5rem;
+		border: none;
+		background: transparent;
+		color: var(--text-secondary);
+		font-family: inherit;
+		font-size: var(--text-base);
+		font-weight: 400;
+		cursor: pointer;
+		transition: color 0.2s var(--ease-out);
+	}
+
+	.tab-btn:hover {
+		color: var(--text-primary);
+	}
+
+	.tab-btn::after {
+		content: '';
+		position: absolute;
+		bottom: -1px;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background: var(--accent);
+		border-radius: 2px 2px 0 0;
+		transform: scaleX(0);
+		transition: transform 0.25s var(--ease-out);
+	}
+
+	.tab-btn.active {
+		color: var(--text-primary);
+		font-weight: 500;
+	}
+
+	.tab-btn.active::after {
+		transform: scaleX(1);
 	}
 
 	.section {

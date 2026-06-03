@@ -159,22 +159,39 @@ export class SQLiteStorage implements Storage {
 		this.stmts.updateSessionStatus.run('archived', Date.now(), id);
 	}
 
-	async forkSession(id: string, summary: string): Promise<Session> {
+	async forkSession(id: string): Promise<Session> {
 		const parent = await this.getSession(id);
 		if (!parent) throw new Error(`会话不存在: ${id}`);
 
 		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.memory_snapshot);
-		newSession.parent_id = id;
-		this.stmts.updateSession.run(newSession.title, Date.now(), 0, newSession.id);
+		const now = Date.now();
+
+		// 子会话 parent_id 指向父会话
 		this.db.prepare('UPDATE sessions SET parent_id = ? WHERE id = ?').run(id, newSession.id);
 
-		if (summary) {
-			await this.addMessage(newSession.id, {
-				session_id: newSession.id,
-				role: 'system',
-				content: `【父会话摘要】\n${summary}`
-			});
+		// 复制父会话全部消息，保持缓存命中的消息序列一致
+		const parentMessages = await this.getMessages(id);
+		let seq = 0;
+		for (const msg of parentMessages) {
+			seq++;
+			this.stmts.insertMessage.run(
+				crypto.randomUUID(),
+				newSession.id,
+				msg.role, msg.content,
+				msg.reasoning_content || null,
+				msg.tool_calls ? JSON.stringify(msg.tool_calls) : null,
+				msg.tool_call_id || null,
+				msg.name || null,
+				msg.usage ? JSON.stringify(msg.usage) : null,
+				msg.audio_path || null,
+				msg.created_at,
+				seq
+			);
 		}
+
+		// 继承父会话 token_count，反映实际消息量
+		this.db.prepare('UPDATE sessions SET token_count = ?, updated_at = ? WHERE id = ?').run(parent.token_count, now, newSession.id);
+
 		return (await this.getSession(newSession.id))!;
 	}
 

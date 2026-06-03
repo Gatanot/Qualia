@@ -49,8 +49,7 @@ export class AgentLoop {
 		if (buildResult.forked) {
 			yield {
 				type: 'forked',
-				newSessionId: buildResult.forked.newSessionId,
-				summary: buildResult.forked.summary
+				newSessionId: buildResult.forked.newSessionId
 			};
 		}
 

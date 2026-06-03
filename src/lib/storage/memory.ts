@@ -68,21 +68,33 @@ export class MemoryStorage implements Storage {
 		}
 	}
 
-	async forkSession(id: string, summary: string): Promise<Session> {
+	async forkSession(id: string): Promise<Session> {
 		const parent = this.sessions.get(id);
 		if (!parent) throw new Error(`会话不存在: ${id}`);
 
 		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.memory_snapshot);
 		newSession.parent_id = id;
+		newSession.token_count = parent.token_count;
 		this.sessions.set(newSession.id, newSession);
 
-		if (summary) {
-			await this.addMessage(newSession.id, {
+		// 复制父会话全部消息，保持缓存命中的消息序列一致
+		const parentMessages = this.messages.get(id) || [];
+		const copiedMsgs: MessageRecord[] = [];
+		let seq = 0;
+		for (const msg of parentMessages) {
+			seq++;
+			const copy: MessageRecord = {
+				...msg,
+				id: crypto.randomUUID(),
 				session_id: newSession.id,
-				role: 'system',
-				content: `【父会话摘要】\n${summary}`
-			});
+				seq
+			};
+			copiedMsgs.push(copy);
+			this.messageById.set(copy.id, copy);
 		}
+		this.messages.set(newSession.id, copiedMsgs);
+		this.seqCounter.set(newSession.id, seq);
+
 		return newSession;
 	}
 

@@ -20,7 +20,7 @@ export type AgentEvent =
 	/** 错误 */
 	| { type: 'error'; message: string }
 	/** 会话分叉 */
-	| { type: 'forked'; newSessionId: string; summary: string }
+	| { type: 'forked'; newSessionId: string }
 	/** 本轮对话完成 */
 	| { type: 'done'; messageId: string; usage?: Usage; contextWindow?: number }
 	/** LLM 调用失败，正在重试 */
@@ -33,7 +33,7 @@ export interface BuildResult {
 	/** 可直接传入 provider.chat 的消息列表 */
 	messages: Message[];
 	/** 如果触发了分叉，包含新会话信息 */
-	forked?: { newSessionId: string; summary: string };
+	forked?: { newSessionId: string };
 }
 
 /** 确认回调函数签名 */

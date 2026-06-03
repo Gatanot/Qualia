@@ -15,6 +15,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 
 - `npm run check` is the **primary verification** — always run it after changes. It syncs SvelteKit types first, then type-checks.
 - `npm run prepare` runs `svelte-kit sync` on every `npm install`, generating `.svelte-kit/tsconfig.json`.
+- `npm run docs` outputs to `docs/`, entry points defined in `typedoc.json`.
 - There is no test runner yet.
 
 ## Stack & constraints
@@ -61,7 +62,7 @@ API routes:
 - `api/messages/+server.ts` — `POST` deleteFrom a given messageId
 - `api/summarize/+server.ts` — `POST` trigger summarization job (force or automatic)
 
-Chat pages at `/` (new chat) and `/chat/[sessionId]`. Settings at `/settings`.
+Pages: `/` (new chat), `/chat/[sessionId]`, `/records` (summarized diary entries), `/settings`.
 Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, renders SessionSidebar.
 
 ## SvelteKit route file rules
@@ -82,7 +83,7 @@ LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The lo
 
 ## Auto-summarize background system
 
-`hooks.server.ts` runs a polling loop (`runBackgroundTasks`) that periodically triggers summarization. Controlled by config fields:
+`hooks.server.ts` starts a polling loop (`runBackgroundTasks`) at server boot (with HMR dispose handler for clean timer teardown). Controlled by config fields:
 
 | Field | Purpose |
 |-------|---------|
@@ -113,7 +114,7 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 - Branch naming: `feature/<name>` for new work, `fix/<name>` for bug fixes discovered outside active feature development.
 - **All development must be done on a feature/fix branch.** Never commit directly to `main`.
 - **Do NOT merge to `main` unless the user explicitly asks.** Wait for a clear instruction like "合并到 main" before merging.
-- After merging, delete the feature branch.
+
 - Commit messages in Chinese, short format: `prefix: 简要描述`.
 - Run `npm run check` before committing.
 

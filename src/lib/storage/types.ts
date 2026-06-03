@@ -84,9 +84,9 @@ export interface Storage {
 	/**
 	 * 分叉会话
 	 *
-	 * 创建新会话，注入摘要作为首条 system 消息，parent_id 指向原会话。
+	 * 创建新会话，复制父会话全部消息（保持缓存命中），parent_id 指向原会话。
 	 */
-	forkSession(id: string, summary: string): Promise<Session>;
+	forkSession(id: string): Promise<Session>;
 
 	/** 添加消息，自动分配 id / created_at / seq */
 	addMessage(sessionId: string, message: Omit<MessageRecord, 'id' | 'created_at' | 'seq'> & { id?: string }): Promise<MessageRecord>;
