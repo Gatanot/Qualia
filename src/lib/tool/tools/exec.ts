@@ -76,7 +76,7 @@ export const execTool: ToolDef = {
 		if (classification === 'confirm' && !args.__confirmed) {
 			throw new PendingConfirmation(
 				'execute_command',
-				{ command },
+				{ ...args },
 				`需要确认执行命令:\n${command}`
 			);
 		}

@@ -33,8 +33,10 @@ async function runBackgroundTasks() {
 		running = false;
 
 		const config = readConfig();
-		const intervalMin = config.summaryIntervalMin || 30;
-		timerId = setTimeout(runBackgroundTasks, intervalMin * 60 * 1000);
+		if (config.autoSummarize) {
+			const intervalMin = config.summaryIntervalMin || 30;
+			timerId = setTimeout(runBackgroundTasks, intervalMin * 60 * 1000);
+		}
 	}
 }
 
