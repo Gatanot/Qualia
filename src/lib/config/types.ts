@@ -5,7 +5,6 @@ export interface ProviderConfig {
 	baseURL: string;
 	activeModel?: string;
 	contextWindow?: number;
-	thinking?: 'enabled' | 'disabled';
 	reasoningEffort?: string;
 	timeout?: number;
 	maxRetries?: number;

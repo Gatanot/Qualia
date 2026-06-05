@@ -21,8 +21,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 				model: config.activeModel || '',
 				timeout: config.timeout,
 				maxRetries: config.maxRetries ?? 5,
-				thinking: config.thinking,
-				reasoningEffort: config.reasoningEffort as 'high' | 'max' | undefined
+				reasoningEffort: config.reasoningEffort
 			});
 		case 'xiaomi':
 			return new XiaomiProvider({
@@ -31,7 +30,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 				model: config.activeModel || '',
 				timeout: config.timeout,
 				maxRetries: config.maxRetries ?? 5,
-				thinking: config.thinking
+				reasoningEffort: config.reasoningEffort
 			});
 		default:
 			throw new Error(`Unsupported provider type: ${config.type}`);

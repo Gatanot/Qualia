@@ -2,21 +2,23 @@ import { OpenAIProvider, type OpenAIConfig } from './openai';
 import type { ChatRequest } from './types';
 
 export interface XiaomiConfig extends OpenAIConfig {
-	thinking?: 'enabled' | 'disabled';
+	reasoningEffort?: string;
 }
 
 export class XiaomiProvider extends OpenAIProvider {
-	private thinking: 'enabled' | 'disabled';
+	private reasoningEffort?: string;
 
 	constructor(config: XiaomiConfig) {
 		super(config);
-		this.thinking = config.thinking ?? 'enabled';
+		this.reasoningEffort = config.reasoningEffort;
 	}
 
 	protected buildBodyObject(request: ChatRequest & { stream: boolean }): Record<string, unknown> {
 		const body = super.buildBodyObject(request);
 
-		body.thinking = { type: this.thinking };
+		if (this.reasoningEffort) {
+			body.thinking = { type: 'enabled' };
+		}
 
 		return body;
 	}

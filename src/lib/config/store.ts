@@ -30,7 +30,6 @@ function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): Prov
 		name: p.name || '',
 		apiKey: p.apiKey || '',
 		baseURL: p.baseURL || '',
-		thinking: p.thinking,
 		reasoningEffort: p.reasoningEffort,
 		timeout: p.timeout,
 		maxRetries: p.maxRetries
@@ -116,6 +115,19 @@ export function setActiveModel(modelId: string): AppConfig {
 	const config = readConfig();
 	config.activeModel = modelId;
 	writeConfig(config);
+	return config;
+}
+
+export function setReasoningEffort(value: string | null): AppConfig {
+	const config = readConfig();
+	const provider = config.providers.find((p) => {
+		const models = getDefaultModels(p.type);
+		return models.some((m) => m.id === config.activeModel);
+	});
+	if (provider) {
+		provider.reasoningEffort = value || undefined;
+		writeConfig(config);
+	}
 	return config;
 }
 

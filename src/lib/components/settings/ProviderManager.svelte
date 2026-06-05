@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ProviderConfig } from '$lib/config';
+	import { getDefaultModels } from '$lib/provider';
 
 	let { providers, loading, onconfigchange }: {
 		providers: ProviderConfig[];
@@ -11,6 +12,15 @@
 	let showForm = $state(false);
 	let editingProvider = $state<ProviderConfig | null>(null);
 	let formType = $state<string>('openai');
+	let formReasoningEffort = $state('');
+
+	let formModels = $derived(getDefaultModels(formType));
+	let reasoningOptions = $derived.by(() => {
+		if (formModels.length === 0 || !formModels[0].supportsReasoning) return [];
+		const values = formModels[0].reasoningEffortValues;
+		if (values.length > 0) return values;
+		return ['enabled'];
+	});
 
 	function maskKey(key: string): string {
 		if (key.length <= 8) return '****';
@@ -20,6 +30,7 @@
 	function openAdd() {
 		editingProvider = null;
 		formType = 'openai';
+		formReasoningEffort = '';
 		showForm = true;
 		error = '';
 	}
@@ -27,6 +38,7 @@
 	function openEdit(p: ProviderConfig) {
 		editingProvider = p;
 		formType = p.type || 'openai';
+		formReasoningEffort = p.reasoningEffort || '';
 		showForm = true;
 		error = '';
 	}
@@ -58,9 +70,8 @@
 			baseURL
 		};
 
-		if (type === 'deepseek') {
-			provider.thinking = (fd.get('thinking') as string) || 'enabled';
-			provider.reasoningEffort = fd.get('reasoningEffort') as string || undefined;
+		if (formReasoningEffort) {
+			provider.reasoningEffort = formReasoningEffort;
 		}
 
 		const res = await fetch('/api/config', {
@@ -181,22 +192,14 @@
 					/>
 				</label>
 
-				{#if formType === 'deepseek' || formType === 'xiaomi'}
-					<label>
-						思考模式
-						<select name="thinking">
-							<option value="enabled" selected={editingProvider?.thinking !== 'disabled'}>开启</option>
-							<option value="disabled" selected={editingProvider?.thinking === 'disabled'}>关闭</option>
-						</select>
-					</label>
-				{/if}
-				{#if formType === 'deepseek'}
+				{#if reasoningOptions.length > 0}
 					<label>
 						推理深度
-						<select name="reasoningEffort">
-							<option value="">默认</option>
-							<option value="high" selected={editingProvider?.reasoningEffort === 'high'}>high</option>
-							<option value="max" selected={editingProvider?.reasoningEffort === 'max'}>max</option>
+						<select name="reasoningEffort" bind:value={formReasoningEffort}>
+							<option value="">不开启</option>
+							{#each reasoningOptions as v}
+								<option value={v}>{v === 'enabled' ? '开启' : v}</option>
+							{/each}
 						</select>
 					</label>
 				{/if}

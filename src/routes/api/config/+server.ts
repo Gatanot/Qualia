@@ -4,7 +4,8 @@ import {
 	writeConfig,
 	addProvider,
 	removeProvider,
-	setActiveModel
+	setActiveModel,
+	setReasoningEffort
 } from '$lib/config';
 import type { ProviderConfig } from '$lib/config';
 
@@ -32,6 +33,10 @@ export async function PUT({ request }: { request: Request }) {
 			}
 			case 'setActiveModel': {
 				const config = setActiveModel(body.modelId as string);
+				return json(config);
+			}
+			case 'setReasoningEffort': {
+				const config = setReasoningEffort(body.value as string | null);
 				return json(config);
 			}
 			case 'writeConfig': {

@@ -15,6 +15,7 @@ export {
 	addProvider,
 	removeProvider,
 	setActiveModel,
+	setReasoningEffort,
 	getProviderForModel,
 	getAllAvailableModels,
 	getFirstProvider,
