@@ -30,16 +30,34 @@
 	const MAX_HEIGHT = 300;
 
 	let showModelPopup = $state(false);
+	let pendingModelSwitch = $state<string | null>(null);
 
 	function toggleModelPopup() {
 		showModelPopup = !showModelPopup;
+		pendingModelSwitch = null;
 	}
 
 	function closeModelPopup() {
 		showModelPopup = false;
+		pendingModelSwitch = null;
 	}
 
-	async function selectModel(modelId: string) {
+	function selectModel(modelId: string) {
+		const current = activeModelDef();
+		const target = pickerState.allModels.find((m) => m.id === modelId);
+		if (current?.supportsVision && target && !target.supportsVision) {
+			pendingModelSwitch = modelId;
+			return;
+		}
+		confirmModelSwitch(modelId);
+	}
+
+	function confirmDismiss() {
+		pendingModelSwitch = null;
+		showModelPopup = false;
+	}
+
+	async function confirmModelSwitch(modelId: string) {
 		const res = await fetch('/api/config', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -49,6 +67,7 @@
 			pickerState.config = await res.json();
 		}
 		showModelPopup = false;
+		pendingModelSwitch = null;
 	}
 
 	async function selectReasoning(value: string) {
@@ -199,6 +218,14 @@
 		<div class="modal-overlay" onclick={closeModelPopup} onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && closeModelPopup()} role="dialog" tabindex="-1">
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div class="modal" onclick={(e: Event) => e.stopPropagation()} onkeydown={(e: Event) => e.stopPropagation()} role="document" tabindex="-1">
+				{#if pendingModelSwitch}
+					<h3>切换模型确认</h3>
+					<p class="switch-warn">目标模型不支持多模态识别，已发送的图片信息可能无法被正确理解。</p>
+					<div class="switch-actions">
+						<button class="btn-switch-cancel" onclick={confirmDismiss}>返回</button>
+						<button class="btn-switch-confirm" onclick={() => confirmModelSwitch(pendingModelSwitch!)}>继续切换</button>
+					</div>
+				{:else}
 				<h3>选择模型</h3>
 				<div class="model-list">
 					{#each pickerState.allModels as m (m.id)}
@@ -212,6 +239,7 @@
 						</button>
 					{/each}
 				</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -535,5 +563,48 @@
 	.model-opt-provider {
 		font-size: var(--text-sm);
 		color: var(--text-muted);
+	}
+
+	.switch-warn {
+		margin: 0 0 1.25rem;
+		font-size: var(--text-base);
+		color: var(--text-secondary);
+		line-height: var(--leading-relaxed);
+	}
+
+	.switch-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.btn-switch-cancel,
+	.btn-switch-confirm {
+		flex: 1;
+		padding: 0.6rem 1rem;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--border-strong);
+		font-family: inherit;
+		font-size: var(--text-sm);
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out);
+	}
+
+	.btn-switch-cancel {
+		background: transparent;
+		color: var(--text-secondary);
+	}
+
+	.btn-switch-cancel:hover {
+		background: var(--bg-surface-hover);
+	}
+
+	.btn-switch-confirm {
+		background: var(--accent);
+		color: var(--text-on-accent);
+		border-color: var(--accent);
+	}
+
+	.btn-switch-confirm:hover {
+		background: var(--accent-hover);
 	}
 </style>

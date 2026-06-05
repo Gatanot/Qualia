@@ -106,12 +106,13 @@ export async function* parseSSEStream(
 					if (!choice) continue;
 
 					const delta = choice.delta || {};
+					const rawUsage = parsed.usage || choice.usage;
 					const chunk: StreamChunk = {
 						content: delta.content || '',
 						reasoning_content: delta.reasoning_content || '',
 						tool_calls: extractToolCalls(delta.tool_calls),
 						finish_reason: choice.finish_reason || null,
-						usage: parsed.usage ? parseUsage(parsed.usage) : undefined
+						usage: rawUsage ? parseUsage(rawUsage as Record<string, unknown>) : undefined
 					};
 
 					yield chunk;
