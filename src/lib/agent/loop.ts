@@ -10,6 +10,8 @@ const RETRY_BASE_DELAY = 1000;
 const CONTEXT_WINDOW_DEFAULT = 1_048_576;
 /** 剩余窗口低于此阈值（20K token）时在回复完成后自动创建延续会话 */
 const CONTINUE_THRESHOLD = 20_000;
+/** 单次 Agent 循环中工具调用的最大迭代次数 */
+const MAX_TOOL_ITERATIONS = 50;
 
 function buildSummaryContent(messages: Message[], initialSystem: string | undefined): string {
 	const relevant = messages
@@ -80,7 +82,7 @@ export class AgentLoop {
 		let totalUsage: Usage | undefined;
 
 		try {
-			while (true) {
+			for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
 				if (this.signal?.aborted) {
 					break;
 				}
@@ -281,6 +283,8 @@ export class AgentLoop {
 					});
 				}
 			}
+
+			yield { type: 'error', message: `达到最大工具调用次数限制（${MAX_TOOL_ITERATIONS}次），请简化任务后重试` };
 		} catch (error) {
 			yield { type: 'error', message: (error as Error).message || '未知错误' };
 		}

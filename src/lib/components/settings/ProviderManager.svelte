@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { ProviderConfig } from '$lib/config';
-	import { getDefaultModels } from '$lib/provider';
+
+	const DEFAULT_BASE_URLS: Record<string, string> = {
+		deepseek: 'https://api.deepseek.com/v1',
+		xiaomi: 'https://api.xiaomimimo.com/v1'
+	};
 
 	let { providers, loading, onconfigchange }: {
 		providers: ProviderConfig[];
@@ -12,14 +16,12 @@
 	let showForm = $state(false);
 	let editingProvider = $state<ProviderConfig | null>(null);
 	let formType = $state<string>('openai');
-	let formReasoningEffort = $state('');
+	let formBaseURL = $state('');
 
-	let formModels = $derived(getDefaultModels(formType));
-	let reasoningOptions = $derived.by(() => {
-		if (formModels.length === 0 || !formModels[0].supportsReasoning) return [];
-		const values = formModels[0].reasoningEffortValues;
-		if (values.length > 0) return values;
-		return ['enabled'];
+	$effect(() => {
+		if (!editingProvider) {
+			formBaseURL = DEFAULT_BASE_URLS[formType] || '';
+		}
 	});
 
 	function maskKey(key: string): string {
@@ -30,7 +32,7 @@
 	function openAdd() {
 		editingProvider = null;
 		formType = 'openai';
-		formReasoningEffort = '';
+		formBaseURL = '';
 		showForm = true;
 		error = '';
 	}
@@ -38,7 +40,7 @@
 	function openEdit(p: ProviderConfig) {
 		editingProvider = p;
 		formType = p.type || 'openai';
-		formReasoningEffort = p.reasoningEffort || '';
+		formBaseURL = p.baseURL || '';
 		showForm = true;
 		error = '';
 	}
@@ -56,7 +58,7 @@
 		const type = (fd.get('type') as string) || 'openai';
 		const name = (fd.get('name') as string).trim();
 		const apiKey = (fd.get('apiKey') as string).trim();
-		const baseURL = (fd.get('baseURL') as string).trim();
+		const baseURL = formBaseURL.trim();
 
 		if (!name || !apiKey || !baseURL) {
 			error = '名称、密钥、接口地址必填';
@@ -69,10 +71,6 @@
 			apiKey,
 			baseURL
 		};
-
-		if (formReasoningEffort) {
-			provider.reasoningEffort = formReasoningEffort;
-		}
 
 		const res = await fetch('/api/config', {
 			method: 'PUT',
@@ -184,25 +182,12 @@
 				<label>
 					接口地址
 					<input
-						name="baseURL"
 						type="text"
-						placeholder={formType === 'deepseek' ? 'https://api.deepseek.com/v1' : formType === 'xiaomi' ? 'https://api.xiaomimimo.com/v1' : 'https://api.openai.com/v1'}
-						value={editingProvider?.baseURL || ''}
+						value={formBaseURL}
+						oninput={(e: Event) => formBaseURL = (e.target as HTMLInputElement).value}
 						required
 					/>
 				</label>
-
-				{#if reasoningOptions.length > 0}
-					<label>
-						推理深度
-						<select name="reasoningEffort" bind:value={formReasoningEffort}>
-							<option value="">不开启</option>
-							{#each reasoningOptions as v}
-								<option value={v}>{v === 'enabled' ? '开启' : v}</option>
-							{/each}
-						</select>
-					</label>
-				{/if}
 
 				<div class="form-actions">
 					<button type="button" class="btn" onclick={cancelForm}>取消</button>
