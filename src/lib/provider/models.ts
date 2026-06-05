@@ -4,6 +4,7 @@ export interface ModelDef {
 	contextWindow: number;
 	supportsReasoning: boolean;
 	reasoningEffortValues: string[];
+	supportsVision: boolean;
 }
 
 export const OPENAI_MODELS: ModelDef[] = [
@@ -12,14 +13,16 @@ export const OPENAI_MODELS: ModelDef[] = [
 		name: 'GPT-4o',
 		contextWindow: 128_000,
 		supportsReasoning: false,
-		reasoningEffortValues: []
+		reasoningEffortValues: [],
+		supportsVision: false
 	},
 	{
 		id: 'gpt-4o-mini',
 		name: 'GPT-4o Mini',
 		contextWindow: 128_000,
 		supportsReasoning: false,
-		reasoningEffortValues: []
+		reasoningEffortValues: [],
+		supportsVision: false
 	}
 ];
 
@@ -29,14 +32,16 @@ export const DEEPSEEK_MODELS: ModelDef[] = [
 		name: 'DeepSeek V4 Pro',
 		contextWindow: 1_048_576,
 		supportsReasoning: true,
-		reasoningEffortValues: ['high', 'max']
+		reasoningEffortValues: ['high', 'max'],
+		supportsVision: false
 	},
 	{
 		id: 'deepseek-v4-flash',
 		name: 'DeepSeek V4 Flash',
 		contextWindow: 1_048_576,
 		supportsReasoning: true,
-		reasoningEffortValues: ['high', 'max']
+		reasoningEffortValues: ['high', 'max'],
+		supportsVision: false
 	}
 ];
 
@@ -46,14 +51,16 @@ export const XIAOMI_MODELS: ModelDef[] = [
 		name: 'MiMo V2.5',
 		contextWindow: 1_048_576,
 		supportsReasoning: true,
-		reasoningEffortValues: []
+		reasoningEffortValues: [],
+		supportsVision: true
 	},
 	{
 		id: 'mimo-v2.5-pro',
 		name: 'MiMo V2.5 Pro',
 		contextWindow: 1_048_576,
 		supportsReasoning: true,
-		reasoningEffortValues: []
+		reasoningEffortValues: [],
+		supportsVision: false
 	}
 ];
 

@@ -1,5 +1,6 @@
 import { readConfig, getProviderForModel, getContextWindow, getActiveModel } from '$lib/config';
 import { createProvider } from '$lib/provider';
+import type { ImageContent } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
@@ -10,9 +11,10 @@ import { pendingConfirms } from '$lib/chat-confirm';
 export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
-		let { sessionId, message, clientMessageId } = body as {
+		let { sessionId, message, images, clientMessageId } = body as {
 			sessionId?: string;
 			message: string;
+			images?: { url: string; detail?: 'low' | 'high' | 'auto' }[];
 			clientMessageId?: string;
 		};
 
@@ -86,9 +88,19 @@ export async function POST({ request }: { request: Request }) {
 			}
 		}
 
+		const imageContents: ImageContent[] = (images || []).map((img) => ({
+			type: 'image_url' as const,
+			image_url: { url: img.url, detail: img.detail || 'auto' }
+		}));
+
+		const storageContent = imageContents.length > 0
+			? JSON.stringify([{ type: 'text', text: message }, ...imageContents])
+			: message;
+
 		const buildResult = await contextBuilder.build(
 			sid,
 			message,
+			imageContents,
 			storage,
 			registry,
 			contextWindow,
@@ -102,7 +114,7 @@ export async function POST({ request }: { request: Request }) {
 				}
 
 				try {
-					for await (const event of agent.run(sid!, message, buildResult, clientMessageId)) {
+					for await (const event of agent.run(sid!, storageContent, buildResult, clientMessageId)) {
 						if (event.type === 'done') {
 							send({ ...event, contextWindow });
 						} else {

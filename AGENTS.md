@@ -28,7 +28,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
 | Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
-| Providers | OpenAI (GPT-4o, GPT-4o Mini) and DeepSeek (V4 Pro, V4 Flash). DeepSeek models support `thinking`/`reasoningEffort` fields on `ProviderConfig` — both model IDs have `supportsReasoning: true` in `models.ts`. |
+| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. |
 
 ## Architecture
 
@@ -39,25 +39,28 @@ src/lib/
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
-├── provider/        # OpenAI + DeepSeek API clients; factory: createProvider({ type })
+├── provider/        # OpenAI + DeepSeek + Xiaomi API clients; factory: createProvider({ type })
 │   └── models.ts    # ModelDef list for each provider (with contextWindow)
 ├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
-├── tool/            # ToolRegistry + 5 tools (read_file/write_file/delete_file/exec/write_memory)
+├── tool/            # ToolRegistry + 5 tools
+│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, exec, write_memory)
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
-├── chat-confirm.ts  # Shared Map<string, Promise> for pending confirmations
-├── markdown.ts      # Markdown renderer (marked) with highlight.js code blocks
-├── session-store.ts # Client-side Svelte stores for session list + CRUD helpers
-└── theme.ts         # Light/dark theme management (localStorage + media query)
+├── chat-confirm.ts             # Shared Map<string, Promise> for pending confirmations
+├── markdown.ts                 # Markdown renderer (marked) with highlight.js code blocks
+├── model-picker-state.svelte.ts # Client-side $state runes for model picker UI
+├── session-store.ts            # Client-side Svelte stores for session list + CRUD helpers
+└── theme.ts                    # Light/dark theme management (localStorage + media query)
 ```
 
 `src/lib/` code is server-side **unless** imported by a `.svelte` component.
-`session-store.ts` is the key exception — it's client-side only (uses `writable` stores).
+`session-store.ts` and `model-picker-state.svelte.ts` are exceptions — they're client-side only (use `writable` stores / `$state()` runes).
 
 API routes:
 - `api/brand-icon/+server.ts` — `GET`/`POST`/`DELETE` custom brand icon (uploaded to `data/brand-icon`)
 - `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
+- `api/models/+server.ts` — `GET` list all available models across configured providers
 - `api/config/+server.ts` — `GET`/`PUT` config CRUD
 - `api/sessions/+server.ts` — `GET` list / `POST` create, setTitle, delete, getMessages
 - `api/messages/+server.ts` — `POST` deleteFrom a given messageId

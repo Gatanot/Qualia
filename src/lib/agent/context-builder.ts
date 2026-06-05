@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Message } from '$lib/provider';
+import type { Message, ImageContent, ContentPart } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import type { BuildResult } from './types';
@@ -47,12 +47,13 @@ export class ContextBuilder {
 	async build(
 		sessionId: string,
 		userMessage: string,
+		images: ImageContent[],
 		storage: Storage,
 		registry: ToolRegistry,
 		contextWindow?: number,
 		systemPrompt?: string
 	): Promise<BuildResult> {
-		const messages = await this.buildMessages(sessionId, userMessage, storage, registry, systemPrompt);
+		const messages = await this.buildMessages(sessionId, userMessage, images, storage, registry, systemPrompt);
 		return {
 			messages,
 			contextWindow: contextWindow || DEFAULT_CONTEXT_WINDOW
@@ -72,9 +73,28 @@ export class ContextBuilder {
 		return content;
 	}
 
+	private parseStoredContent(content: string): string | ContentPart[] {
+		if (content.startsWith('[')) {
+			try {
+				return JSON.parse(content) as ContentPart[];
+			} catch { /* return as string */ }
+		}
+		return content;
+	}
+
+	private buildUserContent(text: string, images: ImageContent[]): string | ContentPart[] {
+		if (images.length === 0) return text;
+		const parts: ContentPart[] = [
+			{ type: 'text', text },
+			...images
+		];
+		return parts;
+	}
+
 	private async buildMessages(
 		sessionId: string,
 		userMessage: string,
+		images: ImageContent[],
 		storage: Storage,
 		registry: ToolRegistry,
 		systemPrompt?: string
@@ -103,7 +123,7 @@ export class ContextBuilder {
 		for (const msg of history) {
 			const m: Message = {
 				role: msg.role,
-				content: msg.content
+				content: this.parseStoredContent(msg.content)
 			};
 
 			if (msg.tool_calls) m.tool_calls = msg.tool_calls;
@@ -113,7 +133,7 @@ export class ContextBuilder {
 			messages.push(m);
 		}
 
-		messages.push({ role: 'user', content: userMessage });
+		messages.push({ role: 'user', content: this.buildUserContent(userMessage, images) });
 
 		return messages;
 	}

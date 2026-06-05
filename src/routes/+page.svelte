@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { loadSessions, createSession, pendingFirstMessage } from '$lib/session-store';
+	import { loadSessions, createSession, pendingFirstMessage, pendingFirstImages } from '$lib/session-store';
+	import type { ImageAttachment } from '$lib/components/types';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 
@@ -23,7 +24,7 @@
 			.catch(() => { checkedProvider = true; });
 	});
 
-	async function handleSend() {
+	async function handleSend(msgImages: ImageAttachment[]) {
 		const text = input.trim();
 		if (!text || sending) return;
 
@@ -40,6 +41,7 @@
 		if (!session) { sending = false; return; }
 
 		pendingFirstMessage.set(text);
+		pendingFirstImages.set(msgImages);
 		goto('/chat/' + session.id);
 	}
 </script>

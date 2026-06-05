@@ -25,8 +25,8 @@ function buildSummaryContent(messages: Message[], initialSystem: string | undefi
 	const lines: string[] = [];
 	for (const m of relevant) {
 		const role = m.role === 'user' ? '用户' : 'AI';
-		const text = m.content.slice(0, 2000);
-		lines.push(`[${role}] ${text}`);
+		const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+		lines.push(`[${role}] ${text.slice(0, 2000)}`);
 	}
 
 	return header + lines.join('\n');

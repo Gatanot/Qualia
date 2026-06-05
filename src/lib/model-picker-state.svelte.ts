@@ -7,6 +7,7 @@ export interface ModelInfo {
 	contextWindow: number;
 	supportsReasoning: boolean;
 	reasoningEffortValues: string[];
+	supportsVision: boolean;
 }
 
 export const pickerState = $state<{

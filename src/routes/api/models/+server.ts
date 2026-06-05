@@ -9,6 +9,7 @@ export function GET() {
 		contextWindow: m.model.contextWindow,
 		supportsReasoning: m.model.supportsReasoning,
 		reasoningEffortValues: m.model.reasoningEffortValues,
+		supportsVision: m.model.supportsVision,
 		providerName: m.providerName
 	})));
 }

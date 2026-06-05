@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import type { UIMessage } from '$lib/components/types';
+	import type { UIMessage, ImageAttachment } from '$lib/components/types';
+	import type { ContentPart } from '$lib/provider';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage } from '$lib/session-store';
+	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage, pendingFirstImages } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
 	import { pickerState } from '$lib/model-picker-state.svelte';
 
@@ -17,10 +18,12 @@
 	let frontendConfirms = new Map<string, () => void>();
 	let focusTrigger = $state(0);
 	let inputQueue: string[] = $state([]);
+	let imageQueue: ImageAttachment[][] = $state([]);
 	let abortController: AbortController | null = null;
 	let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let nearBottom = $state(true);
 	let lastUserMessage = $state('');
+	let lastUserImages = $state<ImageAttachment[]>([]);
 	let scrollViewEl = $state<HTMLElement>();
 	let loadedSessionId = $state('');
 	let contextWindow = $state<number | undefined>(undefined);
@@ -62,23 +65,40 @@
 				messages = recordsToUIMessages(records);
 				forceScrollToBottom();
 				const pending = $pendingFirstMessage;
+				const pendingImgs = $pendingFirstImages;
 				if (pending && records.length === 0) {
 					pendingFirstMessage.set('');
-					sendMessage(pending);
+					pendingFirstImages.set([]);
+					sendMessage(pending, pendingImgs);
 				}
 			});
 		}
 	});
+
+	function parseUserContent(content: string): UIMessage['blocks'] {
+		if (content.startsWith('[')) {
+			try {
+				const parts: ContentPart[] = JSON.parse(content);
+				return parts.map((p) => {
+					if (p.type === 'text') return { type: 'text' as const, content: p.text };
+					if (p.type === 'image_url') return { type: 'image' as const, url: p.image_url.url, detail: p.image_url.detail };
+					return { type: 'text' as const, content: '' };
+				});
+			} catch { /* fall through */ }
+		}
+		return [{ type: 'text', content }];
+	}
 
 	function recordsToUIMessages(records: MessageRecord[]): UIMessage[] {
 		const result: UIMessage[] = [];
 		for (const r of records) {
 			if (r.role === 'system') continue;
 			if (r.role === 'user') {
+				const blocks: UIMessage['blocks'] = parseUserContent(r.content);
 				result.push({
 					id: r.id,
 					role: 'user',
-					blocks: [{ type: 'text', content: r.content }],
+					blocks,
 					done: true
 				});
 			} else if (r.role === 'assistant') {
@@ -165,7 +185,8 @@
 
 		if (inputQueue.length > 0) {
 			const next = inputQueue.shift()!;
-			sendMessage(next);
+			const nextImgs = imageQueue.shift() || [];
+			sendMessage(next, nextImgs);
 		}
 	}
 
@@ -207,7 +228,7 @@
 		}
 
 		if (action === 'retry') {
-			if (lastUserMessage) sendMessage(lastUserMessage, true);
+			if (lastUserMessage) sendMessage(lastUserMessage, lastUserImages, true);
 		} else {
 			input = lastUserMessage;
 			focusTrigger++;
@@ -244,13 +265,15 @@
 		focusTrigger++;
 	}
 
-	async function sendMessage(queuedText?: string, skipUserMsg = false) {
+	async function sendMessage(queuedText?: string, queuedImages?: ImageAttachment[], skipUserMsg = false) {
 		const text = (queuedText ?? input).trim();
+		const msgImages = queuedImages || [];
 		if (!text) return;
 
 		if (streaming) {
 			if (!skipUserMsg) {
 				inputQueue.push(text);
+				imageQueue.push([...msgImages]);
 				if (!queuedText) { input = ''; focusTrigger++; }
 			}
 			return;
@@ -259,13 +282,19 @@
 		if (!queuedText) { input = ''; focusTrigger++; }
 
 		lastUserMessage = text;
+		lastUserImages = [...msgImages];
 		const userMsgId = crypto.randomUUID();
 
 		if (!skipUserMsg) {
+			const blocks: UIMessage['blocks'] = [];
+			for (const img of msgImages) {
+				blocks.push({ type: 'image', url: img.url, detail: img.detail });
+			}
+			blocks.push({ type: 'text', content: text });
 			messages.push({
 				id: userMsgId,
 				role: 'user',
-				blocks: [{ type: 'text', content: text }],
+				blocks,
 				done: true
 			});
 			forceScrollToBottom();
@@ -277,10 +306,15 @@
 		streamReader = null;
 
 		try {
+			const body: Record<string, unknown> = { sessionId: sessionId, message: text };
+			if (!skipUserMsg) body.clientMessageId = userMsgId;
+			if (msgImages.length > 0) {
+				body.images = msgImages.map((img) => ({ url: img.url, detail: img.detail || 'auto' }));
+			}
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sessionId: sessionId, message: text, clientMessageId: skipUserMsg ? undefined : userMsgId }),
+				body: JSON.stringify(body),
 				signal: controller.signal
 			});
 
@@ -342,7 +376,11 @@
 				streamReader = null;
 				streaming = false;
 				focusTrigger++;
-				if (inputQueue.length > 0) sendMessage(inputQueue.shift());
+				if (inputQueue.length > 0) {
+					const next = inputQueue.shift()!;
+					const nextImgs = imageQueue.shift() || [];
+					sendMessage(next, nextImgs);
+				}
 				return;
 			}
 
@@ -554,7 +592,7 @@
 			bind:value={input}
 			streaming={streaming}
 			queueCount={inputQueue.length}
-			onsend={() => sendMessage()}
+			onsend={(imgs) => sendMessage(undefined, imgs)}
 			onstop={stopAI}
 			focusTrigger={focusTrigger}
 		/>

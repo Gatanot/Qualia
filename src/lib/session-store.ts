@@ -1,9 +1,11 @@
 import { writable } from 'svelte/store';
 import type { Session, MessageRecord } from '$lib/storage';
+import type { ImageAttachment } from '$lib/components/types';
 
 export const sessions = writable<Session[]>([]);
 const messages = writable<MessageRecord[]>([]);
 export const pendingFirstMessage = writable('');
+export const pendingFirstImages = writable<ImageAttachment[]>([]);
 
 export async function loadSessions() {
 	const res = await fetch('/api/sessions');

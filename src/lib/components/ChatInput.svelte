@@ -1,17 +1,20 @@
 <script lang="ts">
 	import InlineModelPicker from './InlineModelPicker.svelte';
 	import { pickerState, activeModelDef, reasoningEffort, reasoningOptions } from '$lib/model-picker-state.svelte';
+	import type { ImageAttachment } from './types';
 
 	let { value = $bindable(''), streaming = false, queueCount = 0, onsend, onstop, focusTrigger = 0 }: {
 		value: string;
 		streaming: boolean;
 		queueCount: number;
-		onsend: () => void;
+		onsend: (images: ImageAttachment[]) => void;
 		onstop: () => void;
 		focusTrigger?: number;
 	} = $props();
 
 	let textareaEl = $state<HTMLTextAreaElement>();
+	let fileInputEl = $state<HTMLInputElement>();
+	let images = $state<ImageAttachment[]>([]);
 
 	$effect(() => {
 		void focusTrigger;
@@ -23,7 +26,7 @@
 		autoResize();
 	});
 
-	let hasInput = $derived(value.trim().length > 0);
+	let hasInput = $derived(value.trim().length > 0 || images.length > 0);
 	const MAX_HEIGHT = 300;
 
 	let showModelPopup = $state(false);
@@ -59,6 +62,30 @@
 		}
 	}
 
+	function openFilePicker() {
+		fileInputEl?.click();
+	}
+
+	function handleFilesSelected(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const files = input.files;
+		if (!files) return;
+
+		for (const file of files) {
+			if (!file.type.startsWith('image/')) continue;
+			const reader = new FileReader();
+			reader.onload = () => {
+				images.push({ url: reader.result as string, detail: 'auto' });
+			};
+			reader.readAsDataURL(file);
+		}
+		input.value = '';
+	}
+
+	function removeImage(index: number) {
+		images.splice(index, 1);
+	}
+
 	function autoResize() {
 		const el = textareaEl;
 		if (!el) return;
@@ -73,7 +100,9 @@
 			e.preventDefault();
 			autoResize();
 			if (hasInput || streaming) {
-				onsend();
+				const imgs = [...images];
+				images = [];
+				onsend(imgs);
 			}
 		}
 	}
@@ -82,7 +111,9 @@
 		if (streaming) {
 			onstop();
 		} else {
-			onsend();
+			const imgs = [...images];
+			images = [];
+			onsend(imgs);
 		}
 	}
 
@@ -99,8 +130,29 @@
 		</div>
 	{/if}
 
+	{#if images.length > 0}
+		<div class="image-preview-row">
+			{#each images as img, i (i)}
+				<div class="image-preview-item">
+					<img src={img.url} alt="上传预览" />
+					<button class="image-remove-btn" onclick={() => removeImage(i)}>
+						<span class="material-symbols-rounded">close</span>
+					</button>
+				</div>
+			{/each}
+		</div>
+	{/if}
+
 	<div class="input-bar">
-		<InlineModelPicker />
+		<InlineModelPicker onpickimage={openFilePicker} />
+		<input
+			type="file"
+			class="hidden-file-input"
+			bind:this={fileInputEl}
+			accept="image/*"
+			multiple
+			onchange={handleFilesSelected}
+		/>
 		<textarea
 			class="chat-input"
 			bind:value
@@ -134,9 +186,9 @@
 				value={reasoningEffort() || ''}
 				onchange={(e: Event) => selectReasoning((e.target as HTMLSelectElement).value)}
 			>
-				<option value="">不思考</option>
+				<option value="">no thinking</option>
 				{#each reasoningOptions() as v}
-					<option value={v}>{v === 'enabled' ? '开启' : v}</option>
+					<option value={v}>{v === 'enabled' ? 'thinking' : v}</option>
 				{/each}
 			</select>
 		{/if}
@@ -340,7 +392,6 @@
 		background-position: right 0.4rem center;
 		transition: border-color 0.2s var(--ease-out);
 		white-space: nowrap;
-		max-width: 80px;
 	}
 
 	.reasoning-select:hover {
@@ -350,6 +401,65 @@
 	.reasoning-select:focus {
 		outline: none;
 		border-color: var(--accent);
+	}
+
+	.hidden-file-input {
+		display: none;
+	}
+
+	.image-preview-row {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin-bottom: 0.75rem;
+		padding: 0 1.5rem;
+	}
+
+	.image-preview-item {
+		position: relative;
+		width: 72px;
+		height: 72px;
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		border: 1px solid var(--border-subtle);
+		animation: previewIn 0.25s var(--ease-out);
+	}
+
+	@keyframes previewIn {
+		from { opacity: 0; transform: scale(0.8); }
+		to { opacity: 1; transform: scale(1); }
+	}
+
+	.image-preview-item img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.image-remove-btn {
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		width: 20px;
+		height: 20px;
+		border-radius: var(--radius-full);
+		border: none;
+		background: rgba(0, 0, 0, 0.55);
+		color: #fff;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		transition: background 0.15s var(--ease-out);
+	}
+
+	.image-remove-btn:hover {
+		background: rgba(0, 0, 0, 0.75);
+	}
+
+	.image-remove-btn .material-symbols-rounded {
+		font-size: 14px;
 	}
 
 	.modal-overlay {

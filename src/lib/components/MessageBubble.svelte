@@ -79,6 +79,10 @@
 				{:else}
 					<div class="message-content markdown-body">{@html getBlockHtml(block.content)}</div>
 				{/if}
+			{:else if block.type === 'image'}
+				<div class="image-block">
+					<img src={block.url} alt="上传图片" />
+				</div>
 			{:else if block.type === 'reasoning'}
 				<ReasoningBlock content={block.content} done={message.done} />
 			{:else if block.type === 'tool'}
@@ -464,6 +468,17 @@
 		animation: cursorBlink 1s ease-in-out infinite;
 		font-weight: 700;
 		color: var(--accent);
+	}
+
+	.image-block {
+		max-width: 320px;
+	}
+
+	.image-block img {
+		width: 100%;
+		height: auto;
+		border-radius: var(--radius-lg);
+		display: block;
 	}
 
 	@keyframes cursorBlink {
