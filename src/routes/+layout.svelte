@@ -2,12 +2,21 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import SessionSidebar from '$lib/components/SessionSidebar.svelte';
 	import { initTheme } from '$lib/theme';
+	import { getDefaultModels } from '$lib/provider';
+	import type { AppConfig } from '$lib/config';
 	import 'katex/dist/katex.min.css';
 
 	let { children } = $props();
 
 	let sidebarOpen = $state(false);
 	let customIcon = $state(false);
+	let config = $state<AppConfig>({ providers: [], activeProvider: '', activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
+
+	let availableModels = $derived.by(() => {
+		const provider = config.providers.find((p) => p.name === config.activeProvider);
+		if (!provider) return [];
+		return getDefaultModels(provider.type);
+	});
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -17,12 +26,27 @@
 		sidebarOpen = false;
 	}
 
-	$effect(() => {
-		initTheme();
+	function loadConfig() {
 		fetch('/api/config')
 			.then((r) => r.json())
-			.then((c) => { customIcon = c.customBrandIcon === true; })
+			.then((c) => { config = c; customIcon = c.customBrandIcon === true; })
 			.catch(() => {});
+	}
+
+	async function selectModel(modelId: string) {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'setActiveModel', modelId })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
+
+	$effect(() => {
+		initTheme();
+		loadConfig();
 	});
 </script>
 
@@ -49,9 +73,22 @@
 				<span class="material-symbols-rounded">menu</span>
 			</button>
 			<a href="/" class="app-title">Qualia</a>
-			<a href="/" class="icon-btn new-chat-btn">
-				<span class="material-symbols-rounded">add_comment</span>
-			</a>
+			<div class="header-right">
+				{#if availableModels.length > 0}
+					<select
+						class="model-select"
+						value={config.activeModel}
+						onchange={(e: Event) => selectModel((e.target as HTMLSelectElement).value)}
+					>
+						{#each availableModels as m}
+							<option value={m.id}>{m.name}</option>
+						{/each}
+					</select>
+				{/if}
+				<a href="/" class="icon-btn new-chat-btn">
+					<span class="material-symbols-rounded">add_comment</span>
+				</a>
+			</div>
 		</header>
 		<main>
 			{#if sidebarOpen}
@@ -394,6 +431,40 @@
 	.icon-btn:active {
 		background: var(--bg-surface-press);
 		transform: scale(0.95);
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.model-select {
+		font-family: inherit;
+		font-size: var(--text-sm);
+		color: var(--text-primary);
+		background: var(--bg-surface);
+		border: 1px solid var(--border-accent);
+		border-radius: var(--radius-pill);
+		padding: 0.4rem 2rem 0.4rem 1rem;
+		cursor: pointer;
+		appearance: none;
+		-webkit-appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A726A' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.6rem center;
+		transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+		white-space: nowrap;
+	}
+
+	.model-select:hover {
+		border-color: var(--border-hover);
+	}
+
+	.model-select:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: var(--shadow-focus);
 	}
 
 	main {

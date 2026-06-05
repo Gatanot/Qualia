@@ -9,7 +9,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 			return new OpenAIProvider({
 				apiKey: config.apiKey,
 				baseURL: config.baseURL,
-				model: config.activeModel || config.model || '',
+				model: config.activeModel || '',
 				timeout: config.timeout,
 				maxRetries: config.maxRetries ?? 5
 			});
@@ -17,7 +17,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
 			return new DeepSeekProvider({
 				apiKey: config.apiKey,
 				baseURL: config.baseURL,
-				model: config.activeModel || config.model || '',
+				model: config.activeModel || '',
 				timeout: config.timeout,
 				maxRetries: config.maxRetries ?? 5,
 				thinking: config.thinking,

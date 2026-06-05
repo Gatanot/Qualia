@@ -26,8 +26,9 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | Runes mode | **Forced** project-wide (except node_modules). Always use `$state()`, `$props()`, `$effect()`, not legacy Svelte 4 syntax |
 | Imports | `$lib` → `src/lib/`. Use `$lib/xxx` paths exclusively (alias is SvelteKit-managed, not in tsconfig) |
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
-| Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts` |
+| Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
+| Providers | OpenAI (GPT-4o, GPT-4o Mini) and DeepSeek (V4 Pro, V4 Flash). DeepSeek models support `thinking`/`reasoningEffort` fields on `ProviderConfig` — both model IDs have `supportsReasoning: true` in `models.ts`. |
 
 ## Architecture
 

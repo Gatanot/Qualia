@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { ProviderConfig } from '$lib/config';
-	import { getDefaultModels } from '$lib/provider';
 
 	let { providers, activeProvider, loading, onconfigchange }: {
 		providers: ProviderConfig[];
@@ -13,23 +12,6 @@
 	let showForm = $state(false);
 	let editingProvider = $state<ProviderConfig | null>(null);
 	let formType = $state<string>('openai');
-	let formModel = $state('');
-
-	let formModels = $derived(getDefaultModels(formType));
-
-	$effect(() => {
-		if (formModels.length > 0 && !formModels.find(m => m.id === formModel)) {
-			formModel = formModels[0].id;
-		}
-	});
-
-	function displayModel(p: ProviderConfig): string {
-		if (p.models && p.activeModel) {
-			const m = p.models.find(m => m.id === p.activeModel);
-			return m?.name || p.activeModel;
-		}
-		return p.activeModel || p.model || '-';
-	}
 
 	function maskKey(key: string): string {
 		if (key.length <= 8) return '****';
@@ -39,7 +21,6 @@
 	function openAdd() {
 		editingProvider = null;
 		formType = 'openai';
-		formModel = getDefaultModels('openai')[0]?.id || '';
 		showForm = true;
 		error = '';
 	}
@@ -47,7 +28,6 @@
 	function openEdit(p: ProviderConfig) {
 		editingProvider = p;
 		formType = p.type || 'openai';
-		formModel = p.activeModel || p.model || '';
 		showForm = true;
 		error = '';
 	}
@@ -66,7 +46,6 @@
 		const name = (fd.get('name') as string).trim();
 		const apiKey = (fd.get('apiKey') as string).trim();
 		const baseURL = (fd.get('baseURL') as string).trim();
-		const activeModel = formModel;
 
 		if (!name || !apiKey || !baseURL) {
 			error = '名称、密钥、接口地址必填';
@@ -77,9 +56,7 @@
 			type,
 			name,
 			apiKey,
-			baseURL,
-			activeModel,
-			models: getDefaultModels(type)
+			baseURL
 		};
 
 		if (type === 'deepseek') {
@@ -158,7 +135,6 @@
 						</div>
 						<div class="provider-meta">
 							<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : 'OpenAI 兼容'}</span>
-							<span>模型：{displayModel(p)}</span>
 							<span>密钥：{maskKey(p.apiKey)}</span>
 						</div>
 					</div>
@@ -222,14 +198,6 @@
 						value={editingProvider?.baseURL || ''}
 						required
 					/>
-				</label>
-				<label>
-					模型
-					<select name="model" bind:value={formModel}>
-						{#each formModels as m}
-							<option value={m.id}>{m.name}</option>
-						{/each}
-					</select>
 				</label>
 
 				{#if formType === 'deepseek'}

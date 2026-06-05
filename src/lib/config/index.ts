@@ -15,6 +15,7 @@ export {
 	addProvider,
 	removeProvider,
 	setActiveProvider,
+	setActiveModel,
 	getActiveProvider,
 	getActiveModel,
 	getContextWindow

@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import type { Message } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
-import type { ProviderConfig } from '$lib/config';
 import type { BuildResult } from './types';
 import {
 	DEFAULT_SYSTEM_PROMPT,
@@ -50,13 +49,13 @@ export class ContextBuilder {
 		userMessage: string,
 		storage: Storage,
 		registry: ToolRegistry,
-		providerConfig: ProviderConfig,
+		contextWindow?: number,
 		systemPrompt?: string
 	): Promise<BuildResult> {
 		const messages = await this.buildMessages(sessionId, userMessage, storage, registry, systemPrompt);
 		return {
 			messages,
-			contextWindow: providerConfig.contextWindow || DEFAULT_CONTEXT_WINDOW
+			contextWindow: contextWindow || DEFAULT_CONTEXT_WINDOW
 		};
 	}
 

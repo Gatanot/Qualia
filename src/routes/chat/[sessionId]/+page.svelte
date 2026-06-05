@@ -7,6 +7,7 @@
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
 	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
+	import { getDefaultModels } from '$lib/provider';
 
 	let sessionId = $derived($page.params.sessionId);
 	let messages = $state<UIMessage[]>([]);
@@ -48,9 +49,12 @@
 			.then(r => r.json())
 			.then((config) => {
 				const provider = config.providers?.find((p: { name: string }) => p.name === config.activeProvider);
-				const model = provider?.models?.find((m: { id: string }) => m.id === provider.activeModel) || provider?.models?.[0];
-				if (model?.contextWindow) {
-					contextWindow = model.contextWindow;
+				if (provider) {
+					const models = getDefaultModels(provider.type);
+					const model = models.find((m: { id: string }) => m.id === config.activeModel) || models[0];
+					if (model?.contextWindow) {
+						contextWindow = model.contextWindow;
+					}
 				}
 				customIcon = config.customBrandIcon === true;
 			})

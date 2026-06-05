@@ -4,7 +4,8 @@ import {
 	writeConfig,
 	addProvider,
 	removeProvider,
-	setActiveProvider
+	setActiveProvider,
+	setActiveModel
 } from '$lib/config';
 import type { ProviderConfig } from '$lib/config';
 
@@ -37,6 +38,10 @@ export async function PUT({ request }: { request: Request }) {
 				} catch (e) {
 					return json({ error: (e as Error).message }, { status: 400 });
 				}
+			}
+			case 'setActiveModel': {
+				const config = setActiveModel(body.modelId as string);
+				return json(config);
 			}
 			case 'writeConfig': {
 				writeConfig(body.config);

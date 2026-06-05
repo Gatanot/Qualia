@@ -1,4 +1,4 @@
-import { readConfig, getActiveProvider } from '$lib/config';
+import { readConfig, getActiveProvider, getActiveModel } from '$lib/config';
 import { createProvider } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { generateSummary } from './summarizer';
@@ -20,7 +20,13 @@ export async function runSummarizeJob(force?: boolean, idleMs?: number | null): 
 		throw new Error('未配置活跃的 AI 供应商');
 	}
 
-	const provider = createProvider(providerConfig);
+	const model = getActiveModel();
+	if (!model) {
+		throw new Error('未选择模型');
+	}
+
+	const runtimeConfig = { ...providerConfig, activeModel: model.id, contextWindow: model.contextWindow };
+	const provider = createProvider(runtimeConfig);
 	const storage = createStorage({ enabled: true });
 
 	let effectiveIdleMs: number | null;

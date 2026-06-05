@@ -14,6 +14,7 @@ function getConfigPath(): string {
 const defaultConfig: AppConfig = {
 	providers: [],
 	activeProvider: '',
+	activeModel: '',
 	storageEnabled: false,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
 	customBrandIcon: false,
@@ -24,23 +25,12 @@ const defaultConfig: AppConfig = {
 	summaryIntervalMin: 30
 };
 
-function normalizeProvider(p: Partial<ProviderConfig> & { type?: string; model?: string }): ProviderConfig {
-	const type = (p.type as ProviderConfig['type']) || 'openai';
-	const defaults = getDefaultModels(type);
-	const storedModels = Array.isArray(p.models) && p.models.length > 0 ? p.models : defaults;
-	const models = storedModels.map((stored) => {
-		const def = defaults.find((d) => d.id === stored.id);
-		return def ? { ...stored, contextWindow: def.contextWindow, name: def.name } : stored;
-	});
-	const activeModel = p.activeModel || p.model || models[0]?.id || '';
-
+function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): ProviderConfig {
 	return {
-		type,
+		type: (p.type as ProviderConfig['type']) || 'openai',
 		name: p.name || '',
 		apiKey: p.apiKey || '',
 		baseURL: p.baseURL || '',
-		activeModel,
-		models,
 		thinking: p.thinking,
 		reasoningEffort: p.reasoningEffort,
 		timeout: p.timeout,
@@ -63,6 +53,7 @@ export function readConfig(): AppConfig {
 				? parsed.providers.map((p) => normalizeProvider(p as Partial<ProviderConfig>))
 				: [],
 			activeProvider: parsed.activeProvider || '',
+			activeModel: parsed.activeModel || '',
 			storageEnabled: parsed.storageEnabled === true,
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
 			customBrandIcon: parsed.customBrandIcon === true,
@@ -113,6 +104,8 @@ export function addProvider(provider: ProviderConfig): AppConfig {
 
 	if (!config.activeProvider) {
 		config.activeProvider = provider.name;
+		const models = getDefaultModels(provider.type);
+		config.activeModel = models[0]?.id || '';
 	}
 
 	writeConfig(config);
@@ -130,6 +123,12 @@ export function removeProvider(name: string): AppConfig {
 
 	if (config.activeProvider === name) {
 		config.activeProvider = config.providers[0]?.name || '';
+		if (config.providers[0]) {
+			const models = getDefaultModels(config.providers[0].type);
+			config.activeModel = models[0]?.id || '';
+		} else {
+			config.activeModel = '';
+		}
 	}
 
 	writeConfig(config);
@@ -149,6 +148,19 @@ export function setActiveProvider(name: string): AppConfig {
 	}
 
 	config.activeProvider = name;
+	const provider = config.providers.find((p) => p.name === name)!;
+	const models = getDefaultModels(provider.type);
+	config.activeModel = models[0]?.id || '';
+	writeConfig(config);
+	return config;
+}
+
+/**
+ * 设置当前使用的模型 ID
+ */
+export function setActiveModel(modelId: string): AppConfig {
+	const config = readConfig();
+	config.activeModel = modelId;
 	writeConfig(config);
 	return config;
 }
@@ -164,9 +176,12 @@ export function getActiveProvider(): ProviderConfig | undefined {
 }
 
 export function getActiveModel(): ModelDef | undefined {
-	const provider = getActiveProvider();
-	if (!provider?.models) return undefined;
-	return provider.models.find((m) => m.id === provider.activeModel) || provider.models[0];
+	const config = readConfig();
+	const provider = config.providers.find((p) => p.name === config.activeProvider);
+	if (!provider) return undefined;
+	const models = getDefaultModels(provider.type);
+	if (!config.activeModel) return models[0];
+	return models.find((m) => m.id === config.activeModel) || models[0];
 }
 
 export function getContextWindow(): number {

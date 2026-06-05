@@ -1,4 +1,4 @@
-import { readConfig, getActiveProvider, getContextWindow } from '$lib/config';
+import { readConfig, getActiveProvider, getContextWindow, getActiveModel } from '$lib/config';
 import { createProvider } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
@@ -32,12 +32,20 @@ export async function POST({ request }: { request: Request }) {
 			});
 		}
 
-		const provider = createProvider(providerConfig);
+		const model = getActiveModel();
+		if (!model) {
+			return new Response(JSON.stringify({ error: '未选择模型，请先在设置中配置供应商' }), {
+				status: 400,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		const runtimeConfig = { ...providerConfig, activeModel: model.id, contextWindow: model.contextWindow };
+		const provider = createProvider(runtimeConfig);
 		const storage = createStorage({ enabled: config.storageEnabled });
 
-		if (!providerConfig.contextWindow) {
-			providerConfig.contextWindow = getContextWindow();
-		}
+		const contextWindow = getContextWindow();
+
 		const registry = new ToolRegistry();
 		registry.register(readFileTool);
 		registry.register(writeFileTool);
@@ -76,7 +84,7 @@ export async function POST({ request }: { request: Request }) {
 			message,
 			storage,
 			registry,
-			providerConfig,
+			contextWindow,
 			config.systemPrompt
 		);
 
@@ -89,7 +97,7 @@ export async function POST({ request }: { request: Request }) {
 				try {
 					for await (const event of agent.run(sid!, message, buildResult, clientMessageId)) {
 						if (event.type === 'done') {
-							send({ ...event, contextWindow: providerConfig.contextWindow });
+							send({ ...event, contextWindow });
 						} else {
 							send(event);
 						}
