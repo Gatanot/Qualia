@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pickerState, reasoningEffort, reasoningOptions, type ModelInfo } from '$lib/model-picker-state.svelte';
+	import { pickerState, activeModelDef, reasoningEffort, reasoningOptions } from '$lib/model-picker-state.svelte';
 
 	let showPopup = $state(false);
 
@@ -60,6 +60,12 @@
 		</div>
 	{/if}
 
+	{#if pickerState.config?.activeModel}
+		<button class="model-name-btn" onclick={togglePopup}>
+			{activeModelDef()?.name || pickerState.config.activeModel}
+		</button>
+	{/if}
+
 	{#if reasoningOptions().length > 0}
 		<select
 			class="reasoning-select"
@@ -106,6 +112,26 @@
 
 	.plus-btn .material-symbols-rounded {
 		font-size: 20px;
+	}
+
+	.model-name-btn {
+		font-family: inherit;
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+		background: transparent;
+		border: 1px solid var(--border-accent);
+		border-radius: var(--radius-pill);
+		padding: 0.25rem 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out);
+		white-space: nowrap;
+		font-weight: 400;
+	}
+
+	.model-name-btn:hover {
+		background: var(--bg-surface-hover);
+		border-color: var(--border-hover);
+		color: var(--text-primary);
 	}
 
 	.popup-backdrop {
