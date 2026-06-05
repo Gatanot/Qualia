@@ -127,26 +127,6 @@
 			<button class="model-name-btn" onclick={toggleModelPopup}>
 				{activeModelDef()?.name || pickerState.config.activeModel}
 			</button>
-
-			{#if showModelPopup}
-				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-				<div class="popup-backdrop" onclick={closeModelPopup} onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && closeModelPopup()} role="dialog" tabindex="-1">
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-					<div class="popup" onclick={(e: Event) => e.stopPropagation()} onkeydown={(e: Event) => e.stopPropagation()} role="document" tabindex="-1">
-						<div class="popup-title">选择模型</div>
-						{#each pickerState.allModels as m (m.id)}
-							<button
-								class="model-option"
-								class:active={pickerState.config?.activeModel === m.id}
-								onclick={() => selectModel(m.id)}
-							>
-								<span class="model-opt-name">{m.name}</span>
-								<span class="model-opt-provider">{m.providerName}</span>
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
 		{/if}
 		{#if reasoningOptions().length > 0}
 			<select
@@ -161,6 +141,28 @@
 			</select>
 		{/if}
 	</div>
+
+	{#if showModelPopup}
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div class="modal-overlay" onclick={closeModelPopup} onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && closeModelPopup()} role="dialog" tabindex="-1">
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<div class="modal" onclick={(e: Event) => e.stopPropagation()} onkeydown={(e: Event) => e.stopPropagation()} role="document" tabindex="-1">
+				<h3>选择模型</h3>
+				<div class="model-list">
+					{#each pickerState.allModels as m (m.id)}
+						<button
+							class="model-option"
+							class:active={pickerState.config?.activeModel === m.id}
+							onclick={() => selectModel(m.id)}
+						>
+							<span class="model-opt-name">{m.name}</span>
+							<span class="model-opt-provider">{m.providerName}</span>
+						</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -300,7 +302,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.5rem 0.5rem 0 1.5rem;
-		position: relative;
 	}
 
 	.model-name-btn {
@@ -351,35 +352,46 @@
 		border-color: var(--accent);
 	}
 
-	.popup-backdrop {
+	.modal-overlay {
 		position: fixed;
 		inset: 0;
+		background: var(--overlay-heavy);
+		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		z-index: 200;
 	}
 
-	.popup {
-		position: absolute;
-		bottom: calc(100% + 8px);
-		left: 0;
+	.modal {
 		background: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-xl);
-		padding: 0.75rem;
-		min-width: 240px;
-		box-shadow: var(--shadow-elevate);
-		animation: popupIn 0.2s var(--ease-out) forwards;
+		border-radius: var(--radius-3xl);
+		padding: 2rem;
+		width: 100%;
+		max-width: 360px;
+		max-height: 70vh;
+		overflow-y: auto;
+		box-shadow: var(--shadow-modal);
+		animation: modalIn 0.25s var(--ease-out) forwards;
 	}
 
-	@keyframes popupIn {
-		from { opacity: 0; transform: translateY(8px) scale(0.96); }
-		to { opacity: 1; transform: translateY(0) scale(1); }
+	@keyframes modalIn {
+		from { opacity: 0; transform: scale(0.94) translateY(12px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
-	.popup-title {
-		font-size: var(--text-sm);
-		color: var(--text-muted);
-		padding: 0.5rem 0.75rem 0.75rem;
+	.modal h3 {
+		margin: 0 0 1.25rem;
+		font-size: var(--text-xl);
 		font-weight: 500;
+		color: var(--text-primary);
+	}
+
+	.model-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
 	.model-option {
@@ -387,7 +399,7 @@
 		align-items: center;
 		justify-content: space-between;
 		width: 100%;
-		padding: 0.6rem 0.75rem;
+		padding: 0.75rem 1rem;
 		border: none;
 		border-radius: var(--radius-md);
 		background: transparent;
@@ -411,7 +423,7 @@
 	}
 
 	.model-opt-provider {
-		font-size: var(--text-xs);
+		font-size: var(--text-sm);
 		color: var(--text-muted);
 	}
 </style>
