@@ -1,4 +1,4 @@
-import { readConfig, getActiveProvider, getContextWindow, getActiveModel } from '$lib/config';
+import { readConfig, getProviderForModel, getContextWindow, getActiveModel } from '$lib/config';
 import { createProvider } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
@@ -24,9 +24,16 @@ export async function POST({ request }: { request: Request }) {
 		}
 
 		const config = readConfig();
-		const providerConfig = getActiveProvider();
+		if (!config.activeModel) {
+			return new Response(JSON.stringify({ error: '未选择模型，请先在设置中配置供应商' }), {
+				status: 400,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		const providerConfig = getProviderForModel(config.activeModel);
 		if (!providerConfig) {
-			return new Response(JSON.stringify({ error: '未配置活跃的 AI 供应商，请先在设置中添加' }), {
+			return new Response(JSON.stringify({ error: '未找到对应模型的供应商配置' }), {
 				status: 400,
 				headers: { 'Content-Type': 'application/json' }
 			});
@@ -34,7 +41,7 @@ export async function POST({ request }: { request: Request }) {
 
 		const model = getActiveModel();
 		if (!model) {
-			return new Response(JSON.stringify({ error: '未选择模型，请先在设置中配置供应商' }), {
+			return new Response(JSON.stringify({ error: '未选择模型' }), {
 				status: 400,
 				headers: { 'Content-Type': 'application/json' }
 			});

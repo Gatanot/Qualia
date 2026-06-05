@@ -40,12 +40,31 @@ export const DEEPSEEK_MODELS: ModelDef[] = [
 	}
 ];
 
+export const XIAOMI_MODELS: ModelDef[] = [
+	{
+		id: 'mimo-v2.5',
+		name: 'MiMo V2.5',
+		contextWindow: 1_048_576,
+		supportsReasoning: true,
+		reasoningEffortValues: []
+	},
+	{
+		id: 'mimo-v2.5-pro',
+		name: 'MiMo V2.5 Pro',
+		contextWindow: 1_048_576,
+		supportsReasoning: true,
+		reasoningEffortValues: []
+	}
+];
+
 export function getDefaultModels(type: string): ModelDef[] {
 	switch (type) {
 		case 'openai':
 			return [...OPENAI_MODELS];
 		case 'deepseek':
 			return [...DEEPSEEK_MODELS];
+		case 'xiaomi':
+			return [...XIAOMI_MODELS];
 		default:
 			return [];
 	}

@@ -13,7 +13,6 @@ function getConfigPath(): string {
 
 const defaultConfig: AppConfig = {
 	providers: [],
-	activeProvider: '',
 	activeModel: '',
 	storageEnabled: false,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
@@ -52,7 +51,6 @@ export function readConfig(): AppConfig {
 			providers: Array.isArray(parsed.providers)
 				? parsed.providers.map((p) => normalizeProvider(p as Partial<ProviderConfig>))
 				: [],
-			activeProvider: parsed.activeProvider || '',
 			activeModel: parsed.activeModel || '',
 			storageEnabled: parsed.storageEnabled === true,
 			systemPrompt: parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT,
@@ -68,12 +66,6 @@ export function readConfig(): AppConfig {
 	}
 }
 
-/**
- * 持久化配置到 JSON 文件
- *
- * 自动创建 data/ 目录（如果不存在）。
- * 使用先写临时文件再 rename 的原子写入策略，防止崩溃导致配置丢失。
- */
 export function writeConfig(config: AppConfig): void {
 	const path = getConfigPath();
 	const dir = join(path, '..');
@@ -87,11 +79,6 @@ export function writeConfig(config: AppConfig): void {
 	renameSync(tmpPath, path);
 }
 
-/**
- * 添加或更新一个供应商配置
- *
- * 同名配置会被覆盖。如果是第一个添加的供应商，自动设为活跃。
- */
 export function addProvider(provider: ProviderConfig): AppConfig {
 	const config = readConfig();
 
@@ -102,8 +89,7 @@ export function addProvider(provider: ProviderConfig): AppConfig {
 		config.providers.push(provider);
 	}
 
-	if (!config.activeProvider) {
-		config.activeProvider = provider.name;
+	if (!config.activeModel) {
 		const models = getDefaultModels(provider.type);
 		config.activeModel = models[0]?.id || '';
 	}
@@ -112,52 +98,20 @@ export function addProvider(provider: ProviderConfig): AppConfig {
 	return config;
 }
 
-/**
- * 删除指定名称的供应商配置
- *
- * 如果删除的是活跃供应商，自动切换到第一个可用供应商。
- */
 export function removeProvider(name: string): AppConfig {
 	const config = readConfig();
 	config.providers = config.providers.filter((p) => p.name !== name);
 
-	if (config.activeProvider === name) {
-		config.activeProvider = config.providers[0]?.name || '';
-		if (config.providers[0]) {
-			const models = getDefaultModels(config.providers[0].type);
-			config.activeModel = models[0]?.id || '';
-		} else {
-			config.activeModel = '';
-		}
+	const provider = getProviderForModel(config.activeModel);
+	if (!provider) {
+		const first = config.providers[0];
+		config.activeModel = first ? (getDefaultModels(first.type)[0]?.id || '') : '';
 	}
 
 	writeConfig(config);
 	return config;
 }
 
-/**
- * 设置活跃供应商
- *
- * @throws 供应商名称不存在时抛出错误
- */
-export function setActiveProvider(name: string): AppConfig {
-	const config = readConfig();
-
-	if (!config.providers.some((p) => p.name === name)) {
-		throw new Error(`Provider "${name}" not found`);
-	}
-
-	config.activeProvider = name;
-	const provider = config.providers.find((p) => p.name === name)!;
-	const models = getDefaultModels(provider.type);
-	config.activeModel = models[0]?.id || '';
-	writeConfig(config);
-	return config;
-}
-
-/**
- * 设置当前使用的模型 ID
- */
 export function setActiveModel(modelId: string): AppConfig {
 	const config = readConfig();
 	config.activeModel = modelId;
@@ -165,23 +119,41 @@ export function setActiveModel(modelId: string): AppConfig {
 	return config;
 }
 
-/**
- * 获取当前活跃的供应商配置
- *
- * @returns 活跃供应商配置，无活跃供应商时返回 undefined
- */
-export function getActiveProvider(): ProviderConfig | undefined {
+export function getProviderForModel(modelId: string): ProviderConfig | undefined {
 	const config = readConfig();
-	return config.providers.find((p) => p.name === config.activeProvider);
+	for (const provider of config.providers) {
+		const models = getDefaultModels(provider.type);
+		if (models.some((m) => m.id === modelId)) {
+			return provider;
+		}
+	}
+	return undefined;
+}
+
+export function getAllAvailableModels(): { model: ModelDef; providerName: string }[] {
+	const config = readConfig();
+	const result: { model: ModelDef; providerName: string }[] = [];
+	for (const provider of config.providers) {
+		for (const model of getDefaultModels(provider.type)) {
+			result.push({ model, providerName: provider.name });
+		}
+	}
+	return result;
+}
+
+export function getFirstProvider(): ProviderConfig | undefined {
+	return readConfig().providers.find((p) => p.apiKey);
 }
 
 export function getActiveModel(): ModelDef | undefined {
 	const config = readConfig();
-	const provider = config.providers.find((p) => p.name === config.activeProvider);
-	if (!provider) return undefined;
-	const models = getDefaultModels(provider.type);
-	if (!config.activeModel) return models[0];
-	return models.find((m) => m.id === config.activeModel) || models[0];
+	if (!config.activeModel) return undefined;
+	for (const provider of config.providers) {
+		const models = getDefaultModels(provider.type);
+		const model = models.find((m) => m.id === config.activeModel);
+		if (model) return model;
+	}
+	return undefined;
 }
 
 export function getContextWindow(): number {

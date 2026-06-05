@@ -2,7 +2,6 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import SessionSidebar from '$lib/components/SessionSidebar.svelte';
 	import { initTheme } from '$lib/theme';
-	import { getDefaultModels } from '$lib/provider';
 	import type { AppConfig } from '$lib/config';
 	import 'katex/dist/katex.min.css';
 
@@ -10,13 +9,8 @@
 
 	let sidebarOpen = $state(false);
 	let customIcon = $state(false);
-	let config = $state<AppConfig>({ providers: [], activeProvider: '', activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
-
-	let availableModels = $derived.by(() => {
-		const provider = config.providers.find((p) => p.name === config.activeProvider);
-		if (!provider) return [];
-		return getDefaultModels(provider.type);
-	});
+	let config = $state<AppConfig>({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
+	let allModels = $state<{ id: string; name: string; providerName: string }[]>([]);
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -26,11 +20,16 @@
 		sidebarOpen = false;
 	}
 
-	function loadConfig() {
-		fetch('/api/config')
-			.then((r) => r.json())
-			.then((c) => { config = c; customIcon = c.customBrandIcon === true; })
-			.catch(() => {});
+	async function loadConfig() {
+		const res = await fetch('/api/config');
+		if (!res.ok) return;
+		const c = await res.json();
+		config = c;
+		customIcon = c.customBrandIcon === true;
+		const modelsRes = await fetch('/api/models');
+		if (modelsRes.ok) {
+			allModels = await modelsRes.json();
+		}
 	}
 
 	async function selectModel(modelId: string) {
@@ -74,13 +73,13 @@
 			</button>
 			<a href="/" class="app-title">Qualia</a>
 			<div class="header-right">
-				{#if availableModels.length > 0}
+				{#if allModels.length > 0}
 					<select
 						class="model-select"
 						value={config.activeModel}
 						onchange={(e: Event) => selectModel((e.target as HTMLSelectElement).value)}
 					>
-						{#each availableModels as m}
+						{#each allModels as m (m.id)}
 							<option value={m.id}>{m.name}</option>
 						{/each}
 					</select>

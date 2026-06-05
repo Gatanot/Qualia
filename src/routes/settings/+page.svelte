@@ -17,7 +17,7 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeProvider: '', activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -64,7 +64,6 @@
 		config = {
 			...config,
 			providers: updated.providers as AppConfig['providers'],
-			activeProvider: updated.activeProvider as string,
 			activeModel: updated.activeModel as string
 		};
 	}
@@ -103,7 +102,6 @@
 			{:else if activeTab === 'provider'}
 				<ProviderManager
 					providers={config.providers}
-					activeProvider={config.activeProvider}
 					loading={loading}
 					onconfigchange={onProvidersChange}
 				/>

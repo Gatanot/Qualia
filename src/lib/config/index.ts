@@ -14,9 +14,10 @@ export {
 	writeConfig,
 	addProvider,
 	removeProvider,
-	setActiveProvider,
 	setActiveModel,
-	getActiveProvider,
+	getProviderForModel,
+	getAllAvailableModels,
+	getFirstProvider,
 	getActiveModel,
 	getContextWindow
 } from './store';

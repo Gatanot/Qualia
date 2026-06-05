@@ -1,5 +1,5 @@
-import { readConfig, getActiveProvider, getActiveModel } from '$lib/config';
-import { createProvider } from '$lib/provider';
+import { readConfig, getFirstProvider, getActiveModel } from '$lib/config';
+import { createProvider, getDefaultModels } from '$lib/provider';
 import { createStorage } from '$lib/storage';
 import { generateSummary } from './summarizer';
 import { generateDiary } from './diary';
@@ -15,12 +15,12 @@ export async function runSummarizeJob(force?: boolean, idleMs?: number | null): 
 		throw new Error('对话存储未开启');
 	}
 
-	const providerConfig = getActiveProvider();
+	const providerConfig = getFirstProvider();
 	if (!providerConfig?.apiKey) {
-		throw new Error('未配置活跃的 AI 供应商');
+		throw new Error('未配置 AI 供应商');
 	}
 
-	const model = getActiveModel();
+	const model = getActiveModel() || getDefaultModels(providerConfig.type)[0];
 	if (!model) {
 		throw new Error('未选择模型');
 	}

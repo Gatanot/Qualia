@@ -1,5 +1,5 @@
 export interface ProviderConfig {
-	type: 'openai' | 'deepseek';
+	type: 'openai' | 'deepseek' | 'xiaomi';
 	name: string;
 	apiKey: string;
 	baseURL: string;
@@ -13,7 +13,6 @@ export interface ProviderConfig {
 
 export interface AppConfig {
 	providers: ProviderConfig[];
-	activeProvider: string;
 	activeModel: string;
 	storageEnabled: boolean;
 	systemPrompt: string;

@@ -16,7 +16,7 @@
 		fetch('/api/config')
 			.then((r) => r.json())
 			.then((config) => {
-				hasProvider = !!(config.activeProvider && config.providers?.length > 0);
+				hasProvider = !!(config.providers?.length > 0);
 				checkedProvider = true;
 				customIcon = config.customBrandIcon === true;
 			})

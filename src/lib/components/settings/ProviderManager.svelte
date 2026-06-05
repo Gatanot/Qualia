@@ -1,9 +1,8 @@
 <script lang="ts">
 	import type { ProviderConfig } from '$lib/config';
 
-	let { providers, activeProvider, loading, onconfigchange }: {
+	let { providers, loading, onconfigchange }: {
 		providers: ProviderConfig[];
-		activeProvider: string;
 		loading: boolean;
 		onconfigchange: (config: Record<string, unknown>) => void;
 	} = $props();
@@ -93,17 +92,6 @@
 			onconfigchange(await res.json());
 		}
 	}
-
-	async function setActive(name: string) {
-		const res = await fetch('/api/config', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'setActiveProvider', name })
-		});
-		if (res.ok) {
-			onconfigchange(await res.json());
-		}
-	}
 </script>
 
 <section class="section">
@@ -125,25 +113,17 @@
 	{:else}
 		<div class="provider-list">
 			{#each providers as p (p.name)}
-				<div class="provider-card" class:active={p.name === activeProvider}>
+				<div class="provider-card">
 					<div class="provider-info">
 						<div class="provider-name">
 							{p.name}
-							{#if p.name === activeProvider}
-								<span class="badge">当前使用</span>
-							{/if}
 						</div>
 						<div class="provider-meta">
-							<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : 'OpenAI 兼容'}</span>
+							<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : p.type === 'xiaomi' ? 'Xiaomi MiMo' : 'OpenAI 兼容'}</span>
 							<span>密钥：{maskKey(p.apiKey)}</span>
 						</div>
 					</div>
 					<div class="provider-actions">
-						{#if p.name !== activeProvider}
-							<button class="btn btn-sm" onclick={() => setActive(p.name)}>
-								设为当前
-							</button>
-						{/if}
 						<button class="btn btn-sm" onclick={() => openEdit(p)}>编辑</button>
 						<button class="btn btn-sm btn-danger" onclick={() => removeProvider(p.name)}>
 							删除
@@ -167,6 +147,7 @@
 					<select name="type" bind:value={formType}>
 						<option value="openai">OpenAI 兼容</option>
 						<option value="deepseek">DeepSeek</option>
+						<option value="xiaomi">Xiaomi MiMo</option>
 					</select>
 				</label>
 				<label>
@@ -174,7 +155,7 @@
 					<input
 						name="name"
 						type="text"
-						placeholder="例如：我的 DeepSeek"
+						placeholder="例如：我的 MiMo"
 						value={editingProvider?.name || ''}
 						required
 					/>
@@ -194,13 +175,13 @@
 					<input
 						name="baseURL"
 						type="text"
-						placeholder={formType === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.openai.com/v1'}
+						placeholder={formType === 'deepseek' ? 'https://api.deepseek.com/v1' : formType === 'xiaomi' ? 'https://api.xiaomimimo.com/v1' : 'https://api.openai.com/v1'}
 						value={editingProvider?.baseURL || ''}
 						required
 					/>
 				</label>
 
-				{#if formType === 'deepseek'}
+				{#if formType === 'deepseek' || formType === 'xiaomi'}
 					<label>
 						思考模式
 						<select name="thinking">
@@ -208,6 +189,8 @@
 							<option value="disabled" selected={editingProvider?.thinking === 'disabled'}>关闭</option>
 						</select>
 					</label>
+				{/if}
+				{#if formType === 'deepseek'}
 					<label>
 						推理深度
 						<select name="reasoningEffort">
@@ -329,12 +312,6 @@
 		box-shadow: var(--shadow-xs);
 	}
 
-	.provider-card.active {
-		border-color: var(--accent);
-		background: var(--bg-surface-alt);
-		box-shadow: var(--shadow-focus);
-	}
-
 	.provider-name {
 		font-weight: 500;
 		color: var(--text-primary);
@@ -343,15 +320,6 @@
 		gap: 0.6rem;
 		margin-bottom: 0.5rem;
 		font-size: var(--text-md);
-	}
-
-	.badge {
-		font-size: 0.72rem;
-		background: var(--accent);
-		color: var(--text-on-accent);
-		padding: 0.25rem 0.8rem;
-		border-radius: var(--radius-pill);
-		font-weight: 500;
 	}
 
 	.provider-meta {
