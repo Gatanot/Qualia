@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pickerState, activeModelDef, reasoningEffort, reasoningOptions } from '$lib/model-picker-state.svelte';
+	import { pickerState, reasoningOptions } from '$lib/model-picker-state.svelte';
 
 	let showPopup = $state(false);
 
@@ -21,17 +21,6 @@
 			pickerState.config = await res.json();
 		}
 		showPopup = false;
-	}
-
-	async function selectReasoning(value: string) {
-		const res = await fetch('/api/config', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'setReasoningEffort', value: value || null })
-		});
-		if (res.ok) {
-			pickerState.config = await res.json();
-		}
 	}
 </script>
 
@@ -58,25 +47,6 @@
 				{/each}
 			</div>
 		</div>
-	{/if}
-
-	{#if pickerState.config?.activeModel}
-		<button class="model-name-btn" onclick={togglePopup}>
-			{activeModelDef()?.name || pickerState.config.activeModel}
-		</button>
-	{/if}
-
-	{#if reasoningOptions().length > 0}
-		<select
-			class="reasoning-select"
-			value={reasoningEffort() || ''}
-			onchange={(e: Event) => selectReasoning((e.target as HTMLSelectElement).value)}
-		>
-			<option value="">不思考</option>
-			{#each reasoningOptions() as v}
-				<option value={v}>{v === 'enabled' ? '开启' : v}</option>
-			{/each}
-		</select>
 	{/if}
 </div>
 
@@ -112,26 +82,6 @@
 
 	.plus-btn .material-symbols-rounded {
 		font-size: 20px;
-	}
-
-	.model-name-btn {
-		font-family: inherit;
-		font-size: 0.78rem;
-		color: var(--text-secondary);
-		background: transparent;
-		border: 1px solid var(--border-accent);
-		border-radius: var(--radius-pill);
-		padding: 0.25rem 0.75rem;
-		cursor: pointer;
-		transition: all 0.2s var(--ease-out);
-		white-space: nowrap;
-		font-weight: 400;
-	}
-
-	.model-name-btn:hover {
-		background: var(--bg-surface-hover);
-		border-color: var(--border-hover);
-		color: var(--text-primary);
 	}
 
 	.popup-backdrop {
@@ -196,33 +146,5 @@
 	.model-provider {
 		font-size: var(--text-xs);
 		color: var(--text-muted);
-	}
-
-	.reasoning-select {
-		font-family: inherit;
-		font-size: 0.78rem;
-		color: var(--text-secondary);
-		background: transparent;
-		border: 1px solid var(--border-accent);
-		border-radius: var(--radius-pill);
-		padding: 0.25rem 1.75rem 0.25rem 0.6rem;
-		cursor: pointer;
-		appearance: none;
-		-webkit-appearance: none;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237A726A' d='M2 3l3 3 3-3'/%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 0.4rem center;
-		transition: border-color 0.2s var(--ease-out);
-		white-space: nowrap;
-		max-width: 80px;
-	}
-
-	.reasoning-select:hover {
-		border-color: var(--border-hover);
-	}
-
-	.reasoning-select:focus {
-		outline: none;
-		border-color: var(--accent);
 	}
 </style>

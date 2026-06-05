@@ -1,5 +1,6 @@
 <script lang="ts">
 	import InlineModelPicker from './InlineModelPicker.svelte';
+	import { pickerState, activeModelDef, reasoningEffort, reasoningOptions } from '$lib/model-picker-state.svelte';
 
 	let { value = $bindable(''), streaming = false, queueCount = 0, onsend, onstop, focusTrigger = 0 }: {
 		value: string;
@@ -24,6 +25,17 @@
 
 	let hasInput = $derived(value.trim().length > 0);
 	const MAX_HEIGHT = 300;
+
+	async function selectReasoning(value: string) {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'setReasoningEffort', value: value || null })
+		});
+		if (res.ok) {
+			pickerState.config = await res.json();
+		}
+	}
 
 	function autoResize() {
 		const el = textareaEl;
@@ -86,6 +98,26 @@
 				{streaming ? 'stop' : 'send'}
 			</span>
 		</button>
+	</div>
+
+	<div class="input-footer">
+		{#if pickerState.config?.activeModel}
+			<button class="model-name-btn" onclick={() => {}}>
+				{activeModelDef()?.name || pickerState.config.activeModel}
+			</button>
+		{/if}
+		{#if reasoningOptions().length > 0}
+			<select
+				class="reasoning-select"
+				value={reasoningEffort() || ''}
+				onchange={(e: Event) => selectReasoning((e.target as HTMLSelectElement).value)}
+			>
+				<option value="">不思考</option>
+				{#each reasoningOptions() as v}
+					<option value={v}>{v === 'enabled' ? '开启' : v}</option>
+				{/each}
+			</select>
+		{/if}
 	</div>
 </div>
 
@@ -219,5 +251,60 @@
 
 	.send-btn.stop-btn:hover .material-symbols-rounded {
 		transform: rotate(0deg);
+	}
+
+	.input-footer {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.5rem 0 1.5rem;
+	}
+
+	.model-name-btn {
+		font-family: inherit;
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+		background: transparent;
+		border: 1px solid var(--border-accent);
+		border-radius: var(--radius-pill);
+		padding: 0.2rem 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out);
+		white-space: nowrap;
+		font-weight: 400;
+	}
+
+	.model-name-btn:hover {
+		background: var(--bg-surface-hover);
+		border-color: var(--border-hover);
+		color: var(--text-primary);
+	}
+
+	.reasoning-select {
+		font-family: inherit;
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+		background: transparent;
+		border: 1px solid var(--border-accent);
+		border-radius: var(--radius-pill);
+		padding: 0.2rem 1.75rem 0.2rem 0.6rem;
+		cursor: pointer;
+		appearance: none;
+		-webkit-appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237A726A' d='M2 3l3 3 3-3'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.4rem center;
+		transition: border-color 0.2s var(--ease-out);
+		white-space: nowrap;
+		max-width: 80px;
+	}
+
+	.reasoning-select:hover {
+		border-color: var(--border-hover);
+	}
+
+	.reasoning-select:focus {
+		outline: none;
+		border-color: var(--accent);
 	}
 </style>
