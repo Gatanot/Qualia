@@ -1,4 +1,6 @@
 <script lang="ts">
+	import InlineModelPicker from './InlineModelPicker.svelte';
+
 	let { value = $bindable(''), streaming = false, queueCount = 0, onsend, onstop, focusTrigger = 0 }: {
 		value: string;
 		streaming: boolean;
@@ -64,6 +66,7 @@
 	{/if}
 
 	<div class="input-bar">
+		<InlineModelPicker />
 		<textarea
 			class="chat-input"
 			bind:value

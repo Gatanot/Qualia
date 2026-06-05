@@ -2,33 +2,13 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import SessionSidebar from '$lib/components/SessionSidebar.svelte';
 	import { initTheme } from '$lib/theme';
-	import type { AppConfig } from '$lib/config';
+	import { pickerState } from '$lib/model-picker-state.svelte';
 	import 'katex/dist/katex.min.css';
 
 	let { children } = $props();
 
 	let sidebarOpen = $state(false);
 	let customIcon = $state(false);
-	let config = $state<AppConfig>({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
-	let allModels = $state<{ id: string; name: string; providerName: string; supportsReasoning: boolean; reasoningEffortValues: string[] }[]>([]);
-
-	let activeModelDef = $derived(allModels.find((m) => m.id === config.activeModel));
-
-	let reasoningEffort = $derived.by(() => {
-		if (!config.activeModel) return undefined;
-		const provider = config.providers.find((p) => {
-			const models = allModels.filter((m) => m.providerName === p.name);
-			return models.some((m) => m.id === config.activeModel);
-		});
-		return provider?.reasoningEffort;
-	});
-
-	let reasoningOptions = $derived.by(() => {
-		if (!activeModelDef?.supportsReasoning) return [];
-		const values = activeModelDef.reasoningEffortValues;
-		if (values.length > 0) return values;
-		return ['enabled'];
-	});
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -42,33 +22,11 @@
 		const res = await fetch('/api/config');
 		if (!res.ok) return;
 		const c = await res.json();
-		config = c;
+		pickerState.config = c;
 		customIcon = c.customBrandIcon === true;
 		const modelsRes = await fetch('/api/models');
 		if (modelsRes.ok) {
-			allModels = await modelsRes.json();
-		}
-	}
-
-	async function selectModel(modelId: string) {
-		const res = await fetch('/api/config', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'setActiveModel', modelId })
-		});
-		if (res.ok) {
-			config = await res.json();
-		}
-	}
-
-	async function selectReasoning(value: string) {
-		const res = await fetch('/api/config', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'setReasoningEffort', value: value || null })
-		});
-		if (res.ok) {
-			config = await res.json();
+			pickerState.allModels = await modelsRes.json();
 		}
 	}
 
@@ -102,29 +60,6 @@
 			</button>
 			<a href="/" class="app-title">Qualia</a>
 			<div class="header-right">
-				{#if allModels.length > 0}
-					<select
-						class="model-select"
-						value={config.activeModel}
-						onchange={(e: Event) => selectModel((e.target as HTMLSelectElement).value)}
-					>
-						{#each allModels as m (m.id)}
-							<option value={m.id}>{m.name}</option>
-						{/each}
-					</select>
-				{/if}
-				{#if reasoningOptions.length > 0}
-					<select
-						class="model-select reasoning-select"
-						value={reasoningEffort || ''}
-						onchange={(e: Event) => selectReasoning((e.target as HTMLSelectElement).value)}
-					>
-						<option value="">不思考</option>
-						{#each reasoningOptions as v}
-							<option value={v}>{v === 'enabled' ? '开启' : v}</option>
-						{/each}
-					</select>
-				{/if}
 				<a href="/" class="icon-btn new-chat-btn">
 					<span class="material-symbols-rounded">add_comment</span>
 				</a>
@@ -477,38 +412,6 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-	}
-
-	.model-select {
-		font-family: inherit;
-		font-size: var(--text-sm);
-		color: var(--text-primary);
-		background: var(--bg-surface);
-		border: 1px solid var(--border-accent);
-		border-radius: var(--radius-pill);
-		padding: 0.4rem 2rem 0.4rem 1rem;
-		cursor: pointer;
-		appearance: none;
-		-webkit-appearance: none;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A726A' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 0.6rem center;
-		transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
-		white-space: nowrap;
-	}
-
-	.model-select:hover {
-		border-color: var(--border-hover);
-	}
-
-	.model-select:focus {
-		outline: none;
-		border-color: var(--accent);
-		box-shadow: var(--shadow-focus);
-	}
-
-	.reasoning-select {
-		max-width: 110px;
 	}
 
 	main {

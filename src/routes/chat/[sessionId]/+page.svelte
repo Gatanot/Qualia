@@ -7,6 +7,7 @@
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
 	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
+	import { pickerState } from '$lib/model-picker-state.svelte';
 
 	let sessionId = $derived($page.params.sessionId);
 	let messages = $state<UIMessage[]>([]);
@@ -44,23 +45,11 @@
 	});
 
 	$effect(() => {
-		fetch('/api/config')
-			.then(r => r.json())
-			.then((config) => {
-				if (config.activeModel) {
-					fetch('/api/models')
-						.then(r => r.json())
-						.then((models: Array<{ id: string; contextWindow: number }>) => {
-							const model = models.find((m: { id: string }) => m.id === config.activeModel);
-							if (model?.contextWindow) {
-								contextWindow = model.contextWindow;
-							}
-						})
-						.catch(() => {});
-				}
-				customIcon = config.customBrandIcon === true;
-			})
-			.catch(() => {});
+		const model = pickerState.allModels.find((m) => m.id === pickerState.config?.activeModel);
+		if (model?.contextWindow) {
+			contextWindow = model.contextWindow;
+		}
+		customIcon = pickerState.config?.customBrandIcon === true;
 	});
 
 	$effect(() => {
