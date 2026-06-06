@@ -409,24 +409,6 @@
 		}
 	}
 
-	async function handleEdit(messageId: string, newContent: string) {
-		if (streaming) {
-			stopAI();
-			await new Promise((r) => setTimeout(r, 100));
-		}
-		await fetch('/api/messages', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'deleteFrom', sessionId, messageId })
-		});
-		const idx = messages.findIndex((m) => m.id === messageId);
-		if (idx !== -1) {
-			messages.splice(idx);
-		}
-		loadSessions();
-		sendMessage(newContent);
-	}
-
 	async function handleSSEEvent(event: Record<string, unknown>) {
 		switch (event.type) {
 			case 'content': {
@@ -596,7 +578,7 @@
 		{/if}
 
 		{#each messages as msg (msg.id)}
-			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} onfork={handleFork} onedit={handleEdit} />
+			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} onfork={handleFork} />
 		{/each}
 
 		{#if cumulativeUsage.total > 0}

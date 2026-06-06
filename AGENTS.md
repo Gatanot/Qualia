@@ -143,3 +143,4 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 - `process.cwd()` is used as the workspace root for tool path safety checks
 - `src/lib/index.ts` is a SvelteKit scaffold placeholder with no meaningful exports — do not treat it as a barrel file
 - Model definitions (IDs, context windows, reasoning support) live in `src/lib/provider/models.ts`. Add new models there if extending provider support.
+- 消息编辑重生成功能**不需要**单独实现。已有的「回退到此」功能（双击 undo 按钮）会删除该消息及后续所有内容并将原文放入输入框，用户在输入框中修改后重新发送即可达到相同效果。

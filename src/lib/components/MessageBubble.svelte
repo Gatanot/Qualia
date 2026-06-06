@@ -5,13 +5,12 @@
 	import ReasoningBlock from './ReasoningBlock.svelte';
 	import { renderMarkdown } from '$lib/markdown';
 
-	let { message, onconfirm, onrecovery, onrollback, onfork, onedit }: {
+	let { message, onconfirm, onrecovery, onrollback, onfork }: {
 		message: UIMessage;
 		onconfirm?: (confirmId: string, approved: boolean) => void;
 		onrecovery?: (action: 'retry' | 'rollback') => void;
 		onrollback?: (messageId: string) => void;
 		onfork?: (messageId: string) => void;
-		onedit?: (messageId: string, content: string) => void;
 	} = $props();
 
 	let roleLabel = $derived(
@@ -21,8 +20,6 @@
 	const htmlCache = new Map<string, string>();
 	let rollbackConfirm = $state(false);
 	let confirmTimer: ReturnType<typeof setTimeout> | null = null;
-	let editing = $state(false);
-	let editText = $state('');
 
 	function getUserText(): string {
 		return message.blocks
@@ -72,55 +69,15 @@
 	function handleFork() {
 		onfork?.(message.id);
 	}
-
-	function handleEditStart() {
-		editText = getUserText();
-		editing = true;
-	}
-
-	function handleEditCancel() {
-		editing = false;
-		editText = '';
-	}
-
-	function handleEditSubmit() {
-		const text = editText.trim();
-		if (!text) return;
-		editing = false;
-		editText = '';
-		onedit?.(message.id, text);
-	}
-
-	function handleEditKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			handleEditCancel();
-		}
-	}
 </script>
 
-<div class="message-row" class:user={message.role === 'user'} class:error={message.role === 'error'} class:editing>
+<div class="message-row" class:user={message.role === 'user'} class:error={message.role === 'error'}>
 	<div class="message-body">
 		{#if message.role !== 'user'}
 			<div class="message-role">{roleLabel}</div>
 		{/if}
 
-		{#if editing}
-			<textarea
-				class="edit-textarea"
-				bind:value={editText}
-				onkeydown={handleEditKeydown}
-				rows={4}
-			></textarea>
-			<div class="edit-actions-inline">
-				<button class="action-btn" onclick={handleEditCancel} title="取消">
-					<span class="material-symbols-rounded">close</span>
-				</button>
-				<button class="action-btn action-btn-send" onclick={handleEditSubmit} title="发送">
-					<span class="material-symbols-rounded">send</span>
-				</button>
-			</div>
-		{:else}
-			{#each message.blocks as block, i (i)}
+		{#each message.blocks as block, i (i)}
 				{#if block.type === 'text'}
 					{#if isLiveBlock(block, i)}
 						<div class="message-content">{block.content}</div>
@@ -162,13 +119,10 @@
 			<span class="cursor">|</span>
 		{/if}
 
-		{#if message.role === 'user' && message.done && !editing}
+		{#if message.role === 'user' && message.done}
 			<div class="msg-actions">
 				<button class="action-btn" onclick={handleCopy} title="复制">
 					<span class="material-symbols-rounded">content_copy</span>
-				</button>
-				<button class="action-btn" onclick={handleEditStart} title="编辑">
-					<span class="material-symbols-rounded">edit</span>
 				</button>
 				<button class="action-btn" onclick={handleFork} title="分叉">
 					<span class="material-symbols-rounded">call_split</span>
@@ -186,7 +140,6 @@
 				</button>
 			</div>
 		{/if}
-	{/if}
 	</div>
 </div>
 
@@ -225,10 +178,6 @@
 		align-items: flex-end;
 		width: auto;
 		max-width: 85%;
-	}
-
-	.message-row.editing.user .message-body {
-		width: 100%;
 	}
 
 	.message-role {
@@ -538,39 +487,6 @@
 		height: auto;
 		border-radius: var(--radius-lg);
 		display: block;
-	}
-
-	.edit-textarea {
-		width: 100%;
-		padding: 1.25rem 1.5rem;
-		border: 2px solid var(--accent);
-		border-radius: 22px 6px 22px 22px;
-		background: var(--bg-surface);
-		color: var(--text-primary);
-		font-family: inherit;
-		font-size: var(--text-md);
-		line-height: 1.7;
-		resize: vertical;
-		outline: none;
-		box-shadow: var(--shadow-bubble-user);
-		transition: border-color 0.2s var(--ease-out);
-		box-sizing: border-box;
-	}
-
-	.edit-textarea:focus {
-		border-color: var(--accent-link);
-	}
-
-	.edit-actions-inline {
-		display: flex;
-		gap: 0.25rem;
-		justify-content: flex-end;
-		margin-top: 0.25rem;
-		opacity: 1;
-	}
-
-	.action-btn-send {
-		color: var(--accent) !important;
 	}
 
 	@keyframes cursorBlink {
