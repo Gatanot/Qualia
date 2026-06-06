@@ -93,7 +93,7 @@ export const writeMemoryTool: ToolDef = {
 
 		try {
 			ensureMemoryFile();
-			const current = readFileSync(MEMORY_PATH, 'utf-8');
+			const current = readFileSync(MEMORY_PATH, 'utf-8').replace(/\r/g, '');
 			const updated = updateSection(current, category, content.trim());
 			writeFileSync(MEMORY_PATH, updated, 'utf-8');
 

@@ -18,7 +18,7 @@ const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
 function readMemoryFile(): string {
 	try {
 		if (existsSync(MEMORY_PATH)) {
-			return readFileSync(MEMORY_PATH, 'utf-8').trim();
+			return readFileSync(MEMORY_PATH, 'utf-8').replace(/\r/g, '').trim();
 		}
 	} catch {
 	}
