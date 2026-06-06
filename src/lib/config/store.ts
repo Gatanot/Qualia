@@ -36,7 +36,8 @@ function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): Prov
 		baseURL: p.baseURL || '',
 		reasoningEffort: p.reasoningEffort,
 		timeout: p.timeout,
-		maxRetries: p.maxRetries
+		maxRetries: p.maxRetries,
+		ollamaURL: p.ollamaURL || 'http://localhost:11434'
 	};
 }
 
@@ -130,7 +131,10 @@ export function setReasoningEffort(value: string | null): AppConfig {
 	const config = readConfig();
 	const provider = config.providers.find((p) => {
 		const models = getDefaultModels(p.type);
-		return models.some((m) => m.id === config.activeModel);
+		if (models.length > 0) {
+			return models.some((m) => m.id === config.activeModel);
+		}
+		return p.type === 'ollama' && !!config.activeModel;
 	});
 	if (provider) {
 		provider.reasoningEffort = value || undefined;
@@ -147,6 +151,8 @@ export function getProviderForModel(modelId: string): ProviderConfig | undefined
 			return provider;
 		}
 	}
+	const ollama = config.providers.find((p) => p.type === 'ollama');
+	if (ollama) return ollama;
 	return undefined;
 }
 
@@ -172,6 +178,16 @@ export function getActiveModel(): ModelDef | undefined {
 		const models = getDefaultModels(provider.type);
 		const model = models.find((m) => m.id === config.activeModel);
 		if (model) return model;
+	}
+	if (config.providers.some((p) => p.type === 'ollama')) {
+		return {
+			id: config.activeModel,
+			name: config.activeModel,
+			contextWindow: 128_000,
+			supportsReasoning: false,
+			reasoningEffortValues: [],
+			supportsVision: false
+		};
 	}
 	return undefined;
 }

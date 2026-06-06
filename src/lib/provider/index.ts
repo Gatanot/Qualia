@@ -47,6 +47,8 @@ export { DeepSeekProvider } from './deepseek';
 export type { DeepSeekConfig } from './deepseek';
 export { XiaomiProvider } from './xiaomi';
 export type { XiaomiConfig } from './xiaomi';
+export { OllamaProvider } from './ollama';
+export type { OllamaConfig } from './ollama';
 export { createProvider } from './factory';
 export type { ModelDef } from './models';
 export { getDefaultModels, OPENAI_MODELS, DEEPSEEK_MODELS, XIAOMI_MODELS } from './models';

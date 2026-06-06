@@ -2,6 +2,7 @@ import type { AIProvider } from './base';
 import { OpenAIProvider } from './openai';
 import { DeepSeekProvider } from './deepseek';
 import { XiaomiProvider } from './xiaomi';
+import { OllamaProvider } from './ollama';
 import type { ProviderConfig } from '../config/types';
 
 export function createProvider(config: ProviderConfig): AIProvider {
@@ -31,6 +32,15 @@ export function createProvider(config: ProviderConfig): AIProvider {
 				timeout: config.timeout,
 				maxRetries: config.maxRetries ?? 5,
 				reasoningEffort: config.reasoningEffort
+			});
+		case 'ollama':
+			return new OllamaProvider({
+				apiKey: config.apiKey,
+				baseURL: config.baseURL || '',
+				model: config.activeModel || '',
+				timeout: config.timeout,
+				maxRetries: config.maxRetries ?? 3,
+				ollamaURL: config.ollamaURL
 			});
 		default:
 			throw new Error(`Unsupported provider type: ${config.type}`);

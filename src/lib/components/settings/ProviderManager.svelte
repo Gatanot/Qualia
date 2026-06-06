@@ -3,7 +3,8 @@
 
 	const DEFAULT_BASE_URLS: Record<string, string> = {
 		deepseek: 'https://api.deepseek.com/v1',
-		xiaomi: 'https://api.xiaomimimo.com/v1'
+		xiaomi: 'https://api.xiaomimimo.com/v1',
+		ollama: 'http://localhost:11434/v1'
 	};
 
 	let { providers, loading, onconfigchange }: {
@@ -17,6 +18,7 @@
 	let editingProvider = $state<ProviderConfig | null>(null);
 	let formType = $state<string>('openai');
 	let formBaseURL = $state('');
+	let formOllamaURL = $state('http://localhost:11434');
 
 	$effect(() => {
 		if (!editingProvider) {
@@ -33,6 +35,7 @@
 		editingProvider = null;
 		formType = 'openai';
 		formBaseURL = '';
+		formOllamaURL = 'http://localhost:11434';
 		showForm = true;
 		error = '';
 	}
@@ -41,6 +44,7 @@
 		editingProvider = p;
 		formType = p.type || 'openai';
 		formBaseURL = p.baseURL || '';
+		formOllamaURL = p.ollamaURL || 'http://localhost:11434';
 		showForm = true;
 		error = '';
 	}
@@ -60,7 +64,11 @@
 		const apiKey = (fd.get('apiKey') as string).trim();
 		const baseURL = formBaseURL.trim();
 
-		if (!name || !apiKey || !baseURL) {
+		if (!name || !baseURL) {
+			error = '名称和接口地址必填';
+			return;
+		}
+		if (type !== 'ollama' && !apiKey) {
 			error = '名称、密钥、接口地址必填';
 			return;
 		}
@@ -68,9 +76,12 @@
 		const provider: Record<string, unknown> = {
 			type,
 			name,
-			apiKey,
+			apiKey: apiKey || 'ollama',
 			baseURL
 		};
+		if (type === 'ollama' && formOllamaURL) {
+			provider.ollamaURL = formOllamaURL.trim();
+		}
 
 		const res = await fetch('/api/config', {
 			method: 'PUT',
@@ -128,7 +139,7 @@
 							{p.name}
 						</div>
 						<div class="provider-meta">
-							<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : p.type === 'xiaomi' ? 'Xiaomi MiMo' : 'OpenAI 兼容'}</span>
+							<span>类型：{p.type === 'deepseek' ? 'DeepSeek' : p.type === 'xiaomi' ? 'Xiaomi MiMo' : p.type === 'ollama' ? 'Ollama' : 'OpenAI 兼容'}</span>
 							<span>密钥：{maskKey(p.apiKey)}</span>
 						</div>
 					</div>
@@ -157,6 +168,7 @@
 						<option value="openai">OpenAI 兼容</option>
 						<option value="deepseek">DeepSeek</option>
 						<option value="xiaomi">Xiaomi MiMo</option>
+						<option value="ollama">Ollama</option>
 					</select>
 				</label>
 				<label>
@@ -174,11 +186,23 @@
 					<input
 						name="apiKey"
 						type="password"
-						placeholder="sk-..."
+						placeholder={formType === 'ollama' ? 'ollama（本地无需密钥）' : 'sk-...'}
 						value={editingProvider?.apiKey || ''}
-						required
+						required={formType !== 'ollama'}
 					/>
 				</label>
+				{#if formType === 'ollama'}
+					<label>
+						Ollama 地址
+						<input
+							type="text"
+							value={formOllamaURL}
+							oninput={(e: Event) => formOllamaURL = (e.target as HTMLInputElement).value}
+							placeholder="http://localhost:11434"
+							required
+						/>
+					</label>
+				{/if}
 				<label>
 					接口地址
 					<input

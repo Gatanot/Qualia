@@ -1,5 +1,5 @@
 export interface ProviderConfig {
-	type: 'openai' | 'deepseek' | 'xiaomi';
+	type: 'openai' | 'deepseek' | 'xiaomi' | 'ollama';
 	name: string;
 	apiKey: string;
 	baseURL: string;
@@ -8,6 +8,7 @@ export interface ProviderConfig {
 	reasoningEffort?: string;
 	timeout?: number;
 	maxRetries?: number;
+	ollamaURL?: string;
 }
 
 export interface AppConfig {
