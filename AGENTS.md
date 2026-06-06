@@ -28,7 +28,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
 | Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
-| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. |
+| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. |
 
 ## Architecture
 
@@ -47,7 +47,7 @@ src/lib/
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
 ├── chat-confirm.ts             # Shared Map<string, Promise> for pending confirmations
-├── markdown.ts                 # Markdown renderer (marked) with highlight.js code blocks
+├── markdown.ts                 # Markdown renderer (marked) with highlight.js code blocks + KaTeX math
 ├── model-picker-state.svelte.ts # Client-side $state runes for model picker UI
 ├── session-store.ts            # Client-side Svelte stores for session list + CRUD helpers
 └── theme.ts                    # Light/dark theme management (localStorage + media query)
@@ -84,6 +84,8 @@ Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, rend
 ## AgentLoop error handling
 
 LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The loop yields `retrying` and `retry_exhausted` events. On `retry_exhausted`, the chat ends with partial content.
+
+**Hard caps**: `MAX_TOOL_ITERATIONS = 50` — the loop will error out if tool calls exceed this limit. `MAX_LLM_RETRIES = 5` for LLM API calls.
 
 ## Auto-summarize background system
 
@@ -135,6 +137,7 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 ## Notable quirks
 
 - `data/` and `docs/` directories are gitignored, auto-created at runtime
+- `data/memory.md` is the persistent memory file written by the `write_memory` tool. Its content is read at session creation and snapshotted into `session.memory_snapshot`, so memory changes only affect new sessions.
 - `.svelte-kit/` contains auto-generated types — never edit manually
 - `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
 - `process.cwd()` is used as the workspace root for tool path safety checks
