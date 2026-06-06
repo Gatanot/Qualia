@@ -98,7 +98,7 @@
 	}
 </script>
 
-<div class="message-row" class:user={message.role === 'user'} class:error={message.role === 'error'}>
+<div class="message-row" class:user={message.role === 'user'} class:error={message.role === 'error'} class:editing>
 	<div class="message-body">
 		{#if message.role !== 'user'}
 			<div class="message-role">{roleLabel}</div>
@@ -225,6 +225,10 @@
 		align-items: flex-end;
 		width: auto;
 		max-width: 85%;
+	}
+
+	.message-row.editing.user .message-body {
+		width: 100%;
 	}
 
 	.message-role {
@@ -538,7 +542,7 @@
 
 	.edit-textarea {
 		width: 100%;
-		padding: 1rem 1.25rem;
+		padding: 1.25rem 1.5rem;
 		border: 2px solid var(--accent);
 		border-radius: 22px 6px 22px 22px;
 		background: var(--bg-surface);
