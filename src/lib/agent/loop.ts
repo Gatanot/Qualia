@@ -138,14 +138,20 @@ export class AgentLoop {
 						collectedToolCalls.clear();
 						chunkUsage = undefined;
 
-						if (attempt === MAX_LLM_RETRIES) {
-							yield {
-								type: 'retry_exhausted',
-								message: (llmError as Error).message || '连接失败',
-								partialContent: true
-							};
-							return;
-						}
+					if (attempt === MAX_LLM_RETRIES) {
+						const errorMessage = `[连接失败] ${(llmError as Error).message || '多次重试后仍无法连接'}`;
+						await this.storage.addMessage(effectiveSessionId, {
+							session_id: effectiveSessionId,
+							role: 'assistant',
+							content: errorMessage
+						});
+						yield {
+							type: 'retry_exhausted',
+							message: (llmError as Error).message || '连接失败',
+							partialContent: true
+						};
+						return;
+					}
 
 						yield { type: 'retrying', attempt: attempt + 1, maxRetries: MAX_LLM_RETRIES };
 						await sleep(RETRY_BASE_DELAY * Math.pow(2, attempt));

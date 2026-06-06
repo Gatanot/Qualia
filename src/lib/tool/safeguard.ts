@@ -75,7 +75,15 @@ const SYSTEM_DIRS = [
 ];
 
 function isDangerousCommand(command: string): boolean {
-	return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command));
+	if (DANGEROUS_PATTERNS.some((pattern) => pattern.test(command))) {
+		return true;
+	}
+	for (const segment of command.split('|')) {
+		if (DANGEROUS_PATTERNS.some((pattern) => pattern.test(segment))) {
+			return true;
+		}
+	}
+	return false;
 }
 
 function isReadonlyCommand(command: string): boolean {

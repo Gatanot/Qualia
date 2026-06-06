@@ -117,10 +117,18 @@ export class ContextBuilder {
 		const memoryContent = await this.resolveMemory(sessionId, storage);
 		systemContent += formatMemorySection(memoryContent);
 
-		messages.push({ role: 'system', content: systemContent });
-
 		const history = await storage.getMessages(sessionId);
 		for (const msg of history) {
+			if (msg.role === 'system') {
+				systemContent += '\n\n' + (typeof msg.content === 'string' ? msg.content : '');
+			}
+		}
+
+		messages.push({ role: 'system', content: systemContent });
+
+		for (const msg of history) {
+			if (msg.role === 'system') continue;
+
 			const m: Message = {
 				role: msg.role,
 				content: this.parseStoredContent(msg.content)
