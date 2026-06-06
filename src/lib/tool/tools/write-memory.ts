@@ -15,12 +15,12 @@ const SECTION_META = `
 `;
 
 function ensureMemoryFile(): void {
-	if (!existsSync(MEMORY_PATH)) {
-		const dir = join(process.cwd(), 'data');
-		if (!existsSync(dir)) {
-			mkdirSync(dir, { recursive: true });
-		}
-		writeFileSync(MEMORY_PATH, SECTION_META.trim() + '\n', 'utf-8');
+	const dir = join(process.cwd(), 'data');
+	if (!existsSync(dir)) {
+		mkdirSync(dir, { recursive: true });
+	}
+	if (!existsSync(MEMORY_PATH) || !readFileSync(MEMORY_PATH, 'utf-8').includes('## 关于用户')) {
+		writeFileSync(MEMORY_PATH, SECTION_META.trim().replace(/\r/g, '') + '\n', 'utf-8');
 	}
 }
 
