@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AppConfig } from '$lib/config';
 	import { loadSessions } from '$lib/session-store';
+	import { pickerState } from '$lib/model-picker-state.svelte';
 	import StorageToggle from '$lib/components/settings/StorageToggle.svelte';
 	import PromptEditor from '$lib/components/settings/PromptEditor.svelte';
 	import ProviderManager from '$lib/components/settings/ProviderManager.svelte';
@@ -62,12 +63,17 @@
 		}
 	}
 
-	function onProvidersChange(updated: Record<string, unknown>) {
+	async function onProvidersChange(updated: Record<string, unknown>) {
 		config = {
 			...config,
 			providers: updated.providers as AppConfig['providers'],
 			activeModel: updated.activeModel as string
 		};
+		pickerState.config = config;
+		const modelsRes = await fetch('/api/models');
+		if (modelsRes.ok) {
+			pickerState.allModels = await modelsRes.json();
+		}
 	}
 
 	async function saveSummarize() {

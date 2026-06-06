@@ -9,9 +9,10 @@ export class OllamaProvider extends OpenAIProvider {
 
 	constructor(config: OllamaConfig) {
 		const baseURL = config.baseURL || `${config.ollamaURL || 'http://localhost:11434'}/v1`;
+		const normalizedBase = baseURL.endsWith('/v1') ? baseURL : baseURL.replace(/\/+$/, '') + '/v1';
 		super({
 			apiKey: config.apiKey || 'ollama',
-			baseURL,
+			baseURL: normalizedBase,
 			model: config.model,
 			timeout: config.timeout,
 			maxRetries: config.maxRetries
