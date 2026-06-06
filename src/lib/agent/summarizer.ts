@@ -5,14 +5,10 @@ import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, wr
 import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
 
-function parseStoredContent(content: string): string {
+function parseStoredContent(content: string): string | ContentPart[] {
 	if (content.startsWith('[')) {
 		try {
-			const parts = JSON.parse(content) as ContentPart[];
-			return parts
-				.filter((p) => p.type === 'text' && 'text' in p)
-				.map((p) => (p as { type: 'text'; text: string }).text)
-				.join('\n');
+			return JSON.parse(content) as ContentPart[];
 		} catch { /* return as string */ }
 	}
 	return content;
