@@ -1,9 +1,17 @@
-import type { AIProvider, Message, ToolCall, Usage } from '$lib/provider';
+import type { AIProvider, Message, ToolCall, Usage, ContentPart } from '$lib/provider';
 import { sleep } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn } from './types';
+
+function extractTextContent(content: string | ContentPart[]): string {
+	if (typeof content === 'string') return content;
+	return content
+		.filter((p) => p.type === 'text' && 'text' in p)
+		.map((p) => (p as { type: 'text'; text: string }).text)
+		.join('\n');
+}
 
 const MAX_LLM_RETRIES = 5;
 const RETRY_BASE_DELAY = 1000;
@@ -27,7 +35,7 @@ function buildSummaryContent(messages: Message[], initialSystem: string | undefi
 	const lines: string[] = [];
 	for (const m of relevant) {
 		const role = m.role === 'user' ? '用户' : 'AI';
-		const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+		const text = extractTextContent(m.content);
 		lines.push(`[${role}] ${text.slice(0, 2000)}`);
 	}
 

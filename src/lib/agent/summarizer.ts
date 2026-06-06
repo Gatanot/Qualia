@@ -1,9 +1,22 @@
-import type { AIProvider, Message, Usage } from '$lib/provider';
+import type { AIProvider, Message, Usage, ContentPart } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
+
+function parseStoredContent(content: string): string {
+	if (content.startsWith('[')) {
+		try {
+			const parts = JSON.parse(content) as ContentPart[];
+			return parts
+				.filter((p) => p.type === 'text' && 'text' in p)
+				.map((p) => (p as { type: 'text'; text: string }).text)
+				.join('\n');
+		} catch { /* return as string */ }
+	}
+	return content;
+}
 
 const _registry = new ToolRegistry();
 _registry.register(readFileTool);
@@ -107,7 +120,7 @@ export async function generateSummary(
 		if (r.role === 'system') continue;
 		const m: Message = {
 			role: r.role,
-			content: r.content
+			content: parseStoredContent(r.content)
 		};
 		if (r.tool_calls) m.tool_calls = r.tool_calls;
 		if (r.tool_call_id) m.tool_call_id = r.tool_call_id;
