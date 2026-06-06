@@ -104,14 +104,30 @@
 			<div class="message-role">{roleLabel}</div>
 		{/if}
 
-		{#each message.blocks as block, i (i)}
-			{#if block.type === 'text'}
-				{#if isLiveBlock(block, i)}
-					<div class="message-content">{block.content}</div>
-				{:else}
-					<div class="message-content markdown-body">{@html getBlockHtml(block.content)}</div>
-				{/if}
-			{:else if block.type === 'image'}
+		{#if editing}
+			<textarea
+				class="edit-textarea"
+				bind:value={editText}
+				onkeydown={handleEditKeydown}
+				rows={4}
+			></textarea>
+			<div class="edit-actions-inline">
+				<button class="action-btn" onclick={handleEditCancel} title="取消">
+					<span class="material-symbols-rounded">close</span>
+				</button>
+				<button class="action-btn action-btn-send" onclick={handleEditSubmit} title="发送">
+					<span class="material-symbols-rounded">send</span>
+				</button>
+			</div>
+		{:else}
+			{#each message.blocks as block, i (i)}
+				{#if block.type === 'text'}
+					{#if isLiveBlock(block, i)}
+						<div class="message-content">{block.content}</div>
+					{:else}
+						<div class="message-content markdown-body">{@html getBlockHtml(block.content)}</div>
+					{/if}
+				{:else if block.type === 'image'}
 				<div class="image-block">
 					<img src={block.url} alt="上传图片" />
 				</div>
@@ -146,7 +162,7 @@
 			<span class="cursor">|</span>
 		{/if}
 
-		{#if message.role === 'user' && message.done}
+		{#if message.role === 'user' && message.done && !editing}
 			<div class="msg-actions">
 				<button class="action-btn" onclick={handleCopy} title="复制">
 					<span class="material-symbols-rounded">content_copy</span>
@@ -170,27 +186,7 @@
 				</button>
 			</div>
 		{/if}
-
-		{#if editing}
-			<div class="edit-area">
-				<textarea
-					class="edit-textarea"
-					bind:value={editText}
-					onkeydown={handleEditKeydown}
-					rows={4}
-				></textarea>
-				<div class="edit-actions">
-					<button class="btn-recovery" onclick={handleEditCancel}>
-						<span class="material-symbols-rounded">close</span>
-						取消
-					</button>
-					<button class="btn-recovery" onclick={handleEditSubmit}>
-						<span class="material-symbols-rounded">send</span>
-						发送
-					</button>
-				</div>
-			</div>
-		{/if}
+	{/if}
 	</div>
 </div>
 
@@ -540,36 +536,37 @@
 		display: block;
 	}
 
-	.edit-area {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-	}
-
 	.edit-textarea {
 		width: 100%;
-		padding: 0.75rem 1rem;
+		padding: 1rem 1.25rem;
 		border: 2px solid var(--accent);
-		border-radius: var(--radius-md);
+		border-radius: 22px 6px 22px 22px;
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		font-family: inherit;
 		font-size: var(--text-md);
-		line-height: 1.6;
+		line-height: 1.7;
 		resize: vertical;
 		outline: none;
+		box-shadow: var(--shadow-bubble-user);
 		transition: border-color 0.2s var(--ease-out);
+		box-sizing: border-box;
 	}
 
 	.edit-textarea:focus {
 		border-color: var(--accent-link);
 	}
 
-	.edit-actions {
+	.edit-actions-inline {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.25rem;
 		justify-content: flex-end;
+		margin-top: 0.25rem;
+		opacity: 1;
+	}
+
+	.action-btn-send {
+		color: var(--accent) !important;
 	}
 
 	@keyframes cursorBlink {
