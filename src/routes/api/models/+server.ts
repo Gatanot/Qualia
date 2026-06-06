@@ -7,7 +7,7 @@ export async function GET() {
 
 	for (const provider of config.providers) {
 		if (provider.type === 'ollama') {
-			const ollamaURL = provider.ollamaURL || 'http://localhost:11434';
+			let ollamaURL = (provider.ollamaURL || provider.baseURL?.replace(/\/v1\/?$/, '') || 'http://localhost:11434').replace(/\/+$/, '');
 			try {
 				const res = await fetch(`${ollamaURL}/api/tags`);
 				if (res.ok) {
@@ -25,8 +25,12 @@ export async function GET() {
 							providerName: provider.name
 						});
 					}
+				} else {
+					console.error(`[ollama] /api/tags returned ${res.status} for ${ollamaURL}`);
 				}
-			} catch { /* ollama not running */ }
+			} catch (e) {
+				console.error(`[ollama] failed to fetch models from ${ollamaURL}: ${(e as Error).message}`);
+			}
 		}
 	}
 

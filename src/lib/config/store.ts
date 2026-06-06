@@ -123,6 +123,19 @@ export function removeProvider(name: string): AppConfig {
 export function setActiveModel(modelId: string): AppConfig {
 	const config = readConfig();
 	config.activeModel = modelId;
+
+	for (const provider of config.providers) {
+		const models = getDefaultModels(provider.type);
+		if (models.length > 0) {
+			const model = models.find((m) => m.id === modelId);
+			if (model && !model.supportsReasoning) {
+				provider.reasoningEffort = undefined;
+			}
+		} else if (provider.type === 'ollama') {
+			provider.reasoningEffort = undefined;
+		}
+	}
+
 	writeConfig(config);
 	return config;
 }
