@@ -21,4 +21,8 @@ export interface AppConfig {
 	summaryIdleHours: number;
 	summaryScheduleHour: number;
 	summaryIntervalMin: number;
+	searchEnabled: boolean;
+	searchProvider: 'searxng' | 'tavily';
+	searxngURL: string;
+	tavilyApiKey: string;
 }

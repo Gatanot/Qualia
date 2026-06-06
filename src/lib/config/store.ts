@@ -21,7 +21,11 @@ const defaultConfig: AppConfig = {
 	summaryMode: 'idle',
 	summaryIdleHours: 8,
 	summaryScheduleHour: 2,
-	summaryIntervalMin: 30
+	summaryIntervalMin: 30,
+	searchEnabled: false,
+	searchProvider: 'searxng',
+	searxngURL: 'http://localhost:8080',
+	tavilyApiKey: ''
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): ProviderConfig {
@@ -58,7 +62,11 @@ export function readConfig(): AppConfig {
 			summaryMode: parsed.summaryMode === 'scheduled' ? 'scheduled' : 'idle',
 			summaryIdleHours: typeof parsed.summaryIdleHours === 'number' ? parsed.summaryIdleHours : 8,
 			summaryScheduleHour: typeof parsed.summaryScheduleHour === 'number' ? parsed.summaryScheduleHour : 2,
-			summaryIntervalMin: typeof parsed.summaryIntervalMin === 'number' ? parsed.summaryIntervalMin : 30
+			summaryIntervalMin: typeof parsed.summaryIntervalMin === 'number' ? parsed.summaryIntervalMin : 30,
+			searchEnabled: parsed.searchEnabled === true,
+			searchProvider: (parsed.searchProvider === 'searxng' || parsed.searchProvider === 'tavily') ? parsed.searchProvider : 'searxng',
+			searxngURL: typeof parsed.searxngURL === 'string' ? parsed.searxngURL : 'http://localhost:8080',
+			tavilyApiKey: typeof parsed.tavilyApiKey === 'string' ? parsed.tavilyApiKey : ''
 		};
 	} catch {
 		return { ...defaultConfig };

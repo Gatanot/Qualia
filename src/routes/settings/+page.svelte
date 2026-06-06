@@ -6,18 +6,20 @@
 	import ProviderManager from '$lib/components/settings/ProviderManager.svelte';
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
+	import SearchSettings from '$lib/components/settings/SearchSettings.svelte';
 
 	const TABS = [
 		{ id: 'general', label: '常规' },
 		{ id: 'provider', label: '供应商' },
 		{ id: 'prompt', label: '提示词' },
 		{ id: 'avatar', label: '头像' },
-		{ id: 'summary', label: '摘要' }
+		{ id: 'summary', label: '摘要' },
+		{ id: 'search', label: '搜索' }
 	] as const;
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30 });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -78,6 +80,17 @@
 			config = await res.json();
 		}
 	}
+
+	async function saveSearch() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
 </script>
 
 <div class="settings">
@@ -124,6 +137,14 @@
 					bind:scheduleHour={config.summaryScheduleHour}
 					bind:intervalMin={config.summaryIntervalMin}
 					onchange={saveSummarize}
+				/>
+			{:else if activeTab === 'search'}
+				<SearchSettings
+					bind:enabled={config.searchEnabled}
+					bind:provider={config.searchProvider}
+					bind:searxngURL={config.searxngURL}
+					bind:tavilyApiKey={config.tavilyApiKey}
+					onchange={saveSearch}
 				/>
 			{/if}
 		</div>

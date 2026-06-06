@@ -1,7 +1,7 @@
 import type { AIProvider, Message, Usage, ContentPart } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool } from '$lib/tool';
+import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
 
@@ -20,6 +20,7 @@ _registry.register(writeFileTool);
 _registry.register(deleteFileTool);
 _registry.register(execTool);
 _registry.register(writeMemoryTool);
+_registry.register(webSearchTool);
 export const _toolDefs = _registry.getDefinitions();
 
 export function buildSystemMessage(): Message {
