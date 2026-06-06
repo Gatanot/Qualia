@@ -32,6 +32,47 @@ export async function POST({ request }: { request: Request }) {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}
+			case 'fork': {
+				const { sessionId, messageId } = body as { sessionId: string; messageId: string };
+				if (!sessionId || !messageId) {
+					return new Response(JSON.stringify({ error: '缺少 sessionId 或 messageId' }), {
+						status: 400,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
+				const parentSession = await storage.getSession(sessionId);
+				if (!parentSession) {
+					return new Response(JSON.stringify({ error: '会话不存在' }), {
+						status: 404,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
+				const allMessages = await storage.getMessages(sessionId);
+				const targetMsg = allMessages.find((m) => m.id === messageId);
+				if (!targetMsg) {
+					return new Response(JSON.stringify({ error: '消息不存在' }), {
+						status: 404,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
+				const beforeMessages = allMessages.filter((m) => m.seq < targetMsg.seq && m.role !== 'system');
+				const newSession = await storage.createSession(`[分叉] ${parentSession.title}`, parentSession.memory_snapshot);
+				for (const msg of beforeMessages) {
+					await storage.addMessage(newSession.id, {
+						session_id: newSession.id,
+						role: msg.role,
+						content: msg.content,
+						reasoning_content: msg.reasoning_content,
+						tool_calls: msg.tool_calls,
+						tool_call_id: msg.tool_call_id,
+						name: msg.name,
+						usage: msg.usage
+					});
+				}
+				return new Response(JSON.stringify({ newSessionId: newSession.id, draftContent: targetMsg.content }), {
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
 			case 'setTitle': {
 				const { sessionId, title } = body as { sessionId: string; title: string };
 				await storage.setSessionTitle(sessionId, title);

@@ -6,7 +6,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage, pendingFirstImages } from '$lib/session-store';
+	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage, pendingFirstImages, forkSession } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
 	import { pickerState } from '$lib/model-picker-state.svelte';
 
@@ -70,6 +70,11 @@
 					pendingFirstMessage.set('');
 					pendingFirstImages.set([]);
 					sendMessage(pending, pendingImgs);
+				} else if (pending) {
+					pendingFirstMessage.set('');
+					pendingFirstImages.set([]);
+					input = pending;
+					focusTrigger++;
 				}
 			});
 		}
@@ -394,6 +399,34 @@
 		}
 	}
 
+	async function handleFork(messageId: string) {
+		if (streaming || !sessionId) return;
+		const result = await forkSession(sessionId, messageId);
+		if (result) {
+			goto('/chat/' + result.newSessionId, { replaceState: false });
+			pendingFirstMessage.set(result.draftContent);
+			pendingFirstImages.set([]);
+		}
+	}
+
+	async function handleEdit(messageId: string, newContent: string) {
+		if (streaming) {
+			stopAI();
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		await fetch('/api/messages', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'deleteFrom', sessionId, messageId })
+		});
+		const idx = messages.findIndex((m) => m.id === messageId);
+		if (idx !== -1) {
+			messages.splice(idx);
+		}
+		loadSessions();
+		sendMessage(newContent);
+	}
+
 	async function handleSSEEvent(event: Record<string, unknown>) {
 		switch (event.type) {
 			case 'content': {
@@ -563,7 +596,7 @@
 		{/if}
 
 		{#each messages as msg (msg.id)}
-			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} />
+			<MessageBubble message={msg} onconfirm={handleConfirm} onrecovery={handleRecovery} onrollback={handleRollback} onfork={handleFork} onedit={handleEdit} />
 		{/each}
 
 		{#if cumulativeUsage.total > 0}

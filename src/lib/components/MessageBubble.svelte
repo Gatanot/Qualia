@@ -5,11 +5,13 @@
 	import ReasoningBlock from './ReasoningBlock.svelte';
 	import { renderMarkdown } from '$lib/markdown';
 
-	let { message, onconfirm, onrecovery, onrollback }: {
+	let { message, onconfirm, onrecovery, onrollback, onfork, onedit }: {
 		message: UIMessage;
 		onconfirm?: (confirmId: string, approved: boolean) => void;
 		onrecovery?: (action: 'retry' | 'rollback') => void;
 		onrollback?: (messageId: string) => void;
+		onfork?: (messageId: string) => void;
+		onedit?: (messageId: string, content: string) => void;
 	} = $props();
 
 	let roleLabel = $derived(
@@ -19,6 +21,8 @@
 	const htmlCache = new Map<string, string>();
 	let rollbackConfirm = $state(false);
 	let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+	let editing = $state(false);
+	let editText = $state('');
 
 	function getUserText(): string {
 		return message.blocks
@@ -63,6 +67,34 @@
 
 	function handleConfirm(confirmId: string, approved: boolean) {
 		onconfirm?.(confirmId, approved);
+	}
+
+	function handleFork() {
+		onfork?.(message.id);
+	}
+
+	function handleEditStart() {
+		editText = getUserText();
+		editing = true;
+	}
+
+	function handleEditCancel() {
+		editing = false;
+		editText = '';
+	}
+
+	function handleEditSubmit() {
+		const text = editText.trim();
+		if (!text) return;
+		editing = false;
+		editText = '';
+		onedit?.(message.id, text);
+	}
+
+	function handleEditKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			handleEditCancel();
+		}
 	}
 </script>
 
@@ -119,6 +151,12 @@
 				<button class="action-btn" onclick={handleCopy} title="复制">
 					<span class="material-symbols-rounded">content_copy</span>
 				</button>
+				<button class="action-btn" onclick={handleEditStart} title="编辑">
+					<span class="material-symbols-rounded">edit</span>
+				</button>
+				<button class="action-btn" onclick={handleFork} title="分叉">
+					<span class="material-symbols-rounded">call_split</span>
+				</button>
 				<button
 					class="action-btn"
 					class:confirm={rollbackConfirm}
@@ -130,6 +168,27 @@
 						<span class="confirm-label">确认?</span>
 					{/if}
 				</button>
+			</div>
+		{/if}
+
+		{#if editing}
+			<div class="edit-area">
+				<textarea
+					class="edit-textarea"
+					bind:value={editText}
+					onkeydown={handleEditKeydown}
+					rows={4}
+				></textarea>
+				<div class="edit-actions">
+					<button class="btn-recovery" onclick={handleEditCancel}>
+						<span class="material-symbols-rounded">close</span>
+						取消
+					</button>
+					<button class="btn-recovery" onclick={handleEditSubmit}>
+						<span class="material-symbols-rounded">send</span>
+						发送
+					</button>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -479,6 +538,38 @@
 		height: auto;
 		border-radius: var(--radius-lg);
 		display: block;
+	}
+
+	.edit-area {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-top: 0.25rem;
+	}
+
+	.edit-textarea {
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 2px solid var(--accent);
+		border-radius: var(--radius-md);
+		background: var(--bg-surface);
+		color: var(--text-primary);
+		font-family: inherit;
+		font-size: var(--text-md);
+		line-height: 1.6;
+		resize: vertical;
+		outline: none;
+		transition: border-color 0.2s var(--ease-out);
+	}
+
+	.edit-textarea:focus {
+		border-color: var(--accent-link);
+	}
+
+	.edit-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
 	}
 
 	@keyframes cursorBlink {

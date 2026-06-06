@@ -77,3 +77,17 @@ export function bumpSession(sessionId: string) {
 		return list;
 	});
 }
+
+export async function forkSession(sessionId: string, messageId: string): Promise<{ newSessionId: string; draftContent: string } | null> {
+	const res = await fetch('/api/sessions', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ action: 'fork', sessionId, messageId })
+	});
+	if (res.ok) {
+		const data = await res.json();
+		await loadSessions();
+		return data;
+	}
+	return null;
+}
