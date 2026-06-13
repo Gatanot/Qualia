@@ -2,6 +2,50 @@ import type { Usage, Message } from '$lib/provider';
 import type { PendingConfirmation } from '$lib/tool';
 
 /**
+ * AgentLoop 状态机状态枚举
+ *
+ * 每个状态对应循环中的一个确定阶段，状态转换时触发对应的 LoopHooks 回调。
+ */
+export enum AgentState {
+	INIT = 'INIT',
+	PRE_LLM = 'PRE_LLM',
+	LLM_STREAMING = 'LLM_STREAMING',
+	POST_LLM = 'POST_LLM',
+	LLM_RETRY_WAIT = 'LLM_RETRY_WAIT',
+	PRE_TOOL = 'PRE_TOOL',
+	TOOL_EXECUTING = 'TOOL_EXECUTING',
+	AWAIT_CONFIRM = 'AWAIT_CONFIRM',
+	POST_TOOL = 'POST_TOOL',
+	PERSIST_TURN = 'PERSIST_TURN',
+	CHECK_CONTINUE = 'CHECK_CONTINUE',
+	DONE = 'DONE',
+	ERROR = 'ERROR',
+}
+
+/**
+ * AgentLoop 生命周期钩子
+ *
+ * 在状态转换的关键节点调用，允许 extension 等外部模块注入自定义逻辑。
+ * 所有钩子均为可选，默认无操作。
+ */
+export interface LoopHooks {
+	/** LLM 调用前触发，可修改 messages 数组（返回新数组） */
+	beforeLlmCall?(messages: Message[]): Promise<Message[]>;
+	/** LLM 调用完成后触发 */
+	afterLlmCall?(usage?: Usage): Promise<void>;
+	/** LLM 重试时触发 */
+	onLlmRetry?(attempt: number, maxRetries: number, error: Error): Promise<void>;
+	/** 工具执行前触发，可修改参数（返回新 args） */
+	beforeToolExecution?(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>>;
+	/** 工具执行完成后触发 */
+	afterToolExecution?(name: string, result: { success: boolean; output: string }): Promise<void>;
+	/** 需要用户确认时触发 */
+	onConfirmRequired?(confirmation: PendingConfirmation, confirmId: string): Promise<void>;
+	/** 每轮对话结束后触发（persist 之前） */
+	afterTurn?(iteration: number): Promise<void>;
+}
+
+/**
  * Agent 运行时流式事件
  *
  * API 路由将每种事件通过 SSE 推送到前端。
