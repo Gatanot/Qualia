@@ -146,7 +146,6 @@ export class AgentLoop {
 					case AgentState.PERSIST_TURN:
 						yield* this.doPersistTurn();
 						break;
-					case AgentState.CHECK_CONTINUE:
 					case AgentState.DONE:
 					case AgentState.ERROR:
 						break;
@@ -288,18 +287,7 @@ export class AgentLoop {
 				await this.storage.updateTokenCount(this.effectiveSessionId, this.totalUsage.total_tokens);
 			}
 
-			const tokensUsed = this.totalUsage?.total_tokens || 0;
-			if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
-				const newId = await this.createContinuation(
-					this.effectiveSessionId,
-					this.userMsg,
-					this.messages,
-					typeof this.buildResult.messages[0]?.content === 'string' ? this.buildResult.messages[0]?.content : undefined
-				);
-				if (newId) {
-					yield { type: 'forked', newSessionId: newId };
-				}
-			}
+			yield* this.tryForkIfWindowLow();
 
 			yield { type: 'done', messageId: crypto.randomUUID(), usage: this.totalUsage, contextWindow: this.contextWindow };
 
@@ -312,6 +300,8 @@ export class AgentLoop {
 			content: this.fullContent || '',
 			tool_calls: this.resolvedToolCalls
 		});
+
+		yield* this.tryForkIfWindowLow();
 
 		this.toolResultMsgs = [];
 		this.toolIndex = 0;
@@ -461,6 +451,25 @@ export class AgentLoop {
 
 		this.iteration++;
 		this.state = AgentState.PRE_LLM;
+	}
+
+	// ═══════════════════════════════════════════════════════
+	//  tryForkIfWindowLow — 在无工具调用的 reply 完成时和每次工具迭代前检查上下文窗口
+	// ═══════════════════════════════════════════════════════
+
+	private async *tryForkIfWindowLow(): AsyncGenerator<AgentEvent> {
+		const tokensUsed = this.totalUsage?.total_tokens || 0;
+		if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
+			const newId = await this.createContinuation(
+				this.effectiveSessionId,
+				this.userMsg,
+				this.messages,
+				typeof this.buildResult.messages[0]?.content === 'string' ? this.buildResult.messages[0]?.content : undefined
+			);
+			if (newId) {
+				yield { type: 'forked', newSessionId: newId };
+			}
+		}
 	}
 
 	// ═══════════════════════════════════════════════════════
