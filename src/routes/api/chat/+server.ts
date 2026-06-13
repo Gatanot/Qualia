@@ -2,7 +2,7 @@ import { readConfig, getProviderForModel, getContextWindow, getActiveModel } fro
 import { createProvider } from '$lib/provider';
 import type { ImageContent } from '$lib/provider';
 import { createStorage } from '$lib/storage';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool } from '$lib/tool';
+import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool, readMemoryTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
@@ -62,6 +62,7 @@ export async function POST({ request }: { request: Request }) {
 		registry.register(execTool);
 		registry.register(writeMemoryTool);
 		registry.register(webSearchTool);
+		registry.register(readMemoryTool);
 
 		const contextBuilder = new ContextBuilder();
 
