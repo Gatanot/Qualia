@@ -1,9 +1,10 @@
-import type { AIProvider, Message, ToolCall, Usage, ContentPart } from '$lib/provider';
+import type { AIProvider, Message, Tool, ToolCall, Usage, ContentPart } from '$lib/provider';
 import { sleep } from '$lib/provider';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
-import type { AgentEvent, BuildResult, ConfirmFn } from './types';
+import type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
+import { AgentState } from './types';
 
 function extractTextContent(content: string | ContentPart[]): string {
 	if (typeof content === 'string') return content;
@@ -16,9 +17,7 @@ function extractTextContent(content: string | ContentPart[]): string {
 const MAX_LLM_RETRIES = 5;
 const RETRY_BASE_DELAY = 1000;
 const CONTEXT_WINDOW_DEFAULT = 1_048_576;
-/** 剩余窗口低于此阈值（20K token）时在回复完成后自动创建延续会话 */
 const CONTINUE_THRESHOLD = 20_000;
-/** 单次 Agent 循环中工具调用的最大迭代次数 */
 const MAX_TOOL_ITERATIONS = 50;
 
 function buildSummaryContent(messages: Message[], initialSystem: string | undefined): string {
@@ -42,274 +41,430 @@ function buildSummaryContent(messages: Message[], initialSystem: string | undefi
 	return header + lines.join('\n');
 }
 
-/**
- * AgentLoop — Agent 主循环
- *
- * AsyncGenerator 形式的对话主循环，流程：
- * 1. 保存用户消息到 Storage
- * 2. 调用 LLM (chatStream)，内置重试（最多 5 次，指数退避）
- * 3. 流式 yield 'content' / 'reasoning' 事件
- * 4. 如 LLM 返回 tool_calls：执行工具 → yield 'confirm_required' / 'tool_result'
- * 5. 无 tool_calls 时保存 assistant 消息，yield 'done' 结束
- * 6. done 后若剩余上下文 < 20K，自动生成摘要并创建延续会话，yield 'forked'
- */
 export class AgentLoop {
 	private provider: AIProvider;
 	private storage: Storage;
 	private registry: ToolRegistry;
 	private onConfirm: ConfirmFn;
 	private signal?: AbortSignal;
+	private hooks: LoopHooks;
+
+	// ── FSM state ──
+	private state: AgentState = AgentState.INIT;
+
+	// ── Session context ──
+	private effectiveSessionId = '';
+	private contextWindow = CONTEXT_WINDOW_DEFAULT;
+	private buildResult!: BuildResult;
+	private userMsg!: { id: string; content: string; seq: number };
+	private messages: Message[] = [];
+	private tools: Tool[] = [];
+	private totalUsage?: Usage;
+
+	// ── Per-iteration state ──
+	private iteration = 0;
+	private fullContent = '';
+	private collectedToolCalls: Map<number, ToolCall> = new Map();
+	private chunkUsage?: Usage;
+
+	// ── Retry state ──
+	private attempt = 0;
+
+	// ── Tool execution state ──
+	private resolvedToolCalls: ToolCall[] = [];
+	private toolIndex = 0;
+	private toolResultMsgs: Array<{ role: 'tool'; content: string; tool_call_id: string; name: string }> = [];
+
+	// ── Pending confirmation ──
+	private currentToolCall?: ToolCall;
+	private currentArgs: Record<string, unknown> = {};
+	private pendingConfirmation?: PendingConfirmation;
 
 	constructor(
 		provider: AIProvider,
 		storage: Storage,
 		registry: ToolRegistry,
 		onConfirm: ConfirmFn,
-		signal?: AbortSignal
+		signal?: AbortSignal,
+		hooks: LoopHooks = {}
 	) {
 		this.provider = provider;
 		this.storage = storage;
 		this.registry = registry;
 		this.onConfirm = onConfirm;
 		this.signal = signal;
+		this.hooks = hooks;
 	}
 
-	async *run(sessionId: string, userMessage: string, buildResult: BuildResult, userMessageId?: string): AsyncGenerator<AgentEvent> {
-		const effectiveSessionId = sessionId;
-		const contextWindow = buildResult.contextWindow || CONTEXT_WINDOW_DEFAULT;
-
-		const userMsg = await this.storage.addMessage(effectiveSessionId, {
-			id: userMessageId,
-			session_id: effectiveSessionId,
-			role: 'user',
-			content: userMessage
-		});
-
-		const messages: Message[] = [...buildResult.messages];
-		const tools = this.registry.getDefinitions();
-		let totalUsage: Usage | undefined;
+	async *run(
+		sessionId: string,
+		userMessage: string,
+		buildResult: BuildResult,
+		userMessageId?: string
+	): AsyncGenerator<AgentEvent> {
+		this.effectiveSessionId = sessionId;
+		this.contextWindow = buildResult.contextWindow || CONTEXT_WINDOW_DEFAULT;
+		this.buildResult = buildResult;
+		this.messages = [...buildResult.messages];
+		this.tools = this.registry.getDefinitions();
+		this.totalUsage = undefined;
+		this.iteration = 0;
+		this.state = AgentState.INIT;
 
 		try {
-			for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-				if (this.signal?.aborted) {
-					break;
-				}
+			while (true) {
+				if ((this.state as AgentState) === AgentState.DONE || (this.state as AgentState) === AgentState.ERROR) break;
 
-				let fullContent = '';
-				let collectedToolCalls: Map<number, ToolCall> = new Map();
-				let chunkUsage: Usage | undefined;
-
-				for (let attempt = 0; attempt <= MAX_LLM_RETRIES; attempt++) {
-					try {
-						const stream = this.provider.chatStream({
-							messages,
-							tools: tools.length > 0 ? tools : undefined
-						});
-
-						for await (const chunk of stream) {
-							if (chunk.reasoning_content) {
-								yield { type: 'reasoning', text: chunk.reasoning_content };
-							}
-
-							if (chunk.content) {
-								fullContent += chunk.content;
-								yield { type: 'content', text: chunk.content };
-							}
-
-							if (chunk.tool_calls) {
-								for (const tc of chunk.tool_calls) {
-									const existing = collectedToolCalls.get(tc.index);
-									if (existing) {
-										if (tc.function?.arguments) {
-											existing.function.arguments += tc.function.arguments;
-										}
-									} else if (tc.id) {
-										const newTc: ToolCall = {
-											id: tc.id,
-											type: 'function',
-											function: {
-												name: tc.function?.name || '',
-												arguments: tc.function?.arguments || ''
-											}
-										};
-										collectedToolCalls.set(tc.index, newTc);
-									}
-								}
-							}
-
-							if (chunk.usage) chunkUsage = chunk.usage;
-						}
-
+				switch (this.state as AgentState) {
+					case AgentState.INIT:
+						yield* this.doInit(userMessage, userMessageId);
 						break;
-					} catch (llmError) {
-						fullContent = '';
-						collectedToolCalls.clear();
-						chunkUsage = undefined;
-
-					if (attempt === MAX_LLM_RETRIES) {
-						const errorMessage = `[连接失败] ${(llmError as Error).message || '多次重试后仍无法连接'}`;
-						await this.storage.addMessage(effectiveSessionId, {
-							session_id: effectiveSessionId,
-							role: 'assistant',
-							content: errorMessage
-						});
-						yield {
-							type: 'retry_exhausted',
-							message: (llmError as Error).message || '连接失败',
-							partialContent: true
-						};
-						return;
-					}
-
-						yield { type: 'retrying', attempt: attempt + 1, maxRetries: MAX_LLM_RETRIES };
-						await sleep(RETRY_BASE_DELAY * Math.pow(2, attempt));
-					}
-				}
-
-				if (chunkUsage) totalUsage = chunkUsage;
-
-				const resolvedToolCalls = Array.from(collectedToolCalls.values());
-
-				if (resolvedToolCalls.length === 0) {
-					await this.storage.addMessage(effectiveSessionId, {
-						session_id: effectiveSessionId,
-						role: 'assistant',
-						content: fullContent,
-						usage: totalUsage
-					});
-
-					if (totalUsage) {
-						await this.storage.updateTokenCount(effectiveSessionId, totalUsage.total_tokens);
-					}
-
-					yield { type: 'done', messageId: crypto.randomUUID(), usage: totalUsage, contextWindow };
-
-					const tokensUsed = totalUsage?.total_tokens || 0;
-					if (tokensUsed > 0 && contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
-						const newId = await this.createContinuation(
-							effectiveSessionId,
-							userMsg,
-							messages,
-							typeof buildResult.messages[0]?.content === 'string' ? buildResult.messages[0]?.content : undefined
-						);
-						if (newId) {
-							yield { type: 'forked', newSessionId: newId };
-						}
-					}
-					return;
-				}
-
-				messages.push({
-					role: 'assistant',
-					content: fullContent || '',
-					tool_calls: resolvedToolCalls
-				});
-
-				const toolResultMsgs: Array<{ role: 'tool'; content: string; tool_call_id: string; name: string }> = [];
-
-				for (const tc of resolvedToolCalls) {
-					if (this.signal?.aborted) {
+					case AgentState.PRE_LLM:
+						yield* this.doPreLlm();
 						break;
-					}
-
-					let args: Record<string, unknown> = {};
-					try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
-
-					yield { type: 'tool_call', name: tc.function.name, args };
-
-					try {
-						const result = await this.registry.execute(tc.function.name, args, process.cwd());
-
-						yield { type: 'tool_result', name: tc.function.name, success: result.success, output: result.output };
-
-						const content = result.output || result.error || '';
-						toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: tc.function.name });
-						messages.push({ role: 'tool', content, tool_call_id: tc.id, name: tc.function.name });
-					} catch (error) {
-						if (error instanceof PendingConfirmation) {
-							const confirmId = crypto.randomUUID();
-							yield { type: 'confirm_required', confirmId, confirmation: error };
-							const approved = await Promise.race([
-								this.onConfirm(error, confirmId),
-								new Promise<boolean>((resolve) => {
-									if (this.signal) {
-										const onAbort = () => resolve(false);
-										this.signal.addEventListener('abort', onAbort, { once: true });
-									}
-								})
-							]);
-
-							if (approved) {
-								try {
-									const retryResult = await this.registry.execute(
-										error.toolName,
-										{ ...error.args, __confirmed: true },
-										process.cwd()
-									);
-									yield { type: 'tool_result', name: error.toolName, success: retryResult.success, output: retryResult.output };
-									const content = retryResult.output || retryResult.error || '';
-									toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
-									messages.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
-								} catch (retryError) {
-									const errMsg = (retryError as Error).message;
-									yield { type: 'tool_result', name: error.toolName, success: false, output: errMsg };
-									toolResultMsgs.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
-									messages.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
-								}
-							} else {
-								const cancelMsg = '用户取消了此操作';
-								yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
-								toolResultMsgs.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
-								messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
-							}
-						} else {
-							const errMsg = (error as Error).message;
-							yield { type: 'tool_result', name: tc.function.name, success: false, output: errMsg };
-							toolResultMsgs.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
-							messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name: tc.function.name });
-						}
-					}
-				}
-
-				if (this.signal?.aborted) {
-					break;
-				}
-
-				await this.storage.addMessage(effectiveSessionId, {
-					session_id: effectiveSessionId,
-					role: 'assistant',
-					content: fullContent || '',
-					tool_calls: resolvedToolCalls,
-					usage: totalUsage
-				});
-
-				if (totalUsage) {
-					await this.storage.updateTokenCount(effectiveSessionId, totalUsage.total_tokens);
-				}
-
-				for (const t of toolResultMsgs) {
-					await this.storage.addMessage(effectiveSessionId, {
-						session_id: effectiveSessionId,
-						role: 'tool',
-						content: t.content,
-						tool_call_id: t.tool_call_id,
-						name: t.name
-					});
+					case AgentState.LLM_STREAMING:
+						yield* this.doLlmStreaming();
+						break;
+					case AgentState.POST_LLM:
+						yield* this.doPostLlm();
+						break;
+					case AgentState.LLM_RETRY_WAIT:
+						yield* this.doLlmRetryWait();
+						break;
+					case AgentState.PRE_TOOL:
+						yield* this.doPreTool();
+						break;
+					case AgentState.TOOL_EXECUTING:
+						yield* this.doToolExecuting();
+						break;
+					case AgentState.AWAIT_CONFIRM:
+						yield* this.doAwaitConfirm();
+						break;
+					case AgentState.POST_TOOL:
+						yield* this.doPostTool();
+						break;
+					case AgentState.PERSIST_TURN:
+						yield* this.doPersistTurn();
+						break;
+					case AgentState.CHECK_CONTINUE:
+						yield* this.doCheckContinue();
+						break;
 				}
 			}
-
-			yield { type: 'error', message: `达到最大工具调用次数限制（${MAX_TOOL_ITERATIONS}次），请简化任务后重试` };
 		} catch (error) {
 			yield { type: 'error', message: (error as Error).message || '未知错误' };
 		}
 	}
 
-	/**
-	 * 创建延续会话
-	 *
-	 * 为当前会话生成摘要，新建子会话并在首条 system 消息中注入摘要上下文。
-	 * 同时将本轮用户消息及回复后的增量消息复制到新会话，保持展示连续性。
-	 */
+	// ═══════════════════════════════════════════════════════
+	//  State handlers
+	// ═══════════════════════════════════════════════════════
+
+	private async *doInit(userMessage: string, userMessageId?: string): AsyncGenerator<AgentEvent> {
+		this.userMsg = await this.storage.addMessage(this.effectiveSessionId, {
+			id: userMessageId,
+			session_id: this.effectiveSessionId,
+			role: 'user',
+			content: userMessage
+		});
+		this.state = AgentState.PRE_LLM;
+	}
+
+	private async *doPreLlm(): AsyncGenerator<AgentEvent> {
+		if (this.signal?.aborted) {
+			this.state = AgentState.DONE;
+			return;
+		}
+
+		if (this.iteration >= MAX_TOOL_ITERATIONS) {
+			yield { type: 'error', message: `达到最大工具调用次数限制（${MAX_TOOL_ITERATIONS}次），请简化任务后重试` };
+			this.state = AgentState.ERROR;
+			return;
+		}
+
+		this.fullContent = '';
+		this.collectedToolCalls.clear();
+		this.chunkUsage = undefined;
+		this.attempt = 0;
+
+		await this.hooks.beforeLlmCall?.(this.messages);
+
+		this.state = AgentState.LLM_STREAMING;
+	}
+
+	private async *doLlmStreaming(): AsyncGenerator<AgentEvent> {
+		try {
+			const stream = this.provider.chatStream({
+				messages: this.messages,
+				tools: this.tools.length > 0 ? this.tools : undefined
+			});
+
+			for await (const chunk of stream) {
+				if (chunk.reasoning_content) {
+					yield { type: 'reasoning', text: chunk.reasoning_content };
+				}
+
+				if (chunk.content) {
+					this.fullContent += chunk.content;
+					yield { type: 'content', text: chunk.content };
+				}
+
+				if (chunk.tool_calls) {
+					for (const tc of chunk.tool_calls) {
+						const existing = this.collectedToolCalls.get(tc.index);
+						if (existing) {
+							if (tc.function?.arguments) {
+								existing.function.arguments += tc.function.arguments;
+							}
+						} else if (tc.id) {
+							const newTc: ToolCall = {
+								id: tc.id,
+								type: 'function',
+								function: {
+									name: tc.function?.name || '',
+									arguments: tc.function?.arguments || ''
+								}
+							};
+							this.collectedToolCalls.set(tc.index, newTc);
+						}
+					}
+				}
+
+				if (chunk.usage) this.chunkUsage = chunk.usage;
+			}
+
+			this.state = AgentState.POST_LLM;
+		} catch (llmError) {
+			this.fullContent = '';
+			this.collectedToolCalls.clear();
+			this.chunkUsage = undefined;
+
+			if (this.attempt >= MAX_LLM_RETRIES) {
+				const errorMessage = `[连接失败] ${(llmError as Error).message || '多次重试后仍无法连接'}`;
+				await this.storage.addMessage(this.effectiveSessionId, {
+					session_id: this.effectiveSessionId,
+					role: 'assistant',
+					content: errorMessage
+				});
+				yield {
+					type: 'retry_exhausted',
+					message: (llmError as Error).message || '连接失败',
+					partialContent: true
+				};
+				this.state = AgentState.ERROR;
+				return;
+			}
+
+			this.state = AgentState.LLM_RETRY_WAIT;
+		}
+	}
+
+	private async *doLlmRetryWait(): AsyncGenerator<AgentEvent> {
+		await this.hooks.onLlmRetry?.(this.attempt + 1, MAX_LLM_RETRIES, new Error('LLM call failed'));
+		yield { type: 'retrying', attempt: this.attempt + 1, maxRetries: MAX_LLM_RETRIES };
+		await sleep(RETRY_BASE_DELAY * Math.pow(2, this.attempt));
+		this.attempt++;
+		this.state = AgentState.LLM_STREAMING;
+	}
+
+	private async *doPostLlm(): AsyncGenerator<AgentEvent> {
+		if (this.chunkUsage) this.totalUsage = this.chunkUsage;
+
+		await this.hooks.afterLlmCall?.(this.totalUsage);
+
+		this.resolvedToolCalls = Array.from(this.collectedToolCalls.values());
+
+		if (this.resolvedToolCalls.length === 0) {
+			await this.storage.addMessage(this.effectiveSessionId, {
+				session_id: this.effectiveSessionId,
+				role: 'assistant',
+				content: this.fullContent,
+				usage: this.totalUsage
+			});
+
+			if (this.totalUsage) {
+				await this.storage.updateTokenCount(this.effectiveSessionId, this.totalUsage.total_tokens);
+			}
+
+			yield { type: 'done', messageId: crypto.randomUUID(), usage: this.totalUsage, contextWindow: this.contextWindow };
+
+			this.state = AgentState.CHECK_CONTINUE;
+			return;
+		}
+
+		this.messages.push({
+			role: 'assistant',
+			content: this.fullContent || '',
+			tool_calls: this.resolvedToolCalls
+		});
+
+		this.toolResultMsgs = [];
+		this.toolIndex = 0;
+		this.state = AgentState.PRE_TOOL;
+	}
+
+	private async *doPreTool(): AsyncGenerator<AgentEvent> {
+		if (this.signal?.aborted) {
+			this.state = AgentState.DONE;
+			return;
+		}
+
+		if (this.toolIndex >= this.resolvedToolCalls.length) {
+			this.state = AgentState.PERSIST_TURN;
+			return;
+		}
+
+		this.currentToolCall = this.resolvedToolCalls[this.toolIndex];
+
+		this.currentArgs = {};
+		try { this.currentArgs = JSON.parse(this.currentToolCall.function.arguments); } catch { /* empty */ }
+
+		const modifiedArgs = await this.hooks.beforeToolExecution?.(this.currentToolCall.function.name, this.currentArgs);
+		if (modifiedArgs) this.currentArgs = modifiedArgs;
+
+		yield { type: 'tool_call', name: this.currentToolCall.function.name, args: this.currentArgs };
+
+		this.state = AgentState.TOOL_EXECUTING;
+	}
+
+	private async *doToolExecuting(): AsyncGenerator<AgentEvent> {
+		const tc = this.currentToolCall!;
+		const name = tc.function.name;
+
+		try {
+			const result = await this.registry.execute(name, this.currentArgs, process.cwd());
+
+			yield { type: 'tool_result', name, success: result.success, output: result.output };
+
+			const content = result.output || result.error || '';
+			this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name });
+			this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name });
+
+			await this.hooks.afterToolExecution?.(name, { success: result.success, output: result.output });
+
+			this.state = AgentState.POST_TOOL;
+		} catch (error) {
+			if (error instanceof PendingConfirmation) {
+				this.pendingConfirmation = error;
+				this.state = AgentState.AWAIT_CONFIRM;
+				return;
+			}
+
+			const errMsg = (error as Error).message;
+			yield { type: 'tool_result', name, success: false, output: errMsg };
+			this.toolResultMsgs.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
+			this.messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
+
+			this.state = AgentState.POST_TOOL;
+		}
+	}
+
+	private async *doAwaitConfirm(): AsyncGenerator<AgentEvent> {
+		const error = this.pendingConfirmation!;
+		const tc = this.currentToolCall!;
+		const confirmId = crypto.randomUUID();
+
+		await this.hooks.onConfirmRequired?.(error, confirmId);
+
+		yield { type: 'confirm_required', confirmId, confirmation: error };
+
+		const approved = await Promise.race([
+			this.onConfirm(error, confirmId),
+			new Promise<boolean>((resolve) => {
+				if (this.signal) {
+					const onAbort = () => resolve(false);
+					this.signal.addEventListener('abort', onAbort, { once: true });
+				}
+			})
+		]);
+
+		if (approved) {
+			try {
+				const retryResult = await this.registry.execute(
+					error.toolName,
+					{ ...error.args, __confirmed: true },
+					process.cwd()
+				);
+				yield { type: 'tool_result', name: error.toolName, success: retryResult.success, output: retryResult.output };
+				const content = retryResult.output || retryResult.error || '';
+				this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
+				this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
+			} catch (retryError) {
+				const errMsg = (retryError as Error).message;
+				yield { type: 'tool_result', name: error.toolName, success: false, output: errMsg };
+				this.toolResultMsgs.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
+				this.messages.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
+			}
+		} else {
+			const cancelMsg = '用户取消了此操作';
+			yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
+			this.toolResultMsgs.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
+			this.messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
+		}
+
+		this.pendingConfirmation = undefined;
+		this.state = AgentState.POST_TOOL;
+	}
+
+	private async *doPostTool(): AsyncGenerator<AgentEvent> {
+		this.toolIndex++;
+		this.state = AgentState.PRE_TOOL;
+	}
+
+	private async *doPersistTurn(): AsyncGenerator<AgentEvent> {
+		await this.hooks.afterTurn?.(this.iteration);
+
+		await this.storage.addMessage(this.effectiveSessionId, {
+			session_id: this.effectiveSessionId,
+			role: 'assistant',
+			content: this.fullContent || '',
+			tool_calls: this.resolvedToolCalls,
+			usage: this.totalUsage
+		});
+
+		if (this.totalUsage) {
+			await this.storage.updateTokenCount(this.effectiveSessionId, this.totalUsage.total_tokens);
+		}
+
+		for (const t of this.toolResultMsgs) {
+			await this.storage.addMessage(this.effectiveSessionId, {
+				session_id: this.effectiveSessionId,
+				role: 'tool',
+				content: t.content,
+				tool_call_id: t.tool_call_id,
+				name: t.name
+			});
+		}
+
+		if (this.signal?.aborted) {
+			this.state = AgentState.DONE;
+			return;
+		}
+
+		this.iteration++;
+		this.state = AgentState.PRE_LLM;
+	}
+
+	private async *doCheckContinue(): AsyncGenerator<AgentEvent> {
+		const tokensUsed = this.totalUsage?.total_tokens || 0;
+		if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
+			const newId = await this.createContinuation(
+				this.effectiveSessionId,
+				this.userMsg,
+				this.messages,
+				typeof this.buildResult.messages[0]?.content === 'string' ? this.buildResult.messages[0]?.content : undefined
+			);
+			if (newId) {
+				yield { type: 'forked', newSessionId: newId };
+			}
+		}
+		this.state = AgentState.DONE;
+	}
+
+	// ═══════════════════════════════════════════════════════
+	//  createContinuation
+	// ═══════════════════════════════════════════════════════
+
 	private async createContinuation(
 		sessionId: string,
 		userMsg: { id: string; content: string; seq: number },

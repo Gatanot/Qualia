@@ -8,7 +8,7 @@
  * @module agent
  */
 
-export { AgentLoop } from './loop-fsm';
+export { AgentLoop } from './loop';
 export { ContextBuilder } from './context-builder';
 export { generateSummary } from './summarizer';
 export { generateDiary } from './diary';
