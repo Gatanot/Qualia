@@ -1,5 +1,5 @@
-import type { AIProvider, Message, Tool, ToolCall, Usage, ContentPart } from '$lib/provider';
-import { sleep } from '$lib/provider';
+﻿import type { AIProvider, Message, Tool, ToolCall, Usage, ContentPart } from '$lib/ai';
+import { sleep } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';

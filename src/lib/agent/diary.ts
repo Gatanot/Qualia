@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+﻿import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AIProvider, Message } from '$lib/provider';
+import type { AIProvider, Message } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import { buildSystemMessage, completeWithToolLoop } from './summarizer';
 

@@ -1,4 +1,4 @@
-import type { ToolCall, Usage } from '$lib/provider';
+﻿import type { ToolCall, Usage } from '$lib/ai';
 
 /**
  * 会话记录

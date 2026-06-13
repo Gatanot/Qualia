@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+﻿import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Message, ImageContent, ContentPart } from '$lib/provider';
+import type { Message, ImageContent, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import type { BuildResult } from './types';

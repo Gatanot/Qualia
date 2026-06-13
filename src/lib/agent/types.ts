@@ -1,4 +1,4 @@
-import type { Usage, Message } from '$lib/provider';
+﻿import type { Usage, Message } from '$lib/ai';
 import type { PendingConfirmation } from '$lib/tool';
 
 /**

@@ -1,4 +1,4 @@
-import type { AIProvider, Message, Usage, ContentPart } from '$lib/provider';
+﻿import type { AIProvider, Message, Usage, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool } from '$lib/tool';

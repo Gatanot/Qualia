@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 工具注册表
  *
  * 管理工具的注册、查询和调度。
@@ -23,7 +23,7 @@ export class ToolRegistry {
 	}
 
 	/** 获取 OpenAI function calling 格式的工具定义列表 */
-	getDefinitions(): import('$lib/provider').Tool[] {
+	getDefinitions(): import('$lib/ai').Tool[] {
 		return Array.from(this.tools.values()).map((tool) => ({
 			type: 'function' as const,
 			function: {

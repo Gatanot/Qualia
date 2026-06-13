@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
-import type { ModelDef } from '../provider/models';
-import { getDefaultModels } from '../provider/models';
+import type { ModelDef } from '../ai/models';
+import { getDefaultModels } from '../ai/models';
 import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;

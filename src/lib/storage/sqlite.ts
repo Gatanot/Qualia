@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
+﻿import Database from 'better-sqlite3';
 import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
-import type { ToolCall, Usage } from '$lib/provider';
+import type { ToolCall, Usage } from '$lib/ai';
 import { formatSessionTitle } from './utils';
 
 interface MessageRow {

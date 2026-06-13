@@ -1,5 +1,5 @@
-import { readConfig, getFirstProvider, getActiveModel } from '$lib/config';
-import { createProvider, getDefaultModels } from '$lib/provider';
+﻿import { readConfig, getFirstProvider, getActiveModel } from '$lib/config';
+import { createProvider, getDefaultModels } from '$lib/ai';
 import { createStorage } from '$lib/storage';
 import { generateSummary } from './summarizer';
 import { generateDiary } from './diary';

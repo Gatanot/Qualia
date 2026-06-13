@@ -1,8 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import type { UIMessage, ImageAttachment } from '$lib/components/types';
-	import type { ContentPart } from '$lib/provider';
+	import type { ContentPart } from '$lib/ai';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
@@ -560,7 +560,7 @@
 
 			case 'done': {
 				if (currentAssistant && event.usage) {
-					currentAssistant.usage = event.usage as import('$lib/provider').Usage;
+					currentAssistant.usage = event.usage as import('$lib/ai').Usage;
 				}
 				if (event.contextWindow) {
 					contextWindow = event.contextWindow as number;

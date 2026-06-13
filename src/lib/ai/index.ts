@@ -4,11 +4,11 @@
  * 管理不同来源的 AI API 接入，向上层暴露统一的流式/非流式调用接口。
  * 当前支持 OpenAI 兼容格式。
  *
- * @module provider
+ * @module ai
  *
  * @example 基本用法
  * ```ts
- * import { createProvider } from '$lib/provider';
+ * import { createProvider } from '$lib/ai';
  *
  * const ai = createProvider({
  *   type: 'openai',

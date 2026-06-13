@@ -1,4 +1,4 @@
-import type { Usage } from '$lib/provider';
+﻿import type { Usage } from '$lib/ai';
 
 export interface ToolResult {
 	success: boolean;

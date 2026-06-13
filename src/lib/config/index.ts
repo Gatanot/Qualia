@@ -8,7 +8,7 @@
  */
 
 export type { AppConfig, ProviderConfig } from './types';
-export type { ModelDef } from '../provider/models';
+export type { ModelDef } from '../ai/models';
 export {
 	readConfig,
 	writeConfig,

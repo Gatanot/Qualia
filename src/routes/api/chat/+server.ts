@@ -1,6 +1,6 @@
-import { readConfig, getProviderForModel, getContextWindow, getActiveModel } from '$lib/config';
-import { createProvider } from '$lib/provider';
-import type { ImageContent } from '$lib/provider';
+﻿import { readConfig, getProviderForModel, getContextWindow, getActiveModel } from '$lib/config';
+import { createProvider } from '$lib/ai';
+import type { ImageContent } from '$lib/ai';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool, readMemoryTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
