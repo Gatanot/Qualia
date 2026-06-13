@@ -156,10 +156,6 @@ export class AgentLoop {
 		}
 	}
 
-	// ═══════════════════════════════════════════════════════
-	//  State handlers
-	// ═══════════════════════════════════════════════════════
-
 	private async *doInit(userMessage: string, userMessageId?: string): AsyncGenerator<AgentEvent> {
 		this.userMsg = await this.storage.addMessage(this.effectiveSessionId, {
 			id: userMessageId,
@@ -453,10 +449,6 @@ export class AgentLoop {
 		this.state = AgentState.PRE_LLM;
 	}
 
-	// ═══════════════════════════════════════════════════════
-	//  tryForkIfWindowLow — 在无工具调用的 reply 完成时和每次工具迭代前检查上下文窗口
-	// ═══════════════════════════════════════════════════════
-
 	private async *tryForkIfWindowLow(): AsyncGenerator<AgentEvent> {
 		const tokensUsed = this.totalUsage?.total_tokens || 0;
 		if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
@@ -471,10 +463,6 @@ export class AgentLoop {
 			}
 		}
 	}
-
-	// ═══════════════════════════════════════════════════════
-	//  createContinuation
-	// ═══════════════════════════════════════════════════════
 
 	private async createContinuation(
 		sessionId: string,
