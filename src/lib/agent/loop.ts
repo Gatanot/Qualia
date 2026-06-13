@@ -147,7 +147,8 @@ export class AgentLoop {
 						yield* this.doPersistTurn();
 						break;
 					case AgentState.CHECK_CONTINUE:
-						yield* this.doCheckContinue();
+					case AgentState.DONE:
+					case AgentState.ERROR:
 						break;
 				}
 			}
@@ -187,7 +188,8 @@ export class AgentLoop {
 		this.chunkUsage = undefined;
 		this.attempt = 0;
 
-		await this.hooks.beforeLlmCall?.(this.messages);
+		const modified = await this.hooks.beforeLlmCall?.(this.messages);
+		if (modified) this.messages = modified;
 
 		this.state = AgentState.LLM_STREAMING;
 	}
@@ -286,9 +288,22 @@ export class AgentLoop {
 				await this.storage.updateTokenCount(this.effectiveSessionId, this.totalUsage.total_tokens);
 			}
 
+			const tokensUsed = this.totalUsage?.total_tokens || 0;
+			if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
+				const newId = await this.createContinuation(
+					this.effectiveSessionId,
+					this.userMsg,
+					this.messages,
+					typeof this.buildResult.messages[0]?.content === 'string' ? this.buildResult.messages[0]?.content : undefined
+				);
+				if (newId) {
+					yield { type: 'forked', newSessionId: newId };
+				}
+			}
+
 			yield { type: 'done', messageId: crypto.randomUUID(), usage: this.totalUsage, contextWindow: this.contextWindow };
 
-			this.state = AgentState.CHECK_CONTINUE;
+			this.state = AgentState.DONE;
 			return;
 		}
 
@@ -368,15 +383,18 @@ export class AgentLoop {
 
 		yield { type: 'confirm_required', confirmId, confirmation: error };
 
+		let abortCleanup: (() => void) | undefined;
 		const approved = await Promise.race([
 			this.onConfirm(error, confirmId),
 			new Promise<boolean>((resolve) => {
 				if (this.signal) {
 					const onAbort = () => resolve(false);
 					this.signal.addEventListener('abort', onAbort, { once: true });
+					abortCleanup = () => this.signal?.removeEventListener('abort', onAbort);
 				}
 			})
 		]);
+		abortCleanup?.();
 
 		if (approved) {
 			try {
@@ -443,22 +461,6 @@ export class AgentLoop {
 
 		this.iteration++;
 		this.state = AgentState.PRE_LLM;
-	}
-
-	private async *doCheckContinue(): AsyncGenerator<AgentEvent> {
-		const tokensUsed = this.totalUsage?.total_tokens || 0;
-		if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
-			const newId = await this.createContinuation(
-				this.effectiveSessionId,
-				this.userMsg,
-				this.messages,
-				typeof this.buildResult.messages[0]?.content === 'string' ? this.buildResult.messages[0]?.content : undefined
-			);
-			if (newId) {
-				yield { type: 'forked', newSessionId: newId };
-			}
-		}
-		this.state = AgentState.DONE;
 	}
 
 	// ═══════════════════════════════════════════════════════
