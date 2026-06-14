@@ -1,4 +1,4 @@
-import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
+import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types';
 import { formatSessionTitle } from './utils';
 
 /**
@@ -220,6 +220,28 @@ export class MemoryStorage implements Storage {
 		if (session) {
 			session.memory_snapshot = snapshot;
 		}
+	}
+
+	async searchMessages(query: string, sessionId?: string, limit = 10): Promise<MessageSearchResult[]> {
+		const lowerQuery = query.toLowerCase();
+		const results: MessageSearchResult[] = [];
+		for (const [sid, msgs] of this.messages) {
+			if (sessionId && sid !== sessionId) continue;
+			const session = this.sessions.get(sid);
+			for (const msg of msgs) {
+				if (!msg.content.toLowerCase().includes(lowerQuery)) continue;
+				results.push({
+					sessionId: sid,
+					sessionTitle: session?.title || '',
+					messageId: msg.id,
+					role: msg.role,
+					content: msg.content,
+					createdAt: msg.created_at
+				});
+			}
+		}
+		results.sort((a, b) => b.createdAt - a.createdAt);
+		return results.slice(0, limit);
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {

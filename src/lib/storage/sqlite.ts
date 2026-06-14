@@ -1,5 +1,5 @@
 ﻿import Database from 'better-sqlite3';
-import type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
+import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types';
 import type { ToolCall, Usage } from '$lib/ai';
 import { formatSessionTitle } from './utils';
 
@@ -121,7 +121,8 @@ export class SQLiteStorage implements Storage {
 			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			setMemorySnapshot: this.db.prepare(`UPDATE sessions SET memory_snapshot = ? WHERE id = ?`),
-			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`)
+			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`),
+			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`)
 		};
 	}
 
@@ -259,6 +260,22 @@ export class SQLiteStorage implements Storage {
 
 	async setSessionTitle(sessionId: string, title: string): Promise<void> {
 		this.stmts.setTitle.run(title, sessionId);
+	}
+
+	async searchMessages(query: string, sessionId?: string, limit = 10): Promise<MessageSearchResult[]> {
+		const pattern = `%${query}%`;
+		const rows = this.stmts.searchMessages.all(pattern, sessionId || null, sessionId || null, limit) as Array<{
+			messageId: string; sessionId: string; role: string; content: string;
+			createdAt: number; sessionTitle: string;
+		}>;
+		return rows.map((r) => ({
+			sessionId: r.sessionId,
+			sessionTitle: r.sessionTitle,
+			messageId: r.messageId,
+			role: r.role as MessageSearchResult['role'],
+			content: r.content,
+			createdAt: r.createdAt
+		}));
 	}
 
 	async setAudioPath(messageId: string, path: string): Promise<void> {

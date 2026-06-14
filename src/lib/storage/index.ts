@@ -2,7 +2,7 @@ import type { Storage } from './types';
 import { MemoryStorage } from './memory';
 import { SQLiteStorage } from './sqlite';
 
-export type { Storage, Session, MessageRecord, MessageQueryOptions } from './types';
+export type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types';
 export { MemoryStorage } from './memory';
 export { SQLiteStorage } from './sqlite';
 

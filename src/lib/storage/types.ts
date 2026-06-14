@@ -56,6 +56,16 @@ export interface MessageRecord {
 	seq: number;
 }
 
+/** 消息搜索结果 */
+export interface MessageSearchResult {
+	sessionId: string;
+	sessionTitle: string;
+	messageId: string;
+	role: 'user' | 'assistant' | 'system' | 'tool';
+	content: string;
+	createdAt: number;
+}
+
 /** 消息查询选项 */
 export interface MessageQueryOptions {
 	/** 返回最近 N 条 */
@@ -117,6 +127,9 @@ export interface Storage {
 	getTodayUpdatedSessions(): Promise<Session[]>;
 	/** 设置会话的 memory 快照 */
 	setMemorySnapshot(sessionId: string, snapshot: string): Promise<void>;
+
+	/** 搜索消息内容（跨会话全文模糊匹配） */
+	searchMessages(query: string, sessionId?: string, limit?: number): Promise<MessageSearchResult[]>;
 
 	/** 设置消息的 TTS 音频路径 */
 	setAudioPath(messageId: string, path: string): Promise<void>;

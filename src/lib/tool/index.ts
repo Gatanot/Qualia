@@ -34,3 +34,4 @@ export { execTool } from './tools/exec';
 export { writeMemoryTool } from './tools/write-memory';
 export { webSearchTool } from './tools/web-search';
 export { readMemoryTool } from './tools/read-memory';
+export { createSearchHistoryTool } from './tools/search-history';
