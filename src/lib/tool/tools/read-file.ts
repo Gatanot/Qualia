@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
 import { classifyFilePath } from '../safeguard';
 import { PendingConfirmation } from '../types';
+import { stripBom } from './file-utils';
 
 const MAX_FILE_SIZE = 1024 * 1024;
 const DEFAULT_OFFSET = 1;
@@ -101,7 +102,8 @@ export const readFileTool: ToolDef = {
 				};
 			}
 
-			const content = await readFile(filePath, 'utf-8');
+			const rawContent = await readFile(filePath, 'utf-8');
+			const content = stripBom(rawContent);
 			const lines = content.split('\n');
 			const totalLines = lines.length;
 			const startIdx = offset - 1;
