@@ -87,7 +87,12 @@ function isDangerousCommand(command: string): boolean {
 }
 
 function isReadonlyCommand(command: string): boolean {
-	return READONLY_PATTERNS.some((pattern) => pattern.test(command));
+	for (const segment of command.split('|')) {
+		if (!READONLY_PATTERNS.some((pattern) => pattern.test(segment))) {
+			return false;
+		}
+	}
+	return true;
 }
 
 function isPathInWorkspace(targetPath: string, workspaceRoot: string): boolean {
@@ -171,14 +176,14 @@ export function classifyCommand(
  *
  * @returns 'safe' 可直接操作 / 'confirm' 需用户确认
  */
-export function classifyFilePath(
+ export function classifyFilePath(
 	targetPath: string,
 	workspaceRoot: string
 ): CommandClassification {
 	const normalized = normalizePath(targetPath, workspaceRoot);
 
 	if (isSystemPath(normalized, workspaceRoot)) {
-		return 'confirm';
+		return 'reject';
 	}
 
 	if (!isPathInWorkspace(normalized, workspaceRoot)) {

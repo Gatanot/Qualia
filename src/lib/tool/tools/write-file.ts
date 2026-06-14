@@ -43,6 +43,9 @@ export const writeFileTool: ToolDef = {
 
 		if (!args.__confirmed) {
 			const classification = classifyFilePath(filePath, workspaceRoot);
+			if (classification === 'reject') {
+				return { success: false, output: '', error: `拒绝写入系统路径: ${userPath}` };
+			}
 			if (classification === 'confirm') {
 				throw new PendingConfirmation(
 					'write_file',

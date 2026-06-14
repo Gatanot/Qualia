@@ -265,7 +265,16 @@ export class AgentLoop {
 	}
 
 	private async *doPostLlm(): AsyncGenerator<AgentEvent> {
-		if (this.chunkUsage) this.totalUsage = this.chunkUsage;
+		if (this.chunkUsage) {
+			const cu = this.chunkUsage;
+			this.totalUsage = this.totalUsage
+				? {
+						prompt_tokens: (this.totalUsage.prompt_tokens || 0) + (cu.prompt_tokens || 0),
+						completion_tokens: (this.totalUsage.completion_tokens || 0) + (cu.completion_tokens || 0),
+						total_tokens: (this.totalUsage.total_tokens || 0) + (cu.total_tokens || 0)
+					}
+				: { ...cu };
+		}
 
 		await this.hooks.afterLlmCall?.(this.totalUsage);
 
