@@ -28,7 +28,7 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
 | Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
-| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. |
+| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro), Ollama (local, extends OpenAI compat). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. |
 
 ## Architecture
 
@@ -39,11 +39,11 @@ src/lib/
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
-├── provider/        # OpenAI + DeepSeek + Xiaomi API clients; factory: createProvider({ type })
-│   └── models.ts    # ModelDef list for each provider (with contextWindow)
+├── ai/              # AI providers (OpenAI, DeepSeek, Xiaomi, Ollama) + factory + types + utils
+│   ├── models.ts    # ModelDef list per provider (contextWindow, reasoningEffortValues, supportsVision)
 ├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
-├── tool/            # ToolRegistry + 5 tools
-│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, exec, write_memory)
+├── tool/            # ToolRegistry + 7 tools
+│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, exec, write_memory, read_memory, web_search)
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
 ├── chat-confirm.ts             # Shared Map<string, Promise> for pending confirmations
