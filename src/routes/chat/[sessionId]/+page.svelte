@@ -17,8 +17,7 @@
 	let currentAssistant = $state<UIMessage | null>(null);
 	let frontendConfirms = new Map<string, () => void>();
 	let focusTrigger = $state(0);
-	let inputQueue: string[] = $state([]);
-	let imageQueue: ImageAttachment[][] = $state([]);
+	let inputQueue: { id: string; text: string; images: ImageAttachment[] }[] = $state([]);
 	let abortController: AbortController | null = null;
 	let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let nearBottom = $state(true);
@@ -69,7 +68,7 @@
 				if (pending && records.length === 0) {
 					pendingFirstMessage.set('');
 					pendingFirstImages.set([]);
-					sendMessage(pending, pendingImgs);
+					sendMessage({ id: crypto.randomUUID(), text: pending, images: pendingImgs ?? [] });
 				} else if (pending) {
 					pendingFirstMessage.set('');
 					pendingFirstImages.set([]);
@@ -190,8 +189,7 @@
 
 		if (inputQueue.length > 0) {
 			const next = inputQueue.shift()!;
-			const nextImgs = imageQueue.shift() || [];
-			sendMessage(next, nextImgs);
+			sendMessage(next);
 		}
 	}
 
@@ -233,7 +231,7 @@
 		}
 
 		if (action === 'retry') {
-			if (lastUserMessage) sendMessage(lastUserMessage, lastUserImages, true);
+			if (lastUserMessage) sendMessage({ id: crypto.randomUUID(), text: lastUserMessage, images: lastUserImages }, true);
 		} else {
 			input = lastUserMessage;
 			focusTrigger++;
@@ -270,25 +268,27 @@
 		focusTrigger++;
 	}
 
-	async function sendMessage(queuedText?: string, queuedImages?: ImageAttachment[], skipUserMsg = false) {
-		const text = (queuedText ?? input).trim();
-		const msgImages = queuedImages || [];
-		if (!text) return;
+	async function sendMessage(queued?: { id: string; text: string; images: ImageAttachment[] }, skipUserMsg = false) {
+		const text = queued?.text?.trim();
+		const msgImages = queued?.images ?? [];
+		if (!text || !queued) return;
+
+		const userMsgId = queued.id;
 
 		if (streaming) {
 			if (!skipUserMsg) {
-				inputQueue.push(text);
-				imageQueue.push([...msgImages]);
-				if (!queuedText) { input = ''; focusTrigger++; }
+				inputQueue.push({ id: userMsgId, text, images: [...msgImages] });
+				fetch('/api/steer', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ sessionId, messageId: userMsgId, message: text })
+				}).catch(() => {});
 			}
 			return;
 		}
 
-		if (!queuedText) { input = ''; focusTrigger++; }
-
 		lastUserMessage = text;
 		lastUserImages = [...msgImages];
-		const userMsgId = crypto.randomUUID();
 
 		if (!skipUserMsg) {
 			const blocks: UIMessage['blocks'] = [];
@@ -383,8 +383,7 @@
 				focusTrigger++;
 				if (inputQueue.length > 0) {
 					const next = inputQueue.shift()!;
-					const nextImgs = imageQueue.shift() || [];
-					sendMessage(next, nextImgs);
+					sendMessage(next);
 				}
 				return;
 			}
@@ -522,6 +521,13 @@
 				break;
 			}
 
+			case 'steering_consumed': {
+				const msgId = event.messageId as string;
+				const idx = inputQueue.findIndex((q) => q.id === msgId);
+				if (idx !== -1) inputQueue.splice(idx, 1);
+				break;
+			}
+
 			case 'forked': {
 				if (event.newSessionId) {
 					bumpSession(event.newSessionId as string);
@@ -607,7 +613,12 @@
 			bind:value={input}
 			streaming={streaming}
 			queueCount={inputQueue.length}
-			onsend={(imgs) => sendMessage(undefined, imgs)}
+			onsend={(imgs) => {
+				const msg = { id: crypto.randomUUID(), text: input, images: imgs };
+				input = '';
+				focusTrigger++;
+				sendMessage(msg);
+			}}
 			onstop={stopAI}
 			focusTrigger={focusTrigger}
 		/>

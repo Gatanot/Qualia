@@ -5,6 +5,7 @@ import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
 import { AgentState } from './types';
+import { pendingSteering } from '$lib/chat-steering';
 
 function extractTextContent(content: string | ContentPart[]): string {
 	if (typeof content === 'string') return content;
@@ -111,6 +112,8 @@ export class AgentLoop {
 		this.iteration = 0;
 		this.state = AgentState.INIT;
 
+		pendingSteering.delete(sessionId);
+
 		try {
 			while (true) {
 				if ((this.state as AgentState) === AgentState.DONE || (this.state as AgentState) === AgentState.ERROR) break;
@@ -183,10 +186,28 @@ export class AgentLoop {
 		this.chunkUsage = undefined;
 		this.attempt = 0;
 
+		yield* this.consumeSteering();
+
 		const modified = await this.hooks.beforeLlmCall?.(this.messages);
 		if (modified) this.messages = modified;
 
 		this.state = AgentState.LLM_STREAMING;
+	}
+
+	private async *consumeSteering(): AsyncGenerator<AgentEvent> {
+		const steering = pendingSteering.get(this.effectiveSessionId);
+		if (!steering || steering.length === 0) return;
+
+		const drained = steering.splice(0);
+		for (const s of drained) {
+			await this.storage.addMessage(this.effectiveSessionId, {
+				session_id: this.effectiveSessionId,
+				role: 'user',
+				content: s.text
+			});
+			this.messages.push({ role: 'user', content: s.text });
+			yield { type: 'steering_consumed', messageId: s.messageId };
+		}
 	}
 
 	private async *doLlmStreaming(): AsyncGenerator<AgentEvent> {
@@ -489,7 +510,30 @@ export class AgentLoop {
 			try {
 				const res = await this.provider.chat({
 					messages: [
-						{ role: 'user', content: `请用中文简洁总结以下对话的关键内容（决策、修改、结论、用户偏好），用于延续对话时提供上下文。不超过 500 字，以要点形式呈现。\n\n对话内容：\n${rawContent}` }
+						{ role: 'user', content: `请用中文总结以下对话的关键内容，严格按照以下结构化格式输出：
+
+## 目标
+- 用户当前想要完成的主要目标（1-2 句话）
+
+## 进度
+- 已完成: <列出已完成的事项>
+- 进行中: <列出正在进行的事项>
+- 阻塞: <列出被阻塞的事项（如无可省略此行）>
+
+## 关键决策
+- <列出已做出的重要决策或选择>
+
+## 用户偏好
+- <列出用户表达的习惯、偏好、约束>
+
+## 下一步
+- <建议的后续步骤>
+
+## 情感上下文
+- <用户情绪、态度等有助于延续对话的信息>
+
+对话内容：
+${rawContent}` }
 					],
 					max_tokens: 2000,
 					temperature: 0.3

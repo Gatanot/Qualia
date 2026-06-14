@@ -69,7 +69,9 @@ export type AgentEvent =
 	/** LLM 调用失败，正在重试 */
 	| { type: 'retrying'; attempt: number; maxRetries: number }
 	/** 所有重试均已失败 */
-	| { type: 'retry_exhausted'; message: string; partialContent: boolean };
+	| { type: 'retry_exhausted'; message: string; partialContent: boolean }
+	/** 实时干预消息已消费，可从输入队列中移除 */
+	| { type: 'steering_consumed'; messageId: string };
 
 /** ContextBuilder.build() 的返回值 */
 export interface BuildResult {
