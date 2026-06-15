@@ -9,7 +9,8 @@ const MAX_OUTPUT = 50_000;
 
 const IS_WINDOWS = process.platform === 'win32';
 
-function killProcessTree(pid: number): boolean {
+function killProcessTree(pid: number | undefined): boolean {
+	if (pid == null) return false;
 	if (IS_WINDOWS) {
 		try {
 			execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
@@ -96,7 +97,9 @@ export const execTool: ToolDef = {
 			let resolved = false;
 			const timer = setTimeout(() => {
 				resolved = true;
-				killProcessTree(child.pid!);
+				if (!killProcessTree(child.pid)) {
+					try { child.kill(); } catch { /* 忽略二次杀死失败 */ }
+				}
 				resolve({
 					success: false,
 					output: '',

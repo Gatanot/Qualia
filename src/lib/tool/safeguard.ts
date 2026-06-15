@@ -110,19 +110,60 @@ function isSystemPath(targetPath: string, workspaceRoot: string): boolean {
 	return SYSTEM_DIRS.some((sysDir) => normalized.startsWith(sysDir.toLowerCase()));
 }
 
-function extractPaths(command: string): string[] {
-	const paths: string[] = [];
+function expandEnvVars(command: string): string {
+	let result = command.replace(/%(\w+)%/g, (_, name) => {
+		return process.env[name] ?? `%${name}%`;
+	});
+	result = result.replace(/\$\{(\w+)\}/g, (_, name) => {
+		return process.env[name] ?? `\$\{${name}\}`;
+	});
+	result = result.replace(/\$([A-Za-z_]\w*)/g, (_, name) => {
+		return process.env[name] ?? `$${name}`;
+	});
+	return result;
+}
 
-	const winPathRe = /[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*/g;
+function collectPaths(source: string, paths: string[]): void {
+	const winAbsRe = /[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*/g;
 	let match: RegExpExecArray | null;
-	while ((match = winPathRe.exec(command)) !== null) {
+	while ((match = winAbsRe.exec(source)) !== null) {
 		paths.push(match[0]);
 	}
 
-	const unixPathRe = /(?<!\w)\/(?:[^\s'"]+)/g;
-	while ((match = unixPathRe.exec(command)) !== null) {
+	const unixAbsRe = /(?<!\w)\/(?:[^\s'"]+)/g;
+	while ((match = unixAbsRe.exec(source)) !== null) {
 		const p = match[0];
-		if (p.length > 1 && !p.match(/^\/\d/) && !p.match(/\/$/)) {
+		if (p.length > 1 && !/^\/\d/.test(p) && !/\/$/.test(p)) {
+			paths.push(p);
+		}
+	}
+
+	const tildeRe = /(?<!\w)~\/(?:[^\s'"]+)/g;
+	while ((match = tildeRe.exec(source)) !== null) {
+		paths.push(match[0]);
+	}
+}
+
+function extractPaths(command: string): string[] {
+	const paths: string[] = [];
+
+	collectPaths(command, paths);
+
+	const expanded = expandEnvVars(command);
+	if (expanded !== command) {
+		collectPaths(expanded, paths);
+	}
+
+	const winRelRe = /(?:\.\.\\)+(?:[^\s'"]+)/g;
+	let match: RegExpExecArray | null;
+	while ((match = winRelRe.exec(command)) !== null) {
+		paths.push(match[0]);
+	}
+
+	const unixRelRe = /(?<!\w)(?:\.\.\/)+(?:[^\s'"]+)/g;
+	while ((match = unixRelRe.exec(command)) !== null) {
+		const p = match[0];
+		if (p.length > 1 && !/\/$/.test(p)) {
 			paths.push(p);
 		}
 	}
@@ -194,8 +235,13 @@ export function classifyCommand(
 }
 
 function normalizePath(targetPath: string, workspaceRoot: string): string {
-	if (isAbsolute(targetPath)) {
-		return targetPath;
+	let resolved = targetPath;
+	if (resolved.startsWith('~')) {
+		const home = process.env.HOME || process.env.USERPROFILE || '';
+		resolved = resolved.replace(/^~/, home);
 	}
-	return resolve(workspaceRoot, targetPath);
+	if (isAbsolute(resolved)) {
+		return resolved;
+	}
+	return resolve(workspaceRoot, resolved);
 }
