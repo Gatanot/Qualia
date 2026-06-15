@@ -3,34 +3,17 @@ import type { GatewayAdapter, AdapterCapabilities, InboundMessage, SendResult } 
 export interface TelegramConfig {
 	botToken: string;
 	allowedUsers: string;
-	proxyUrl: string;
 }
 
 const POLL_INTERVAL = 2_000;
 
-function createProxyAgent(proxyUrl: string): unknown {
-	try {
-		const { ProxyAgent } = require('undici');
-		return new ProxyAgent(proxyUrl);
-	} catch {
-		return null;
-	}
-}
-
-async function apiCall(config: TelegramConfig, method: string, body?: Record<string, unknown>): Promise<unknown> {
-	const url = `https://api.telegram.org/bot${config.botToken}/${method}`;
-	const opts: Record<string, unknown> = {
+async function apiCall(token: string, method: string, body?: Record<string, unknown>): Promise<unknown> {
+	const url = `https://api.telegram.org/bot${token}/${method}`;
+	const res = await fetch(url, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: body ? JSON.stringify(body) : undefined
-	};
-
-	if (config.proxyUrl) {
-		const agent = createProxyAgent(config.proxyUrl);
-		if (agent) opts.dispatcher = agent;
-	}
-
-	const res = await fetch(url, opts);
+	});
 	return res.json();
 }
 
@@ -54,7 +37,7 @@ export class TelegramAdapter implements GatewayAdapter {
 		if (this.connected) return true;
 
 		try {
-			const me = await apiCall(this.config, 'getMe') as { ok: boolean; result?: { username: string } };
+			const me = await apiCall(this.config.botToken, 'getMe') as { ok: boolean; result?: { username: string } };
 			if (!me.ok || !me.result) {
 				console.error('[telegram] getMe failed:', JSON.stringify(me));
 				return false;
@@ -83,7 +66,7 @@ export class TelegramAdapter implements GatewayAdapter {
 
 	async send(chatId: string, text: string): Promise<SendResult> {
 		try {
-			const result = await apiCall(this.config, 'sendMessage', {
+			const result = await apiCall(this.config.botToken, 'sendMessage', {
 				chat_id: chatId,
 				text
 			}) as { ok: boolean; result?: { message_id: number }; description?: string };
@@ -107,7 +90,7 @@ export class TelegramAdapter implements GatewayAdapter {
 		if (!this.connected) return;
 
 		try {
-			const result = await apiCall(this.config, 'getUpdates', {
+			const result = await apiCall(this.config.botToken, 'getUpdates', {
 				offset: this.lastUpdateId + 1,
 				timeout: 10,
 				allowed_updates: ['message']

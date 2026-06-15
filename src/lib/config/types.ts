@@ -36,5 +36,4 @@ export interface AppConfig {
 	emailTo: string;
 	telegramBotToken: string;
 	telegramAllowedUsers: string;
-	telegramProxy: string;
 }
