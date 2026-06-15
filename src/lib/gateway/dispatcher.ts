@@ -9,19 +9,29 @@ export class GatewayDispatcher {
 
 	onInbound(handler: InboundHandler): void {
 		this.inboundHandler = handler;
+
+		for (const adapter of this.adapters.values()) {
+			if (adapter.capabilities.receive) {
+				this.setupAdapterMessageHandler(adapter);
+			}
+		}
 	}
 
 	register(adapter: GatewayAdapter): void {
 		this.adapters.set(adapter.name, adapter);
 
 		if (adapter.capabilities.receive && this.inboundHandler) {
-			const handler = this.inboundHandler;
-			adapter.onMessage = async (msg: InboundMessage) => {
-				await handler(msg, adapter, async (text: string) => {
-					await adapter.send(msg.chatId, text);
-				});
-			};
+			this.setupAdapterMessageHandler(adapter);
 		}
+	}
+
+	private setupAdapterMessageHandler(adapter: GatewayAdapter): void {
+		const handler = this.inboundHandler!;
+		adapter.onMessage = async (msg: InboundMessage) => {
+			await handler(msg, adapter, async (text: string) => {
+				await adapter.send(msg.chatId, text);
+			});
+		};
 	}
 
 	unregister(name: string): void {

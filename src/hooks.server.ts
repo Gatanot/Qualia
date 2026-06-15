@@ -57,8 +57,6 @@ async function initGateway(): Promise<void> {
 	}
 
 	if (gatewayHasAdapters()) {
-		setupInboundHandler();
-
 		gateway.onInbound(async (msg, _adapter, reply) => {
 			try {
 				const cfg = readConfig();
@@ -155,12 +153,7 @@ async function initGateway(): Promise<void> {
 }
 
 function gatewayHasAdapters(): boolean {
-	if (!gateway) return false;
-	return true;
-}
-
-function setupInboundHandler(): void {
-	// handler is set in initGateway via gateway.onInbound()
+	return gateway !== null;
 }
 
 async function runBackgroundTasks() {
