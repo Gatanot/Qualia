@@ -282,6 +282,14 @@ export class SQLiteStorage implements Storage {
 		this.stmts.updateAudioPath.run(path, messageId);
 	}
 
+	async getMostRecentSession(): Promise<Session | null> {
+		const rows = this.stmts.listAllSessions.all() as SessionRow[];
+		for (const row of rows) {
+			if (row.status === 'active') return this.rowToSession(row);
+		}
+		return null;
+	}
+
 	async getStaleSessions(idleMs: number | null): Promise<Session[]> {
 		let rows: SessionRow[];
 		if (idleMs === null) {

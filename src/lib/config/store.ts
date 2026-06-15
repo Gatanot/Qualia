@@ -33,7 +33,9 @@ const defaultConfig: AppConfig = {
 	emailSmtpUser: '',
 	emailSmtpPass: '',
 	emailFrom: '',
-	emailTo: ''
+	emailTo: '',
+	telegramBotToken: '',
+	telegramAllowedUsers: ''
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): ProviderConfig {
@@ -83,7 +85,9 @@ export function readConfig(): AppConfig {
 			emailSmtpUser: typeof parsed.emailSmtpUser === 'string' ? parsed.emailSmtpUser : '',
 			emailSmtpPass: typeof parsed.emailSmtpPass === 'string' ? parsed.emailSmtpPass : '',
 			emailFrom: typeof parsed.emailFrom === 'string' ? parsed.emailFrom : '',
-			emailTo: typeof parsed.emailTo === 'string' ? parsed.emailTo : ''
+			emailTo: typeof parsed.emailTo === 'string' ? parsed.emailTo : '',
+			telegramBotToken: typeof parsed.telegramBotToken === 'string' ? parsed.telegramBotToken : '',
+			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : ''
 		};
 	} catch {
 		return { ...defaultConfig };

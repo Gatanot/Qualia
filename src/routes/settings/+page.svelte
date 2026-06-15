@@ -10,6 +10,7 @@
 	import SearchSettings from '$lib/components/settings/SearchSettings.svelte';
 	import TaskManager from '$lib/components/settings/TaskManager.svelte';
 	import EmailSettings from '$lib/components/settings/EmailSettings.svelte';
+	import TelegramSettings from '$lib/components/settings/TelegramSettings.svelte';
 
 	const TABS = [
 		{ id: 'general', label: '常规' },
@@ -22,7 +23,7 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '' });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -156,6 +157,11 @@
 					bind:smtpPass={config.emailSmtpPass}
 					bind:emailFrom={config.emailFrom}
 					bind:emailTo={config.emailTo}
+					onchange={saveNotifications}
+				/>
+				<TelegramSettings
+					bind:botToken={config.telegramBotToken}
+					bind:allowedUsers={config.telegramAllowedUsers}
 					onchange={saveNotifications}
 				/>
 			{:else if activeTab === 'summary'}

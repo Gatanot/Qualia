@@ -133,4 +133,7 @@ export interface Storage {
 
 	/** 设置消息的 TTS 音频路径 */
 	setAudioPath(messageId: string, path: string): Promise<void>;
+
+	/** 获取最近活跃的会话（按 updated_at 倒序第一个未归档的） */
+	getMostRecentSession(): Promise<Session | null>;
 }

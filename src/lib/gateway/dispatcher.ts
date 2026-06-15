@@ -1,11 +1,27 @@
-import type { GatewayAdapter, GatewayNotification } from './types';
+import type { GatewayAdapter, GatewayNotification, InboundMessage } from './types';
+
+export type InboundHandler = (message: InboundMessage, adapter: GatewayAdapter, reply: (text: string) => Promise<void>) => Promise<void>;
 
 export class GatewayDispatcher {
 	private adapters = new Map<string, GatewayAdapter>();
 	private started = false;
+	private inboundHandler: InboundHandler | null = null;
+
+	onInbound(handler: InboundHandler): void {
+		this.inboundHandler = handler;
+	}
 
 	register(adapter: GatewayAdapter): void {
 		this.adapters.set(adapter.name, adapter);
+
+		if (adapter.capabilities.receive && this.inboundHandler) {
+			const handler = this.inboundHandler;
+			adapter.onMessage = async (msg: InboundMessage) => {
+				await handler(msg, adapter, async (text: string) => {
+					await adapter.send(msg.chatId, text);
+				});
+			};
+		}
 	}
 
 	unregister(name: string): void {
@@ -37,12 +53,14 @@ export class GatewayDispatcher {
 		}
 	}
 
-	async notify(notification: GatewayNotification): Promise<void> {
+	async notify(notification: GatewayNotification, chatId?: string): Promise<void> {
 		for (const [, adapter] of this.adapters) {
 			if (!adapter.capabilities.notify) continue;
 
 			try {
-				await this.sendToAdapter(adapter, notification);
+				const target = chatId || 'default';
+				const text = `**${notification.title}**\n\n${notification.body}`;
+				await adapter.send(target, text);
 			} catch (e) {
 				console.error(`[gateway] notify via ${adapter.name} failed:`, (e as Error).message);
 			}
@@ -55,10 +73,5 @@ export class GatewayDispatcher {
 
 		const result = await adapter.send(chatId, text);
 		return result.success;
-	}
-
-	private async sendToAdapter(adapter: GatewayAdapter, notification: GatewayNotification): Promise<void> {
-		const text = `**${notification.title}**\n\n${notification.body}`;
-		await adapter.send('default', text);
 	}
 }

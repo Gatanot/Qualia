@@ -126,7 +126,8 @@ On completion, if `emailNotifications` is enabled, the Gateway sends a summary v
 - **`GatewayAdapter` interface** — `connect/disconnect/send` lifecycle + `capabilities` flags (`receive`, `notify`)
 - **`GatewayDispatcher`** — registry of adapters, `start/stop/notify/send` methods. Notifications fan out to all adapters with `capabilities.notify`.
 - **`EmailAdapter`** — SMTP-only (no IMAP polling). Declares `{ receive: false, notify: true }`. Used for task completion notifications from `hooks.server.ts`.
-- **Config fields**: `emailNotifications`, `emailSmtpHost/Port/Secure/User/Pass`, `emailFrom`, `emailTo`.
+- **`TelegramAdapter`** — long-polling `getUpdates`, registers `{ receive: true, notify: true }`. Inbound messages route through `GatewayDispatcher.onInbound()` → AgentLoop. Uses `data/telegram-sessions.json` to bind each `chatId` to the most recent session (main session model). On agent fork, the binding is updated to the new `[延续]` session.
+- **Config fields**: `emailNotifications`, `emailSmtpHost/Port/Secure/User/Pass`, `emailFrom`, `emailTo`. `telegramBotToken`, `telegramAllowedUsers`.
 
 `hooks.server.ts` initializes the Gateway at startup and routes summarize-job results through `gateway.notify()`.
 
