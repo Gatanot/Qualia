@@ -149,16 +149,17 @@ Tools use `args.__confirmed` to skip re-confirm on retry. `safeguard.ts` classif
 - `confirm`: throw `PendingConfirmation`, wait for user
 - `reject`: refuse (format, diskpart)
 
-## Context window & auto-continue
+## Context window & auto-continue (压缩)
 
-- `ContextBuilder` loads **all** messages from history (no artificial limit).
-- After `AgentLoop` completes a reply, if `contextWindow - token_count < 20000`:
-  1. An LLM call generates a concise summary of the conversation so far.
-  2. A new continuation session is created (`[延续] xxx`) with the summary injected as a system message.
-  3. The current exchange (user message + assistant reply + tool results) is copied into the new session.
-  4. A `forked` SSE event tells the frontend to navigate to the new session.
-  5. The original session's `summary` field is also updated (benefits the diary/records system).
-- `ProviderConfig.contextWindow` is optional — the chat API route backfills it from the active model's `contextWindow` (via `getContextWindow()`) before passing to `ContextBuilder`.
+`ContextBuilder` loads **all** messages from history. When `contextWindow - token_count < 20000` after a reply, the AgentLoop forks:
+
+1. An LLM call generates a conversation compression (temporary, for context continuation)
+2. A new session `[延续] xxx` is created with the compression injected as a system message
+3. The current exchange is copied into the new session
+4. A `forked` SSE event tells the frontend to navigate to the new session
+
+The compression is **not** a persistent summary — it only serves context continuation.  
+**摘要** (summary) is a separate system: the background `runSummarizeJob` in `hooks.server.ts` generates persistent session summaries used for diary/records. The two are independent.
 
 ## Git conventions
 

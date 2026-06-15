@@ -506,31 +506,26 @@ export class AgentLoop {
 
 			const rawContent = buildSummaryContent(allMessages, systemPrompt);
 
-			let summary = '';
+						let compression = '';
 			try {
 				const res = await this.provider.chat({
 					messages: [
-						{ role: 'user', content: `请用中文总结以下对话的关键内容，严格按照以下结构化格式输出：
+						{ role: 'user', content: `以下是之前对话的内容（因为上下文过长需要压缩）。请提取**延续当前任务所需的关键信息**，用中文按以下格式输出（精简，只给真正需要的信息）：
 
-## 目标
-- 用户当前想要完成的主要目标（1-2 句话）
+## 当前任务
+- 用户正在做什么（1 句话）
 
-## 进度
-- 已完成: <列出已完成的事项>
-- 进行中: <列出正在进行的事项>
-- 阻塞: <列出被阻塞的事项（如无可省略此行）>
+## 工作进度
+- 已完成的步骤
+- 当前进行到哪一步
 
-## 关键决策
-- <列出已做出的重要决策或选择>
-
-## 用户偏好
-- <列出用户表达的习惯、偏好、约束>
+## 关键上下文
+- 涉及的文件路径
+- 重要的技术决策或参数
+- 被阻塞的事项（如有）
 
 ## 下一步
-- <建议的后续步骤>
-
-## 情感上下文
-- <用户情绪、态度等有助于延续对话的信息>
+- 接下来应该做什么
 
 对话内容：
 ${rawContent}` }
@@ -538,12 +533,12 @@ ${rawContent}` }
 					max_tokens: 2000,
 					temperature: 0.3
 				});
-				summary = res.content || '';
+				compression = res.content || '';
 			} catch {
-				summary = rawContent.slice(0, 2000);
+				compression = rawContent.slice(0, 2000);
 			}
 
-			if (!summary) return null;
+			if (!compression) return null;
 
 			const newTitle = `[延续] ${parentSession.title}`;
 			const newSession = await this.storage.createSession(newTitle, parentSession.memory_snapshot);
@@ -551,7 +546,7 @@ ${rawContent}` }
 			await this.storage.addMessage(newSession.id, {
 				session_id: newSession.id,
 				role: 'system',
-				content: `[此对话延续自会话「${parentSession.title || sessionId}」，以下为之前对话的摘要]\n\n${summary}`
+				content: `[此对话延续自会话「${parentSession.title || sessionId}」，以下为上下文压缩]\n\n${compression}`
 			});
 
 			await this.storage.addMessage(newSession.id, {
@@ -573,7 +568,6 @@ ${rawContent}` }
 				});
 			}
 
-			await this.storage.updateSummary(sessionId, summary);
 
 			return newSession.id;
 		} catch {
