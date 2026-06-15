@@ -50,7 +50,8 @@ async function initGateway(): Promise<void> {
 	if (config.telegramBotToken) {
 		const tgConfig: TelegramConfig = {
 			botToken: config.telegramBotToken,
-			allowedUsers: config.telegramAllowedUsers || ''
+			allowedUsers: config.telegramAllowedUsers || '',
+			proxyUrl: config.telegramProxy || ''
 		};
 		const telegram = new TelegramAdapter(tgConfig);
 		gateway.register(telegram);

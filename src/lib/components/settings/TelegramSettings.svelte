@@ -2,10 +2,12 @@
 	let {
 		botToken = $bindable(''),
 		allowedUsers = $bindable(''),
+		proxyUrl = $bindable(''),
 		onchange
 	}: {
 		botToken: string;
 		allowedUsers: string;
+		proxyUrl: string;
 		onchange: () => void;
 	} = $props();
 
@@ -38,6 +40,23 @@
 	</div>
 
 	{#if botToken}
+		<div class="setting-row sub">
+			<div class="setting-label">
+				<div class="setting-title">HTTP 代理</div>
+				<div class="setting-desc">
+					国内服务器需要代理才能访问 Telegram API。留空则不使用代理。
+				</div>
+			</div>
+			<div class="input-wrapper">
+				<input
+					type="text"
+					bind:value={proxyUrl}
+					placeholder="http://127.0.0.1:7890"
+					oninput={handleChange}
+				/>
+			</div>
+		</div>
+
 		<div class="setting-row sub">
 			<div class="setting-label">
 				<div class="setting-title">允许的用户</div>

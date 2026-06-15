@@ -23,7 +23,7 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '' });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '', telegramProxy: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -162,6 +162,7 @@
 				<TelegramSettings
 					bind:botToken={config.telegramBotToken}
 					bind:allowedUsers={config.telegramAllowedUsers}
+					bind:proxyUrl={config.telegramProxy}
 					onchange={saveNotifications}
 				/>
 			{:else if activeTab === 'summary'}
