@@ -6,8 +6,8 @@ import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { BuildResult } from '$lib/agent';
 import { runSummarizeJob } from '$lib/agent/background';
 import { GatewayDispatcher, EmailAdapter, TelegramAdapter } from '$lib/gateway';
-import type { EmailConfig, TelegramConfig } from '$lib/gateway';
-import { getBoundSession, setBoundSession } from '$lib/gateway';
+import type { EmailConfig, TelegramConfig, GatewayNotification } from '$lib/gateway';
+import { getBoundSession, setBoundSession, getAllChatIds } from '$lib/gateway';
 import { startScheduler, stopScheduler, setTaskNotificationHandler } from '$lib/task';
 
 let running = false;
@@ -18,6 +18,14 @@ let gateway: GatewayDispatcher | null = null;
 function getToday(): string {
 	const d = new Date();
 	return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+async function notifyAll(notification: GatewayNotification): Promise<void> {
+	if (!gateway) return;
+	await gateway.notify(notification);
+	for (const chatId of getAllChatIds()) {
+		await gateway.send('telegram', chatId, `**${notification.title}**\n\n${notification.body}`);
+	}
 }
 
 async function initGateway(): Promise<void> {
@@ -176,13 +184,13 @@ async function runBackgroundTasks() {
 			result = await runSummarizeJob();
 		}
 
-		if (result && gateway) {
+		if (result) {
 			const { summarized, diary } = result;
 			if (summarized > 0 || diary) {
 				const parts: string[] = [];
 				if (summarized > 0) parts.push(`已为 ${summarized} 个对话生成摘要`);
 				if (diary) parts.push('已生成日记条目');
-				await gateway.notify({
+				await notifyAll({
 					title: 'Qualia 任务完成',
 					body: parts.join('\n'),
 					type: 'task_complete'
@@ -217,9 +225,7 @@ function cleanup() {
 }
 
 setTaskNotificationHandler(async (notification) => {
-	if (gateway) {
-		await gateway.notify(notification);
-	}
+	await notifyAll(notification);
 });
 
 initGateway();

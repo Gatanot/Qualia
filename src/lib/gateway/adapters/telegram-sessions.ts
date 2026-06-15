@@ -38,3 +38,8 @@ export function setBoundSession(chatId: string, sessionId: string): void {
 	store.bindings[String(chatId)] = sessionId;
 	writeBindings(store);
 }
+
+export function getAllChatIds(): string[] {
+	const store = readBindings();
+	return Object.keys(store.bindings);
+}
