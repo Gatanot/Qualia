@@ -58,15 +58,18 @@ async function initGateway(): Promise<void> {
 
 	if (gatewayHasAdapters()) {
 		gateway.onInbound(async (msg, _adapter, reply) => {
+			console.log(`[gateway] inbound from ${_adapter.name} chat ${msg.chatId}: "${msg.text.slice(0, 50)}"`);
 			try {
 				const cfg = readConfig();
 				if (!cfg.activeModel) {
+					console.log('[gateway] no active model configured');
 					await reply('未配置 AI 模型，请先在 Qualia 设置中添加供应商。');
 					return;
 				}
 
 				const providerConfig = getProviderForModel(cfg.activeModel);
 				if (!providerConfig) {
+					console.log('[gateway] provider config not found');
 					await reply('未找到对应模型的供应商配置。');
 					return;
 				}
@@ -77,6 +80,7 @@ async function initGateway(): Promise<void> {
 				const storage = createStorage({ enabled: cfg.storageEnabled });
 
 				let sessionId = getBoundSession(msg.chatId);
+				console.log(`[gateway] resolved session: ${sessionId || '(null)'}`);
 				if (!sessionId) {
 					const recent = await storage.getMostRecentSession();
 					if (recent) {
@@ -99,6 +103,7 @@ async function initGateway(): Promise<void> {
 						setBoundSession(msg.chatId, sessionId);
 					}
 				}
+				console.log(`[gateway] using session: ${sessionId}`);
 
 				const registry = new ToolRegistry();
 				registry.register(readFileTool);
@@ -129,6 +134,7 @@ async function initGateway(): Promise<void> {
 				let fullText = '';
 				let forkedId: string | undefined;
 
+				console.log('[gateway] starting AgentLoop');
 				for await (const event of agent.run(sessionId, msg.text, buildResult)) {
 					if (event.type === 'content') {
 						fullText += event.text;
@@ -136,6 +142,7 @@ async function initGateway(): Promise<void> {
 						forkedId = event.newSessionId;
 					}
 				}
+				console.log(`[gateway] AgentLoop done, response length: ${fullText.length}, forked: ${forkedId || 'none'}`);
 
 				if (forkedId) {
 					setBoundSession(msg.chatId, forkedId);
@@ -144,6 +151,7 @@ async function initGateway(): Promise<void> {
 				const response = fullText.trim() || '(无输出)';
 				await reply(response);
 			} catch (e) {
+				console.error('[gateway] inbound error:', (e as Error).message);
 				await reply(`错误: ${(e as Error).message}`);
 			}
 		});

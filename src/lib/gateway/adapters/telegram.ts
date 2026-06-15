@@ -1,5 +1,4 @@
-import type { GatewayAdapter, AdapterCapabilities, InboundMessage, SendResult, GatewayNotification } from '../types';
-import { getBoundSession, setBoundSession } from './telegram-sessions';
+import type { GatewayAdapter, AdapterCapabilities, InboundMessage, SendResult } from '../types';
 
 export interface TelegramConfig {
 	botToken: string;
@@ -97,18 +96,34 @@ export class TelegramAdapter implements GatewayAdapter {
 				allowed_updates: ['message']
 			}) as { ok: boolean; result?: TelegramUpdate[] };
 
-			if (!result.ok || !result.result) return;
+			if (!result.ok) {
+				console.error('[telegram] getUpdates failed:', JSON.stringify(result));
+				return;
+			}
+			if (!result.result || result.result.length === 0) return;
+
+			console.log(`[telegram] got ${result.result.length} update(s)`);
 
 			for (const update of result.result) {
 				this.lastUpdateId = update.update_id;
 
 				const msg = update.message;
-				if (!msg?.text || !msg.chat?.id) continue;
+				if (!msg?.text || !msg.chat?.id) {
+					console.log('[telegram] skipping non-text message');
+					continue;
+				}
 
 				const chatId = String(msg.chat.id);
+				console.log(`[telegram] message from chat ${chatId}: "${msg.text.slice(0, 50)}"`);
 
 				if (!this.isAllowed(chatId)) {
+					console.log(`[telegram] chat ${chatId} not in allowed list`);
 					await this.send(chatId, '你没有权限使用此 Bot。');
+					continue;
+				}
+
+				if (!this.onMessage) {
+					console.error('[telegram] onMessage handler not set!');
 					continue;
 				}
 
@@ -119,12 +134,12 @@ export class TelegramAdapter implements GatewayAdapter {
 					timestamp: msg.date * 1000
 				};
 
-				if (this.onMessage) {
-					await this.onMessage(inbound);
-				}
+				console.log('[telegram] calling onMessage handler');
+				await this.onMessage(inbound);
+				console.log('[telegram] onMessage handler returned');
 			}
-		} catch {
-			/* poll errors are transient */
+		} catch (e) {
+			console.error('[telegram] poll error:', (e as Error).message);
 		}
 	}
 }
