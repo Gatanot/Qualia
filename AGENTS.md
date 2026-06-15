@@ -28,7 +28,8 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
 | Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
-| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro), Ollama (local, extends OpenAI compat). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. |
+| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro), Ollama (local, extends OpenAI compat). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. Ollama models get a dynamic `ModelDef` with 128k default context window. |
+| Config fields | `ProviderConfig` has optional `timeout` and `maxRetries` fields. `AppConfig` has web search settings: `searchEnabled`, `searchProvider` (`searxng`|`tavily`), `searxngURL`, `tavilyApiKey`. |
 
 ## Architecture
 
@@ -39,18 +40,24 @@ src/lib/
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
+├── gateway/          # Gateway abstraction + adapters (email, telegram)
+│   ├── types.ts      # GatewayAdapter interface, capabilities flags, notification types
+│   ├── dispatcher.ts # GatewayDispatcher — adapter lifecycle, event routing, notify()
+│   └── adapters/     # Platform adapters (email.ts, telegram.ts)
 ├── ai/              # AI providers (OpenAI, DeepSeek, Xiaomi, Ollama) + factory + types + utils
 │   ├── models.ts    # ModelDef list per provider (contextWindow, reasoningEffortValues, supportsVision)
 ├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
-├── tool/            # ToolRegistry + 7 tools
-│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, exec, write_memory, read_memory, web_search)
+├── task/            # Scheduled task system (store + scheduler + executor)
+├── tool/            # ToolRegistry + 11 tools
+│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, edit, exec, write_memory, read_memory, web_search, search_history, schedule_task, read_tasks)
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
-├── chat-confirm.ts             # Shared Map<string, Promise> for pending confirmations
-├── markdown.ts                 # Markdown renderer (marked) with highlight.js code blocks + KaTeX math
+├── chat-confirm.ts              # Shared Map<string, Promise> for pending confirmations
+├── chat-steering.ts             # Shared Map<string, SteeringMessage[]> for real-time intervention
+├── markdown.ts                  # Markdown renderer (marked) with highlight.js code blocks + KaTeX math
 ├── model-picker-state.svelte.ts # Client-side $state runes for model picker UI
-├── session-store.ts            # Client-side Svelte stores for session list + CRUD helpers
-└── theme.ts                    # Light/dark theme management (localStorage + media query)
+├── session-store.ts             # Client-side Svelte stores for session list + CRUD helpers
+└── theme.ts                     # Light/dark theme management (localStorage + media query)
 ```
 
 `src/lib/` code is server-side **unless** imported by a `.svelte` component.
@@ -58,6 +65,7 @@ src/lib/
 
 API routes:
 - `api/brand-icon/+server.ts` — `GET`/`POST`/`DELETE` custom brand icon (uploaded to `data/brand-icon`)
+- `api/steer/+server.ts` — `POST` inject steering messages into an active AgentLoop
 - `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
 - `api/models/+server.ts` — `GET` list all available models across configured providers
@@ -81,6 +89,15 @@ Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, rend
 3. Frontend shows dialog, on answer POSTs to `/api/confirm` with `{ confirmId, approved }`
 4. Confirm endpoint resolves the stored Promise → AgentLoop continues
 
+## Steering (real-time intervention)
+
+Users can inject messages into a running AgentLoop via `/api/steer`. The loop drains `pendingSteering` (from `src/lib/chat-steering.ts`) before each LLM call, injecting steering text as a system message. Consumed steering emits `steering_consumed` SSE events so the frontend can clean them from the input queue.
+
+## AgentLoop FSM architecture
+
+`AgentLoop` implements a formal state machine (`AgentState` enum in `src/lib/agent/types.ts`): `INIT → PRE_LLM → LLM_STREAMING → POST_LLM → (PRE_TOOL → TOOL_EXECUTING → AWAIT_CONFIRM → POST_TOOL)* → PERSIST_TURN → DONE`. On LLM call failure: `POST_LLM → LLM_RETRY_WAIT → LLM_STREAMING` (up to 5 retries, exponential backoff).  
+`LoopHooks` interface exposes lifecycle hooks (`beforeLlmCall`, `afterLlmCall`, `beforeToolExecution`, `afterToolExecution`, etc.) for extension modules to intercept the loop.
+
 ## AgentLoop error handling
 
 LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The loop yields `retrying` and `retry_exhausted` events. On `retry_exhausted`, the chat ends with partial content.
@@ -99,7 +116,30 @@ LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The lo
 | `summaryScheduleHour` | Hour of day for scheduled runs (default 2) |
 | `summaryIntervalMin` | Polling interval in minutes (default 30) |
 
-The summarize job calls `generateSummary` (consolidates chat history) then `generateDiary` (generates a diary entry). Both require `storageEnabled: true` and a configured provider.
+The summarize job calls `generateSummary` (consolidates chat history) then `generateDiary` (generates a diary entry). Both require `storageEnabled: true` and a configured provider.  
+On completion, if `emailNotifications` is enabled, the Gateway sends a summary via EmailAdapter.
+
+## Gateway
+
+`src/lib/gateway/` provides an extensible adapter framework for external platform integration:
+
+- **`GatewayAdapter` interface** — `connect/disconnect/send` lifecycle + `capabilities` flags (`receive`, `notify`)
+- **`GatewayDispatcher`** — registry of adapters, `start/stop/notify/send` methods. Notifications fan out to all adapters with `capabilities.notify`.
+- **`EmailAdapter`** — SMTP-only (no IMAP polling). Declares `{ receive: false, notify: true }`. Used for task completion notifications from `hooks.server.ts`.
+- **Config fields**: `emailNotifications`, `emailSmtpHost/Port/Secure/User/Pass`, `emailFrom`, `emailTo`.
+
+`hooks.server.ts` initializes the Gateway at startup and routes summarize-job results through `gateway.notify()`.
+
+## Scheduled tasks
+
+`src/lib/task/` implements a background task system that lets the AI schedule one-shot tasks for future execution:
+
+- **`schedule_task` tool** — creates a task with a future ISO timestamp. The model must use `exec` to read the current system time before setting the schedule.
+- **`read_tasks` tool** — queries task list and results. The AI is NOT automatically notified of completions; it must check manually.
+- **Task execution** — each task runs in an isolated `AgentLoop` with no conversation history, no memory writes, auto-deny for tool confirmations, and a 10-minute timeout. Result saved to `data/tasks.json`.
+- **Retention** — FIFO, last 100 tasks or last 7 days, whichever comes first. Archived results persist in `data/tasks.json`.
+- **Settings page** — `/settings` → 任务 tab: list tasks with pause/resume/delete per-task.
+- **Notification** — on completion or failure, the scheduler calls `gateway.notify()` which delivers via Email (or future Telegram).
 
 ## Tool safety
 

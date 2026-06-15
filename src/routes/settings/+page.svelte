@@ -8,19 +8,21 @@
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
 	import SearchSettings from '$lib/components/settings/SearchSettings.svelte';
+	import TaskManager from '$lib/components/settings/TaskManager.svelte';
+	import EmailSettings from '$lib/components/settings/EmailSettings.svelte';
 
 	const TABS = [
 		{ id: 'general', label: '常规' },
 		{ id: 'provider', label: '供应商' },
-		{ id: 'prompt', label: '提示词' },
-		{ id: 'avatar', label: '头像' },
+		{ id: 'notify', label: '通知' },
 		{ id: 'summary', label: '摘要' },
-		{ id: 'search', label: '搜索' }
+		{ id: 'search', label: '搜索' },
+		{ id: 'tasks', label: '任务' }
 	] as const;
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '' });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -97,6 +99,17 @@
 			config = await res.json();
 		}
 	}
+
+	async function saveNotifications() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
 </script>
 
 <div class="settings">
@@ -118,15 +131,7 @@
 		<div class="tab-content">
 			{#if activeTab === 'general'}
 				<StorageToggle enabled={config.storageEnabled} ontoggle={toggleStorage} />
-			{:else if activeTab === 'provider'}
-				<ProviderManager
-					providers={config.providers}
-					loading={loading}
-					onconfigchange={onProvidersChange}
-				/>
-			{:else if activeTab === 'prompt'}
 				<PromptEditor bind:systemPrompt={config.systemPrompt} onsave={saveSystemPrompt} />
-			{:else if activeTab === 'avatar'}
 				<section class="section">
 					<h2>头像</h2>
 					<AvatarEditor
@@ -135,6 +140,24 @@
 						onreset={() => loadConfig()}
 					/>
 				</section>
+			{:else if activeTab === 'provider'}
+				<ProviderManager
+					providers={config.providers}
+					loading={loading}
+					onconfigchange={onProvidersChange}
+				/>
+			{:else if activeTab === 'notify'}
+				<EmailSettings
+					bind:notifications={config.emailNotifications}
+					bind:smtpHost={config.emailSmtpHost}
+					bind:smtpPort={config.emailSmtpPort}
+					bind:smtpSecure={config.emailSmtpSecure}
+					bind:smtpUser={config.emailSmtpUser}
+					bind:smtpPass={config.emailSmtpPass}
+					bind:emailFrom={config.emailFrom}
+					bind:emailTo={config.emailTo}
+					onchange={saveNotifications}
+				/>
 			{:else if activeTab === 'summary'}
 				<SummarizeSettings
 					bind:enabled={config.autoSummarize}
@@ -152,6 +175,8 @@
 					bind:tavilyApiKey={config.tavilyApiKey}
 					onchange={saveSearch}
 				/>
+			{:else if activeTab === 'tasks'}
+				<TaskManager />
 			{/if}
 		</div>
 	</div>
