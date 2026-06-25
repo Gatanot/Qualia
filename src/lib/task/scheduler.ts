@@ -16,8 +16,10 @@ async function tick(): Promise<void> {
 
 	try {
 		const pending = getPendingTasks();
+		// 串行 await：executeTask 内部会读写 tasks.json（updateTaskStatus），
+		// 并发执行会导致「读-改-写」竞态，状态被覆盖。必须逐个执行。
 		for (const task of pending) {
-			executeTask(task, async (result, error) => {
+			await executeTask(task, async (result, error) => {
 				if (notificationCallback) {
 					if (error) {
 						await notificationCallback({

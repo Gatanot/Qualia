@@ -22,9 +22,15 @@ function getToday(): string {
 
 async function notifyAll(notification: GatewayNotification): Promise<void> {
 	if (!gateway) return;
-	await gateway.notify(notification);
+
+	// Email adapter 忽略 chatId，走 notify() 即可（一条通知一封邮件）。
+	// 仅向 Email adapter 分发，避免 Telegram adapter 被以无效 chatId 'default' 调用。
+	await gateway.notify(notification, { adapterFilter: (a) => a.name !== 'telegram' });
+
+	// Telegram 是多目标（每个 chatId 一个会话），需要显式遍历所有已绑定的 chatId。
+	const text = `**${notification.title}**\n\n${notification.body}`;
 	for (const chatId of getAllChatIds()) {
-		await gateway.send('telegram', chatId, `**${notification.title}**\n\n${notification.body}`);
+		await gateway.send('telegram', chatId, text);
 	}
 }
 

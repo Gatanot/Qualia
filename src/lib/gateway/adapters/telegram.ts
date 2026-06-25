@@ -65,6 +65,10 @@ export class TelegramAdapter implements GatewayAdapter {
 	}
 
 	async send(chatId: string, text: string): Promise<SendResult> {
+		// Telegram 必须有具体的 chatId；空串或 'default' 这种占位符一律拒绝，避免静默失败。
+		if (!chatId || chatId === 'default') {
+			return { success: false, error: 'missing chatId' };
+		}
 		try {
 			const result = await apiCall(this.config.botToken, 'sendMessage', {
 				chat_id: chatId,
@@ -82,7 +86,9 @@ export class TelegramAdapter implements GatewayAdapter {
 
 	private isAllowed(chatId: string): boolean {
 		const allowed = this.config.allowedUsers.trim();
-		if (!allowed) return true;
+		// 安全默认：未配置白名单时拒绝所有用户，避免任何知道 bot username 的人
+		// 通过工具链（exec / write_file / delete_file 等）远程执行操作。
+		if (!allowed) return false;
 		return allowed.split(',').map((s) => s.trim()).includes(chatId);
 	}
 
@@ -118,7 +124,11 @@ export class TelegramAdapter implements GatewayAdapter {
 
 				if (!this.isAllowed(chatId)) {
 					console.log(`[telegram] chat ${chatId} not in allowed list`);
-					await this.send(chatId, '你没有权限使用此 Bot。');
+					const allowedEmpty = !this.config.allowedUsers.trim();
+					const hint = allowedEmpty
+						? '未配置 Allowed Users。请在 Qualia 设置中填写 Telegram Bot Token 后，将你的 Chat ID 加入 Allowed Users。'
+						: '你没有权限使用此 Bot。';
+					await this.send(chatId, hint);
 					continue;
 				}
 

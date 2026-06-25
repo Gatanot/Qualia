@@ -63,12 +63,18 @@ export class GatewayDispatcher {
 		}
 	}
 
-	async notify(notification: GatewayNotification, chatId?: string): Promise<void> {
+	async notify(
+		notification: GatewayNotification,
+		options?: { chatId?: string; adapterFilter?: (adapter: GatewayAdapter) => boolean }
+	): Promise<void> {
 		for (const [, adapter] of this.adapters) {
 			if (!adapter.capabilities.notify) continue;
+			if (options?.adapterFilter && !options.adapterFilter(adapter)) continue;
 
 			try {
-				const target = chatId || 'default';
+				// chatId 仅对多目标 adapter（如 Telegram）有意义；单目标 adapter（如 Email）忽略此参数。
+				// 未提供 chatId 时传空串而非 'default'，避免向无效 chatId 发送。
+				const target = options?.chatId ?? '';
 				const text = `**${notification.title}**\n\n${notification.body}`;
 				await adapter.send(target, text);
 			} catch (e) {
