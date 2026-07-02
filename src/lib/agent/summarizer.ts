@@ -3,7 +3,7 @@ import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
 import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
-import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT, TOOL_PROMPT_PREFIX, TOOL_PROMPT_SUFFIX } from './prompts';
+import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';
 
 function parseStoredContent(content: string): string | ContentPart[] {
 	if (content.startsWith('[')) {
@@ -25,16 +25,7 @@ export const _toolDefs = _registry.getDefinitions();
 
 export function buildSystemMessage(): Message {
 	let content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
-
 	content += SYSTEM_CONTEXT;
-
-	if (_toolDefs.length > 0) {
-		content += TOOL_PROMPT_PREFIX;
-		content += _toolDefs
-			.map((t) => `- **${t.function.name}**: ${t.function.description}`)
-			.join('\n');
-		content += TOOL_PROMPT_SUFFIX;
-	}
 	return { role: 'system', content };
 }
 

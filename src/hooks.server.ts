@@ -124,16 +124,15 @@ async function initGateway(): Promise<void> {
 					registry.register(scheduleTaskTool);
 					registry.register(readTasksTool);
 
-					const contextBuilder = new ContextBuilder();
-					const buildResult = await contextBuilder.build(
-						sessionId,
-						msg.text,
-						[],
-						storage,
-						registry,
-						getContextWindow(),
-						cfg.systemPrompt
-					);
+				const contextBuilder = new ContextBuilder();
+				const buildResult = await contextBuilder.build(
+					sessionId,
+					msg.text,
+					[],
+					storage,
+					getContextWindow(),
+					cfg.systemPrompt
+				);
 
 					const agent = new AgentLoop(provider, storage, registry, async () => false);
 

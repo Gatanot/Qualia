@@ -109,7 +109,6 @@ export async function POST({ request }: { request: Request }) {
 			message,
 			imageContents,
 			storage,
-			registry,
 			contextWindow,
 			config.systemPrompt
 		);
