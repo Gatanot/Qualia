@@ -22,6 +22,7 @@ export { ToolRegistry } from './registry';
 export { PendingConfirmation } from './types';
 export type { ToolDef, ToolResult, CommandClassification } from './types';
 export { classifyCommand, classifyFilePath } from './safeguard';
+export { ToolContext } from './env';
 
 // 工具定义
 import { readFileTool } from './tools/read-file';

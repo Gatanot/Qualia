@@ -46,7 +46,7 @@ export function createSearchHistoryTool(storage: Storage): ToolDef {
 			required: ['query']
 		},
 
-		async execute(args: Record<string, unknown>, _workspaceRoot: string): Promise<ToolResult> {
+		async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
 			const query = args.query as string;
 			const sessionId = args.session_id as string | undefined;
 			const limit = (args.limit as number) || 10;

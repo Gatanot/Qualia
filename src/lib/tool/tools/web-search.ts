@@ -58,7 +58,7 @@ export const webSearchTool: ToolDef = {
 		required: ['query']
 	},
 
-	async execute(args: Record<string, unknown>, _workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
 		const query = (args.query as string)?.trim();
 		if (!query) {
 			return { success: false, output: '', error: '缺少参数: query' };

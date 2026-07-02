@@ -1,8 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
-
-const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
+import type { ToolContext } from '../env';
 
 export const readMemoryTool: ToolDef = {
 	name: 'read_memory',
@@ -18,12 +17,13 @@ export const readMemoryTool: ToolDef = {
 		required: []
 	},
 
-	async execute(args: Record<string, unknown>, _workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+		const memoryPath = join(ctx.root, 'data', 'memory.md');
 		try {
-			if (!existsSync(MEMORY_PATH)) {
+			if (!existsSync(memoryPath)) {
 				return { success: true, output: '（暂无记忆内容）' };
 			}
-			const content = readFileSync(MEMORY_PATH, 'utf-8');
+			const content = readFileSync(memoryPath, 'utf-8');
 			if (!content.trim()) {
 				return { success: true, output: '（暂无记忆内容）' };
 			}
