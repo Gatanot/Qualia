@@ -3,7 +3,7 @@ import { createProvider } from '$lib/ai';
 import type { ImageContent } from '$lib/ai';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, CORE_TOOLS, SCHEDULING_TOOLS, createSearchHistoryTool } from '$lib/tool';
-import { AgentLoop, ContextBuilder } from '$lib/agent';
+import { AgentLoop, ContextBuilder, AgentLogger } from '$lib/agent';
 import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
 import { pendingConfirms } from '$lib/chat-confirm';
@@ -73,7 +73,7 @@ export async function POST({ request }: { request: Request }) {
 			});
 		};
 
-		const agent = new AgentLoop(provider, storage, registry, onConfirm, request.signal);
+		const agent = new AgentLoop(provider, storage, registry, onConfirm, request.signal, new AgentLogger(sessionId || '(new)'));
 
 		let sid = sessionId;
 		if (!sid) {

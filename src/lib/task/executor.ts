@@ -6,7 +6,7 @@ import {
 	CORE_TOOLS,
 	createSearchHistoryTool
 } from '$lib/tool';
-import { AgentLoop } from '$lib/agent';
+import { AgentLoop, AgentLogger } from '$lib/agent';
 import type { BuildResult } from '$lib/agent';
 import type { ScheduledTask } from './types';
 import { updateTaskStatus } from './store';
@@ -60,7 +60,7 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 				contextWindow: getContextWindow()
 			};
 
-			const agent = new AgentLoop(provider, storage, registry, async () => false, abortController.signal);
+			const agent = new AgentLoop(provider, storage, registry, async () => false, abortController.signal, new AgentLogger(`task-${task.id.slice(0, 8)}`));
 			const sid = `task-${task.id.slice(0, 8)}`;
 
 			for await (const event of agent.run(sid, task.prompt, buildResult)) {
