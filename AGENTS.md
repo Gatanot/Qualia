@@ -15,8 +15,8 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 
 - `npm run check` is the **primary verification** — always run it after changes. It syncs SvelteKit types first, then type-checks.
 - `npm run prepare` runs `svelte-kit sync` on every `npm install`, generating `.svelte-kit/tsconfig.json`.
-- `npm run docs` outputs to `docs/`, entry points defined in `typedoc.json`.
-- There is no test runner yet.
+- `npm run docs` outputs to `docs/`; entry points defined in `typedoc.json`.
+- There is no test runner or linter yet.
 
 ## Stack & constraints
 
@@ -35,21 +35,22 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 
 ```
 src/lib/
-├── agent/           # ContextBuilder + AgentLoop + summarizer + diary + background + prompts + types
+├── agent/           # index.ts barrel + ContextBuilder + AgentLoop + summarizer + diary + background + prompts + types
 ├── assets/          # Static assets (favicon.svg)
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
 ├── gateway/          # Gateway abstraction + adapters (email, telegram)
+│   ├── index.ts      # Barrel: GatewayDispatcher, all adapters, types
 │   ├── types.ts      # GatewayAdapter interface, capabilities flags, notification types
 │   ├── dispatcher.ts # GatewayDispatcher — adapter lifecycle, event routing, notify()
-│   └── adapters/     # Platform adapters (email.ts, telegram.ts)
-├── ai/              # AI providers (OpenAI, DeepSeek, Xiaomi, Ollama) + factory + types + utils
+│   └── adapters/     # Platform adapters (email.ts, telegram.ts, telegram-sessions.ts)
+├── ai/              # AI providers (OpenAI, DeepSeek, Xiaomi, Ollama) + index.ts barrel + factory + types + utils
 │   ├── models.ts    # ModelDef list per provider (contextWindow, reasoningEffortValues, supportsVision)
 ├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
 ├── task/            # Scheduled task system (store + scheduler + executor)
 ├── tool/            # ToolRegistry + 11 tools
-│   ├── tools/       # Tool implementations (read_file, write_file, delete_file, edit, exec, write_memory, read_memory, web_search, search_history, schedule_task, read_tasks)
+│   ├── tools/       # Tool implementations (read-file, write-file, delete-file, edit, exec, write-memory, read-memory, web-search, search-history, schedule-task, read-tasks) + file-utils.ts shared helpers
 │   ├── safeguard.ts # Command safety classifier (safe | confirm | reject)
 │   └── types.ts     # ToolDef, ToolResult, PendingConfirmation, CommandClassification
 ├── chat-confirm.ts              # Shared Map<string, Promise> for pending confirmations
@@ -70,6 +71,7 @@ API routes:
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
 - `api/models/+server.ts` — `GET` list all available models across configured providers
 - `api/config/+server.ts` — `GET`/`PUT` config CRUD
+- `api/tasks/+server.ts` — `GET` list tasks / `POST` pause, resume, delete a task
 - `api/sessions/+server.ts` — `GET` list / `POST` create, setTitle, delete, getMessages
 - `api/messages/+server.ts` — `POST` deleteFrom a given messageId
 - `api/summarize/+server.ts` — `POST` trigger summarization job (force or automatic)
@@ -95,7 +97,7 @@ Users can inject messages into a running AgentLoop via `/api/steer`. The loop dr
 
 ## AgentLoop FSM architecture
 
-`AgentLoop` implements a formal state machine (`AgentState` enum in `src/lib/agent/types.ts`): `INIT → PRE_LLM → LLM_STREAMING → POST_LLM → (PRE_TOOL → TOOL_EXECUTING → AWAIT_CONFIRM → POST_TOOL)* → PERSIST_TURN → DONE`. On LLM call failure: `POST_LLM → LLM_RETRY_WAIT → LLM_STREAMING` (up to 5 retries, exponential backoff).  
+`AgentLoop` implements a formal state machine (`AgentState` enum in `src/lib/agent/types.ts`): `INIT → PRE_LLM → LLM_STREAMING → POST_LLM → (PRE_TOOL → TOOL_EXECUTING → AWAIT_CONFIRM → POST_TOOL)* → PERSIST_TURN → DONE`. `ERROR` state exists for unrecoverable failures (exhausted retries, caps exceeded). On LLM call failure: `POST_LLM → LLM_RETRY_WAIT → LLM_STREAMING` (up to 5 retries, exponential backoff).  
 `LoopHooks` interface exposes lifecycle hooks (`beforeLlmCall`, `afterLlmCall`, `beforeToolExecution`, `afterToolExecution`, etc.) for extension modules to intercept the loop.
 
 ## AgentLoop error handling
@@ -183,6 +185,8 @@ The compression is **not** a persistent summary — it only serves context conti
 - `.svelte-kit/` contains auto-generated types — never edit manually
 - `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
 - `process.cwd()` is used as the workspace root for tool path safety checks
+- `hooks.server.ts` has module-level side effects: `initGateway()`, `runBackgroundTasks()`, and `startScheduler()` all auto-start on import. It also exports `gateway` for use by API routes.
+- `svelte.config.js` forces runes mode via `compilerOptions.runes` — returns `true` for project files, `undefined` for `node_modules`.
 - `src/lib/index.ts` is a SvelteKit scaffold placeholder with no meaningful exports — do not treat it as a barrel file
 - Model definitions (IDs, context windows, reasoning support) live in `src/lib/ai/models.ts`. Add new models there if extending provider support.
 - 消息编辑重生成功能**不需要**单独实现。已有的「回退到此」功能（双击 undo 按钮）会删除该消息及后续所有内容并将原文放入输入框，用户在输入框中修改后重新发送即可达到相同效果。
