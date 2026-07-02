@@ -6,6 +6,7 @@ import { PendingConfirmation } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
 import { AgentState } from './types';
 import { pendingSteering } from '$lib/chat-steering';
+import { sanitizeMessages } from './message-sanitizer';
 
 function extractTextContent(content: string | ContentPart[]): string {
 	if (typeof content === 'string') return content;
@@ -212,8 +213,9 @@ export class AgentLoop {
 
 	private async *doLlmStreaming(): AsyncGenerator<AgentEvent> {
 		try {
+			const apiMessages = sanitizeMessages(this.messages);
 			const stream = this.provider.chatStream({
-				messages: this.messages,
+				messages: apiMessages,
 				tools: this.tools.length > 0 ? this.tools : undefined
 			});
 
