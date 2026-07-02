@@ -1,9 +1,9 @@
 import { readConfig, writeConfig } from '$lib/config';
 import { writeFile, unlink, mkdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { getDataDir, getDataPath } from '$lib/paths';
 
-const ICON_PATH = join(process.cwd(), 'data', 'brand-icon');
+const ICON_PATH = getDataPath('brand-icon');
 
 export async function GET() {
 	try {
@@ -33,8 +33,8 @@ export async function POST({ request }: { request: Request }) {
 
 		const buffer = Buffer.from(await file.arrayBuffer());
 
-		if (!existsSync(join(process.cwd(), 'data'))) {
-			await mkdir(join(process.cwd(), 'data'), { recursive: true });
+		if (!existsSync(getDataDir())) {
+			await mkdir(getDataDir(), { recursive: true });
 		}
 
 		await writeFile(ICON_PATH, buffer);

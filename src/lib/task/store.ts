@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
 import type { ScheduledTask, TaskStatus } from './types';
 import { fileMutex } from '$lib/concurrency';
+import { getDataDir, getDataPath } from '$lib/paths';
 
 const MAX_TASKS = 100;
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getPath(): string {
-	return join(process.cwd(), 'data', 'tasks.json');
+	return getDataPath('tasks.json');
 }
 
 function readAll(): ScheduledTask[] {
@@ -26,7 +26,7 @@ function readAll(): ScheduledTask[] {
 
 function writeAll(tasks: ScheduledTask[]): void {
 	const path = getPath();
-	const dir = join(path, '..');
+	const dir = getDataDir();
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
 	const now = Date.now();

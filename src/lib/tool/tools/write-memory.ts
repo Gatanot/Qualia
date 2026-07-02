@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
-import type { ToolContext } from '../env';
+import { getDataDir, getDataPath } from '$lib/paths';
 
 const SECTION_META = `
 ## 关于我自己 (Qualia)
@@ -14,16 +13,16 @@ const SECTION_META = `
 （待记录）
 `;
 
-function ensureMemoryFile(root: string): string {
-	const dir = join(root, 'data');
-	const memoryPath = join(root, 'data', 'memory.md');
+const MEMORY_PATH = getDataPath('memory.md');
+
+function ensureMemoryFile(): void {
+	const dir = getDataDir();
 	if (!existsSync(dir)) {
 		mkdirSync(dir, { recursive: true });
 	}
-	if (!existsSync(memoryPath) || !readFileSync(memoryPath, 'utf-8').includes('## 关于用户')) {
-		writeFileSync(memoryPath, SECTION_META.trim().replace(/\r/g, '') + '\n', 'utf-8');
+	if (!existsSync(MEMORY_PATH) || !readFileSync(MEMORY_PATH, 'utf-8').includes('## 关于用户')) {
+		writeFileSync(MEMORY_PATH, SECTION_META.trim().replace(/\r/g, '') + '\n', 'utf-8');
 	}
-	return memoryPath;
 }
 
 const CATEGORY_HEADERS: Record<string, string> = {
@@ -82,7 +81,7 @@ export const writeMemoryTool: ToolDef = {
 		required: ['category', 'content']
 	},
 
-	async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
 		const category = args.category as string;
 		const content = args.content as string;
 
@@ -94,10 +93,10 @@ export const writeMemoryTool: ToolDef = {
 		}
 
 		try {
-			const memoryPath = ensureMemoryFile(ctx.root);
-			const current = readFileSync(memoryPath, 'utf-8').replace(/\r/g, '');
+			ensureMemoryFile();
+			const current = readFileSync(MEMORY_PATH, 'utf-8').replace(/\r/g, '');
 			const updated = updateSection(current, category, content.trim());
-			writeFileSync(memoryPath, updated, 'utf-8');
+			writeFileSync(MEMORY_PATH, updated, 'utf-8');
 
 			const header = CATEGORY_HEADERS[category];
 			return {

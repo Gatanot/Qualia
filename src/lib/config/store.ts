@@ -1,14 +1,15 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
 import type { ModelDef } from '../ai/models';
 import { getDefaultModels } from '../ai/models';
 import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
+import { getConfigPath, getDataDir } from '$lib/paths';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
-function getConfigPath(): string {
-	return join(process.cwd(), 'data', 'config.json');
+function ensureDataDir(): void {
+	const dir = getDataDir();
+	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
 const defaultConfig: AppConfig = {
@@ -96,11 +97,7 @@ export function readConfig(): AppConfig {
 
 export function writeConfig(config: AppConfig): void {
 	const path = getConfigPath();
-	const dir = join(path, '..');
-
-	if (!existsSync(dir)) {
-		mkdirSync(dir, { recursive: true });
-	}
+	ensureDataDir();
 
 	const tmpPath = path + '.tmp';
 	writeFileSync(tmpPath, JSON.stringify(config, null, '\t'), 'utf-8');

@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import type { AIProvider, Message } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import { buildSystemMessage, completeWithToolLoop } from './summarizer';
+import { getDataPath } from '$lib/paths';
 
-const DIARY_DIR = join(process.cwd(), 'data', 'diary');
+const DIARY_DIR = join(getDataPath('diary'));
 const MAX_RECENT_DAYS = 7;
 
 function getTodayDate(): { date: Date; y: number; m: string; d: string } {

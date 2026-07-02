@@ -1,6 +1,7 @@
 import type { Storage } from './types';
 import { MemoryStorage } from './memory';
 import { SQLiteStorage } from './sqlite';
+import { getDataPath } from '$lib/paths';
 
 export type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types';
 export { MemoryStorage } from './memory';
@@ -16,7 +17,7 @@ let _sqlite: SQLiteStorage | null = null;
 
 export function createStorage(config: StorageConfig): Storage {
 	if (config.enabled) {
-		if (!_sqlite) _sqlite = new SQLiteStorage(config.dbPath || 'data/db.sqlite');
+		if (!_sqlite) _sqlite = new SQLiteStorage(config.dbPath || getDataPath('db.sqlite'));
 		return _sqlite;
 	}
 	if (!_memory) _memory = new MemoryStorage();
