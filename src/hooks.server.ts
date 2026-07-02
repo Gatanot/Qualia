@@ -165,7 +165,7 @@ function gatewayHasAdapters(): boolean {
 
 async function summarizeTick(): Promise<void> {
 	const config = readConfig();
-	if (!config.autoSummarize) return;
+	if (!config.autoSummarize || !config.storageEnabled) return;
 
 	let result: { summarized: number; diary: boolean } | undefined;
 
@@ -197,7 +197,7 @@ async function summarizeTick(): Promise<void> {
 
 function startSummarizeWorker(): void {
 	const config = readConfig();
-	if (!config.autoSummarize) return;
+	if (!config.autoSummarize || !config.storageEnabled) return;
 
 	const intervalMin = config.summaryIntervalMin || 30;
 	summarizeWorker = new BackgroundWorker();
