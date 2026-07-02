@@ -7,6 +7,7 @@ import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
 import { pendingConfirms } from '$lib/chat-confirm';
+import { sessionLock } from '$lib/concurrency';
 
 export async function POST({ request }: { request: Request }) {
 	try {
@@ -119,7 +120,10 @@ export async function POST({ request }: { request: Request }) {
 					controller.enqueue(`data: ${JSON.stringify(event)}\n\n`);
 				}
 
+				let release: (() => void) | undefined;
+
 				try {
+					release = await sessionLock.acquire(sid!);
 					for await (const event of agent.run(sid!, storageContent, buildResult, clientMessageId)) {
 						if (event.type === 'done') {
 							send({ ...event, contextWindow });
@@ -129,6 +133,8 @@ export async function POST({ request }: { request: Request }) {
 					}
 				} catch (e) {
 					send({ type: 'error', message: (e as Error).message || '未知错误' });
+				} finally {
+					if (release) release();
 				}
 
 				controller.close();

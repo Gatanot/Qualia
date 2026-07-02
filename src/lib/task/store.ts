@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ScheduledTask, TaskStatus } from './types';
+import { fileMutex } from '$lib/concurrency';
 
 const MAX_TASKS = 100;
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -38,20 +39,24 @@ function writeAll(tasks: ScheduledTask[]): void {
 	renameSync(tmpPath, path);
 }
 
-export function createTask(name: string, prompt: string, scheduledAt: number): ScheduledTask {
-	const task: ScheduledTask = {
-		id: crypto.randomUUID(),
-		name,
-		prompt,
-		createdAt: Date.now(),
-		scheduledAt,
-		status: 'pending'
-	};
+const TASKS_MUTEX_KEY = 'tasks.json';
 
-	const all = readAll();
-	all.push(task);
-	writeAll(all);
-	return task;
+export async function createTask(name: string, prompt: string, scheduledAt: number): Promise<ScheduledTask> {
+	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
+		const task: ScheduledTask = {
+			id: crypto.randomUUID(),
+			name,
+			prompt,
+			createdAt: Date.now(),
+			scheduledAt,
+			status: 'pending'
+		};
+
+		const all = readAll();
+		all.push(task);
+		writeAll(all);
+		return task;
+	});
 }
 
 export function getAllTasks(): ScheduledTask[] {
@@ -66,53 +71,73 @@ export function getTask(id: string): ScheduledTask | undefined {
 	return readAll().find((t) => t.id === id);
 }
 
-export function updateTaskStatus(id: string, status: TaskStatus, extra?: { result?: string; error?: string }): boolean {
-	const all = readAll();
-	const task = all.find((t) => t.id === id);
-	if (!task) return false;
+export async function updateTaskStatus(id: string, status: TaskStatus, extra?: { result?: string; error?: string }): Promise<boolean> {
+	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
+		const all = readAll();
+		const task = all.find((t) => t.id === id);
+		if (!task) return false;
 
-	task.status = status;
-	if (status === 'completed') {
-		task.completedAt = Date.now();
-		task.result = extra?.result;
-	}
-	if (status === 'failed') {
-		task.completedAt = Date.now();
-		task.error = extra?.error;
-	}
+		const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
+			pending: ['running', 'paused'],
+			running: ['completed', 'failed'],
+			completed: [],
+			failed: [],
+			paused: ['pending']
+		};
 
-	writeAll(all);
-	return true;
+		if (!allowedTransitions[status].includes(task.status)) {
+			return false;
+		}
+
+		task.status = status;
+		if (status === 'completed') {
+			task.completedAt = Date.now();
+			task.result = extra?.result;
+		}
+		if (status === 'failed') {
+			task.completedAt = Date.now();
+			task.error = extra?.error;
+		}
+
+		writeAll(all);
+		return true;
+	});
 }
 
-export function pauseTask(id: string): boolean {
-	const all = readAll();
-	const task = all.find((t) => t.id === id);
-	if (!task || task.status !== 'pending') return false;
+export async function pauseTask(id: string): Promise<boolean> {
+	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
+		const all = readAll();
+		const task = all.find((t) => t.id === id);
+		if (!task || task.status !== 'pending') return false;
 
-	task.status = 'paused';
-	writeAll(all);
-	return true;
+		task.status = 'paused';
+		writeAll(all);
+		return true;
+	});
 }
 
-export function resumeTask(id: string): boolean {
-	const all = readAll();
-	const task = all.find((t) => t.id === id);
-	if (!task || task.status !== 'paused') return false;
+export async function resumeTask(id: string): Promise<boolean> {
+	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
+		const all = readAll();
+		const task = all.find((t) => t.id === id);
+		if (!task || task.status !== 'paused') return false;
 
-	task.status = 'pending';
-	writeAll(all);
-	return true;
+		task.status = 'pending';
+		writeAll(all);
+		return true;
+	});
 }
 
-export function deleteTask(id: string): boolean {
-	const all = readAll();
-	const idx = all.findIndex((t) => t.id === id);
-	if (idx === -1) return false;
+export async function deleteTask(id: string): Promise<boolean> {
+	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
+		const all = readAll();
+		const idx = all.findIndex((t) => t.id === id);
+		if (idx === -1) return false;
 
-	all.splice(idx, 1);
-	writeAll(all);
-	return true;
+		all.splice(idx, 1);
+		writeAll(all);
+		return true;
+	});
 }
 
 export function formatTasksForAI(tasks: ScheduledTask[]): string {
