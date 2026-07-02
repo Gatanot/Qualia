@@ -22,6 +22,10 @@ export interface AppConfig {
 	summaryIdleHours: number;
 	summaryScheduleHour: number;
 	summaryIntervalMin: number;
+	/** 压缩策略：auto 使用模型上下文窗口、custom 按指定阈值触发 */
+	compressionMode: 'auto' | 'custom';
+	/** 自定义压缩阈值（token 数），仅 compressionMode='custom' 时生效，默认 256000 */
+	compressionThreshold: number;
 	searchEnabled: boolean;
 	searchProvider: 'searxng' | 'tavily';
 	searxngURL: string;

@@ -2,7 +2,7 @@ import { readConfig, getProviderForModel, getActiveModel, getContextWindow } fro
 import { createProvider } from '$lib/ai';
 import { createStorage } from '$lib/storage';
 import { ToolRegistry, CORE_TOOLS, SCHEDULING_TOOLS, createSearchHistoryTool } from '$lib/tool';
-import { AgentLoop, ContextBuilder } from '$lib/agent';
+import { AgentLoop, ContextBuilder, AgentLogger } from '$lib/agent';
 import type { BuildResult } from '$lib/agent';
 import { runSummarizeJob } from '$lib/agent/background';
 import { GatewayDispatcher, EmailAdapter, TelegramAdapter } from '$lib/gateway';
@@ -126,7 +126,7 @@ async function initGateway(): Promise<void> {
 					cfg.systemPrompt
 				);
 
-					const agent = new AgentLoop(provider, storage, registry, async () => false);
+					const agent = new AgentLoop(provider, storage, registry, async () => false, undefined, new AgentLogger(sessionId), cfg.compressionMode, cfg.compressionThreshold);
 
 					let fullText = '';
 					let forkedId: string | undefined;

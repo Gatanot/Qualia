@@ -22,6 +22,7 @@ const RETRY_BASE_DELAY = 1000;
 const CONTEXT_WINDOW_DEFAULT = 1_048_576;
 const CONTINUE_THRESHOLD = 20_000;
 const MAX_TOOL_ITERATIONS = 50;
+const COMPRESSION_THRESHOLD_DEFAULT = 256_000;
 
 function buildSummaryContent(messages: Message[], initialSystem: string | undefined): string {
 	const relevant = messages
@@ -86,13 +87,19 @@ export class AgentLoop {
 	// ── Tool context ──
 	private toolContext: ToolContext;
 
+	// ── Compression ──
+	private compressionMode: 'auto' | 'custom';
+	private compressionThreshold: number;
+
 	constructor(
 		provider: AIProvider,
 		storage: Storage,
 		registry: ToolRegistry,
 		onConfirm: ConfirmFn,
 		signal?: AbortSignal,
-		hooks: LoopHooks = {}
+		hooks: LoopHooks = {},
+		compressionMode: 'auto' | 'custom' = 'auto',
+		compressionThreshold: number = COMPRESSION_THRESHOLD_DEFAULT
 	) {
 		this.provider = provider;
 		this.storage = storage;
@@ -101,6 +108,8 @@ export class AgentLoop {
 		this.signal = signal;
 		this.hooks = hooks;
 		this.toolContext = new ToolContext(process.cwd());
+		this.compressionMode = compressionMode;
+		this.compressionThreshold = compressionThreshold;
 	}
 
 	async *run(
@@ -488,7 +497,13 @@ export class AgentLoop {
 
 	private async *tryForkIfWindowLow(): AsyncGenerator<AgentEvent> {
 		const tokensUsed = this.totalUsage?.total_tokens || 0;
-		if (tokensUsed > 0 && this.contextWindow - tokensUsed < CONTINUE_THRESHOLD) {
+		if (tokensUsed <= 0) return;
+
+		const shouldFork = this.compressionMode === 'custom'
+			? tokensUsed > this.compressionThreshold
+			: this.contextWindow - tokensUsed < CONTINUE_THRESHOLD;
+
+		if (shouldFork) {
 			const newId = await this.createContinuation(
 				this.effectiveSessionId,
 				this.userMsg,
