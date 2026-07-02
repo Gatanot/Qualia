@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import type { AppConfig, ProviderConfig } from './types';
 import type { ModelDef } from '../ai/models';
 import { getDefaultModels } from '../ai/models';
@@ -10,6 +11,46 @@ const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 function ensureDataDir(): void {
 	const dir = getDataDir();
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+function migrateFromLegacy(): void {
+	const newPath = getConfigPath();
+	if (existsSync(newPath)) return;
+
+	const legacyDir = join(process.cwd(), 'data');
+	if (!existsSync(legacyDir)) return;
+
+	ensureDataDir();
+	const legacyFiles = ['config.json', 'qualia.db', 'db.sqlite', 'memory.md', 'tasks.json', 'telegram-sessions.json', 'brand-icon'];
+	for (const file of legacyFiles) {
+		const src = join(legacyDir, file);
+		const dst = join(getDataDir(), file);
+		if (existsSync(src) && !existsSync(dst)) {
+			copyFileSync(src, dst);
+		}
+	}
+
+	const legacyDiary = join(legacyDir, 'diary');
+	const newDiary = join(getDataDir(), 'diary');
+	if (existsSync(legacyDiary) && !existsSync(newDiary)) {
+		cpDirSync(legacyDiary, newDiary);
+	}
+
+	console.log(`[config] 已从 ${legacyDir} 迁移到 ${getDataDir()}`);
+}
+
+function cpDirSync(src: string, dst: string): void {
+	mkdirSync(dst, { recursive: true });
+	const entries = readdirSync(src);
+	for (const entry of entries) {
+		const srcPath = join(src, entry);
+		const dstPath = join(dst, entry);
+		if (statSync(srcPath).isDirectory()) {
+			cpDirSync(srcPath, dstPath);
+		} else {
+			copyFileSync(srcPath, dstPath);
+		}
+	}
 }
 
 const defaultConfig: AppConfig = {
@@ -55,6 +96,7 @@ function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): Prov
 }
 
 export function readConfig(): AppConfig {
+	migrateFromLegacy();
 	const path = getConfigPath();
 
 	if (!existsSync(path)) {
