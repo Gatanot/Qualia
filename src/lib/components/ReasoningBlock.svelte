@@ -11,7 +11,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="reasoning" class:expanded class:done>
 	<div class="reasoning-header" onclick={toggle}>
-		<span class="reasoning-label">思考过程</span>
+		<span class="reasoning-label">Thought</span>
 		{#if !done}
 			<span class="reasoning-dot">●</span>
 		{/if}
