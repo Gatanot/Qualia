@@ -68,6 +68,7 @@ export class AgentLoop {
 	// ── Per-iteration state ──
 	private iteration = 0;
 	private fullContent = '';
+	private fullReasoning = '';
 	private collectedToolCalls: Map<number, ToolCall> = new Map();
 	private chunkUsage?: Usage;
 
@@ -197,6 +198,7 @@ export class AgentLoop {
 		}
 
 		this.fullContent = '';
+		this.fullReasoning = '';
 		this.collectedToolCalls.clear();
 		this.chunkUsage = undefined;
 		this.attempt = 0;
@@ -234,9 +236,10 @@ export class AgentLoop {
 			});
 
 			for await (const chunk of stream) {
-				if (chunk.reasoning_content) {
-					yield { type: 'reasoning', text: chunk.reasoning_content };
-				}
+			if (chunk.reasoning_content) {
+				this.fullReasoning += chunk.reasoning_content;
+				yield { type: 'reasoning', text: chunk.reasoning_content };
+			}
 
 				if (chunk.content) {
 					this.fullContent += chunk.content;
@@ -322,6 +325,7 @@ export class AgentLoop {
 				session_id: this.effectiveSessionId,
 				role: 'assistant',
 				content: this.fullContent,
+				reasoning_content: this.fullReasoning || undefined,
 				usage: this.totalUsage
 			});
 
@@ -340,7 +344,8 @@ export class AgentLoop {
 		this.messages.push({
 			role: 'assistant',
 			content: this.fullContent || '',
-			tool_calls: this.resolvedToolCalls
+			tool_calls: this.resolvedToolCalls,
+			reasoning_content: this.fullReasoning || undefined
 		});
 
 		yield* this.tryForkIfWindowLow();
@@ -468,6 +473,7 @@ export class AgentLoop {
 			session_id: this.effectiveSessionId,
 			role: 'assistant',
 			content: this.fullContent || '',
+			reasoning_content: this.fullReasoning || undefined,
 			tool_calls: this.resolvedToolCalls,
 			usage: this.totalUsage
 		});
@@ -583,6 +589,7 @@ ${rawContent}` }
 					session_id: newSession.id,
 					role: msg.role,
 					content: msg.content,
+					reasoning_content: msg.reasoning_content,
 					tool_calls: msg.tool_calls,
 					tool_call_id: msg.tool_call_id,
 					name: msg.name,

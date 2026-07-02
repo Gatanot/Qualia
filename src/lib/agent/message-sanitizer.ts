@@ -118,6 +118,7 @@ export function sanitizeMessages(messages: Message[]): Message[] {
 
 		if (msg.name) cleaned.name = stripSurrogates(msg.name);
 		if (msg.tool_call_id) cleaned.tool_call_id = stripSurrogates(msg.tool_call_id);
+		if (msg.reasoning_content) cleaned.reasoning_content = stripSurrogates(msg.reasoning_content);
 		if (msg.tool_calls) {
 			cleaned.tool_calls = msg.tool_calls.map((tc) => ({
 				...tc,

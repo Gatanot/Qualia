@@ -59,6 +59,8 @@ export interface Message {
 	role: 'system' | 'user' | 'assistant' | 'tool';
 	/** 消息内容，支持纯文本或多模态 */
 	content: string | ContentPart[];
+	/** 思维链内容（DeepSeek / Xiaomi 等推理模型） */
+	reasoning_content?: string;
 	/** tool 消息的工具名称 */
 	name?: string;
 	/** tool 消息关联的 tool_call_id */

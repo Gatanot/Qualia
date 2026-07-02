@@ -11,7 +11,6 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="reasoning" class:expanded class:done>
 	<div class="reasoning-header" onclick={toggle}>
-		<span class="material-symbols-rounded reasoning-icon">psychology</span>
 		<span class="reasoning-label">思考过程</span>
 		{#if !done}
 			<span class="reasoning-dot">●</span>
@@ -51,11 +50,6 @@
 
 	.reasoning-header:hover {
 		background: var(--bg-surface-hover);
-	}
-
-	.reasoning-icon {
-		font-size: 18px;
-		color: var(--text-secondary);
 	}
 
 	.reasoning-label {
