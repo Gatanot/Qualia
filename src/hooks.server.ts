@@ -126,7 +126,7 @@ async function initGateway(): Promise<void> {
 					cfg.systemPrompt
 				);
 
-					const agent = new AgentLoop(provider, storage, registry, async () => false, undefined, new AgentLogger(sessionId));
+					const agent = new AgentLoop(provider, storage, registry, async () => false, undefined, new AgentLogger(sessionId), cfg.compressionMode, cfg.compressionThreshold);
 
 					let fullText = '';
 					let forkedId: string | undefined;

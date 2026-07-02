@@ -73,7 +73,7 @@ export async function POST({ request }: { request: Request }) {
 			});
 		};
 
-		const agent = new AgentLoop(provider, storage, registry, onConfirm, request.signal, new AgentLogger(sessionId || '(new)'));
+		const agent = new AgentLoop(provider, storage, registry, onConfirm, request.signal, new AgentLogger(sessionId || '(new)'), config.compressionMode, config.compressionThreshold);
 
 		let sid = sessionId;
 		if (!sid) {

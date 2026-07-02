@@ -8,6 +8,7 @@
 	import AvatarEditor from '$lib/components/settings/AvatarEditor.svelte';
 	import SummarizeSettings from '$lib/components/settings/SummarizeSettings.svelte';
 	import SearchSettings from '$lib/components/settings/SearchSettings.svelte';
+	import CompressSettings from '$lib/components/settings/CompressSettings.svelte';
 	import TaskManager from '$lib/components/settings/TaskManager.svelte';
 	import EmailSettings from '$lib/components/settings/EmailSettings.svelte';
 	import TelegramSettings from '$lib/components/settings/TelegramSettings.svelte';
@@ -17,13 +18,14 @@
 		{ id: 'provider', label: '供应商' },
 		{ id: 'notify', label: '通知' },
 		{ id: 'summary', label: '摘要' },
+		{ id: 'compress', label: '压缩' },
 		{ id: 'search', label: '搜索' },
 		{ id: 'tasks', label: '任务' }
 	] as const;
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '' });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -91,6 +93,17 @@
 	}
 
 	async function saveSearch() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
+
+	async function saveCompress() {
 		const res = await fetch('/api/config', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -172,6 +185,12 @@
 					bind:scheduleHour={config.summaryScheduleHour}
 					bind:intervalMin={config.summaryIntervalMin}
 					onchange={saveSummarize}
+				/>
+			{:else if activeTab === 'compress'}
+				<CompressSettings
+					bind:mode={config.compressionMode}
+					bind:threshold={config.compressionThreshold}
+					onchange={saveCompress}
 				/>
 			{:else if activeTab === 'search'}
 				<SearchSettings

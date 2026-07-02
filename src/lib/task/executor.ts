@@ -60,7 +60,7 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 				contextWindow: getContextWindow()
 			};
 
-			const agent = new AgentLoop(provider, storage, registry, async () => false, abortController.signal, new AgentLogger(`task-${task.id.slice(0, 8)}`));
+			const agent = new AgentLoop(provider, storage, registry, async () => false, abortController.signal, new AgentLogger(`task-${task.id.slice(0, 8)}`), config.compressionMode, config.compressionThreshold);
 			const sid = `task-${task.id.slice(0, 8)}`;
 
 			for await (const event of agent.run(sid, task.prompt, buildResult)) {
