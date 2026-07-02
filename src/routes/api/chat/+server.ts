@@ -2,7 +2,7 @@
 import { createProvider } from '$lib/ai';
 import type { ImageContent } from '$lib/ai';
 import { createStorage } from '$lib/storage';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, editTool, execTool, writeMemoryTool, webSearchTool, readMemoryTool, createSearchHistoryTool } from '$lib/tool';
+import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, editTool, execTool, writeMemoryTool, webSearchTool, readMemoryTool, createSearchHistoryTool, scheduleTaskTool, readTasksTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { AgentEvent, ConfirmFn } from '$lib/agent';
 
@@ -65,6 +65,8 @@ export async function POST({ request }: { request: Request }) {
 		registry.register(webSearchTool);
 		registry.register(readMemoryTool);
 		registry.register(createSearchHistoryTool(storage));
+		registry.register(scheduleTaskTool);
+		registry.register(readTasksTool);
 
 		const contextBuilder = new ContextBuilder();
 

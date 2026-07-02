@@ -25,7 +25,17 @@ const defaultConfig: AppConfig = {
 	searchEnabled: false,
 	searchProvider: 'searxng',
 	searxngURL: 'http://localhost:8080',
-	tavilyApiKey: ''
+	tavilyApiKey: '',
+	emailNotifications: false,
+	emailSmtpHost: '',
+	emailSmtpPort: 465,
+	emailSmtpSecure: true,
+	emailSmtpUser: '',
+	emailSmtpPass: '',
+	emailFrom: '',
+	emailTo: '',
+	telegramBotToken: '',
+	telegramAllowedUsers: ''
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): ProviderConfig {
@@ -67,7 +77,17 @@ export function readConfig(): AppConfig {
 			searchEnabled: parsed.searchEnabled === true,
 			searchProvider: (parsed.searchProvider === 'searxng' || parsed.searchProvider === 'tavily') ? parsed.searchProvider : 'searxng',
 			searxngURL: typeof parsed.searxngURL === 'string' ? parsed.searxngURL : 'http://localhost:8080',
-			tavilyApiKey: typeof parsed.tavilyApiKey === 'string' ? parsed.tavilyApiKey : ''
+			tavilyApiKey: typeof parsed.tavilyApiKey === 'string' ? parsed.tavilyApiKey : '',
+			emailNotifications: parsed.emailNotifications === true,
+			emailSmtpHost: typeof parsed.emailSmtpHost === 'string' ? parsed.emailSmtpHost : '',
+			emailSmtpPort: typeof parsed.emailSmtpPort === 'number' ? parsed.emailSmtpPort : 465,
+			emailSmtpSecure: parsed.emailSmtpSecure !== false,
+			emailSmtpUser: typeof parsed.emailSmtpUser === 'string' ? parsed.emailSmtpUser : '',
+			emailSmtpPass: typeof parsed.emailSmtpPass === 'string' ? parsed.emailSmtpPass : '',
+			emailFrom: typeof parsed.emailFrom === 'string' ? parsed.emailFrom : '',
+			emailTo: typeof parsed.emailTo === 'string' ? parsed.emailTo : '',
+			telegramBotToken: typeof parsed.telegramBotToken === 'string' ? parsed.telegramBotToken : '',
+			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : ''
 		};
 	} catch {
 		return { ...defaultConfig };

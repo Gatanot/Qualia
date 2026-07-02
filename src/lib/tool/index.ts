@@ -36,3 +36,5 @@ export { webSearchTool } from './tools/web-search';
 export { readMemoryTool } from './tools/read-memory';
 export { createSearchHistoryTool } from './tools/search-history';
 export { editTool } from './tools/edit';
+export { scheduleTaskTool } from './tools/schedule-task';
+export { readTasksTool } from './tools/read-tasks';

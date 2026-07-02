@@ -26,4 +26,14 @@ export interface AppConfig {
 	searchProvider: 'searxng' | 'tavily';
 	searxngURL: string;
 	tavilyApiKey: string;
+	emailNotifications: boolean;
+	emailSmtpHost: string;
+	emailSmtpPort: number;
+	emailSmtpSecure: boolean;
+	emailSmtpUser: string;
+	emailSmtpPass: string;
+	emailFrom: string;
+	emailTo: string;
+	telegramBotToken: string;
+	telegramAllowedUsers: string;
 }

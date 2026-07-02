@@ -8,6 +8,8 @@ import {
 	setReasoningEffort
 } from '$lib/config';
 import type { ProviderConfig } from '$lib/config';
+import { EmailAdapter } from '$lib/gateway';
+import type { EmailConfig } from '$lib/gateway';
 
 export async function GET() {
 	const config = readConfig();
@@ -42,6 +44,25 @@ export async function PUT({ request }: { request: Request }) {
 			case 'writeConfig': {
 				writeConfig(body.config);
 				return json(readConfig());
+			}
+			case 'testEmail': {
+				const raw = body.config as Record<string, unknown>;
+				const cfg: EmailConfig = {
+					smtpHost: String(raw.smtpHost || ''),
+					smtpPort: Number(raw.smtpPort || 465),
+					smtpSecure: raw.smtpSecure !== false,
+					user: String(raw.user || ''),
+					password: String(raw.password || ''),
+					from: String(raw.from || ''),
+					to: String(raw.to || '')
+				};
+				if (!cfg.smtpHost || !cfg.user || !cfg.to) {
+					return json({ success: false, error: 'SMTP 服务器、账号、收件人不能为空' });
+				}
+				const adapter = new EmailAdapter(cfg);
+				const ok = await adapter.connect();
+				await adapter.disconnect();
+				return json({ success: ok });
 			}
 			default:
 				return json({ error: 'Unknown action' }, { status: 400 });

@@ -248,4 +248,11 @@ export class MemoryStorage implements Storage {
 		const msg = this.messageById.get(messageId);
 		if (msg) msg.audio_path = path;
 	}
+
+	async getMostRecentSession(): Promise<Session | null> {
+		for (const s of this.sessions.values()) {
+			if (s.status === 'active') return s;
+		}
+		return null;
+	}
 }
