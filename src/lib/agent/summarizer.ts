@@ -1,7 +1,7 @@
 ﻿import type { AIProvider, Message, Usage, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, execTool, writeMemoryTool, webSearchTool } from '$lib/tool';
+import { ToolRegistry, CORE_TOOLS } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';
 
@@ -15,12 +15,10 @@ function parseStoredContent(content: string): string | ContentPart[] {
 }
 
 const _registry = new ToolRegistry();
-_registry.register(readFileTool);
-_registry.register(writeFileTool);
-_registry.register(deleteFileTool);
-_registry.register(execTool);
-_registry.register(writeMemoryTool);
-_registry.register(webSearchTool);
+for (const t of CORE_TOOLS) {
+	if (t.name === 'edit' || t.name === 'read_memory') continue;
+	_registry.register(t);
+}
 export const _toolDefs = _registry.getDefinitions();
 
 export function buildSystemMessage(): Message {
