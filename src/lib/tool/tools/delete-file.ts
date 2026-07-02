@@ -1,7 +1,6 @@
 import { rm, stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
-import { classifyFilePath } from '../safeguard';
+import type { ToolContext } from '../env';
 import { PendingConfirmation } from '../types';
 
 /**
@@ -25,13 +24,14 @@ export const deleteFileTool: ToolDef = {
 		required: ['path']
 	},
 
-	async execute(args: Record<string, unknown>, workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
 		const userPath = args.path as string;
 		if (!userPath) {
 			return { success: false, output: '', error: '缺少参数: path' };
 		}
 
-		const filePath = resolve(workspaceRoot, userPath);
+		const resolved = ctx.resolvePath(userPath);
+		const { path: filePath, classification } = resolved;
 
 		if (!args.__confirmed) {
 			throw new PendingConfirmation(
@@ -41,7 +41,6 @@ export const deleteFileTool: ToolDef = {
 			);
 		}
 
-		const classification = classifyFilePath(filePath, workspaceRoot);
 		if (classification === 'reject') {
 			return { success: false, output: '', error: `拒绝删除系统路径: ${userPath}` };
 		}

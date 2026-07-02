@@ -1,8 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
+import { getDataDir, getDataPath } from '$lib/paths';
 
-const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
 const SECTION_META = `
 ## 关于我自己 (Qualia)
 我是一个运行在本地环境中的 AI 伴侣，帮助用户完成开发工作和日常任务。
@@ -14,8 +13,10 @@ const SECTION_META = `
 （待记录）
 `;
 
+const MEMORY_PATH = getDataPath('memory.md');
+
 function ensureMemoryFile(): void {
-	const dir = join(process.cwd(), 'data');
+	const dir = getDataDir();
 	if (!existsSync(dir)) {
 		mkdirSync(dir, { recursive: true });
 	}
@@ -80,7 +81,7 @@ export const writeMemoryTool: ToolDef = {
 		required: ['category', 'content']
 	},
 
-	async execute(args: Record<string, unknown>, _workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
 		const category = args.category as string;
 		const content = args.content as string;
 

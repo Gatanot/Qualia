@@ -1,7 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import type { ToolDef, ToolResult } from '../types';
-import { classifyFilePath } from '../safeguard';
+import type { ToolContext } from '../env';
 import { PendingConfirmation } from '../types';
 import { stripBom } from './file-utils';
 
@@ -46,7 +45,7 @@ export const readFileTool: ToolDef = {
 		required: ['path']
 	},
 
-	async execute(args: Record<string, unknown>, workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
 		const userPath = args.path as string;
 		if (!userPath) {
 			return { success: false, output: '', error: '缺少参数: path' };
@@ -71,10 +70,10 @@ export const readFileTool: ToolDef = {
 			limit = parsed;
 		}
 
-		const filePath = resolve(workspaceRoot, userPath);
+		const resolved = ctx.resolvePath(userPath);
+		const { path: filePath, classification } = resolved;
 
 		if (!args.__confirmed) {
-			const classification = classifyFilePath(filePath, workspaceRoot);
 			if (classification === 'reject') {
 				return { success: false, output: '', error: `拒绝读取系统路径: ${userPath}` };
 			}

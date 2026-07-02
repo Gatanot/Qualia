@@ -1,5 +1,4 @@
 ﻿import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Message, ImageContent, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import type { BuildResult } from './types';
@@ -7,10 +6,11 @@ import {
 	DEFAULT_SYSTEM_PROMPT,
 	SYSTEM_CONTEXT
 } from './prompts';
+import { getDataPath } from '$lib/paths';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
-const MEMORY_PATH = join(process.cwd(), 'data', 'memory.md');
+const MEMORY_PATH = getDataPath('memory.md');
 
 function readMemoryFile(): string {
 	try {

@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
+import { getDataDir, getDataPath } from '$lib/paths';
 
 interface BindingStore {
 	bindings: Record<string, string>;
 }
 
 function getPath(): string {
-	return join(process.cwd(), 'data', 'telegram-sessions.json');
+	return getDataPath('telegram-sessions.json');
 }
 
 function readBindings(): BindingStore {
@@ -21,7 +21,7 @@ function readBindings(): BindingStore {
 
 function writeBindings(store: BindingStore): void {
 	const path = getPath();
-	const dir = join(path, '..');
+	const dir = getDataDir();
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 	const tmpPath = path + '.tmp';
 	writeFileSync(tmpPath, JSON.stringify(store, null, '\t'), 'utf-8');

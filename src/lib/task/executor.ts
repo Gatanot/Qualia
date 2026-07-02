@@ -3,13 +3,7 @@ import { createProvider } from '$lib/ai';
 import { createStorage } from '$lib/storage';
 import {
 	ToolRegistry,
-	readFileTool,
-	writeFileTool,
-	deleteFileTool,
-	editTool,
-	execTool,
-	webSearchTool,
-	readMemoryTool,
+	CORE_TOOLS,
 	createSearchHistoryTool
 } from '$lib/tool';
 import { AgentLoop } from '$lib/agent';
@@ -45,13 +39,9 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 		const storage = createStorage({ enabled: false });
 
 		const registry = new ToolRegistry();
-		registry.register(readFileTool);
-		registry.register(writeFileTool);
-		registry.register(deleteFileTool);
-		registry.register(editTool);
-		registry.register(execTool);
-		registry.register(webSearchTool);
-		registry.register(readMemoryTool);
+		for (const t of CORE_TOOLS) {
+			if (t.name !== 'write_memory') registry.register(t);
+		}
 		registry.register(createSearchHistoryTool(storage));
 
 		const abortController = new AbortController();

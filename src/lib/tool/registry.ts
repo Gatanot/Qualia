@@ -5,8 +5,12 @@
  * 提供 getDefinitions() 将已注册工具转为 OpenAI function calling 格式。
  * 支持 sourceId 追踪，可按来源批量卸载（为 extension 系统提供基础）。
  */
+
+import type { ToolDef, ToolResult } from './types';
+import { ToolContext } from './env';
+
 export class ToolRegistry {
-	private tools = new Map<string, import('./types').ToolDef>();
+	private tools = new Map<string, ToolDef>();
 	private sources = new Map<string, Set<string>>();
 
 	/**
@@ -14,7 +18,7 @@ export class ToolRegistry {
 	 * @param tool - 工具定义
 	 * @param sourceId - 来源标识，默认为 'builtin'。用于批量卸载时按来源清理。
 	 */
-	register(tool: import('./types').ToolDef, sourceId = 'builtin'): void {
+	register(tool: ToolDef, sourceId = 'builtin'): void {
 		this.tools.set(tool.name, tool);
 		if (!this.sources.has(sourceId)) {
 			this.sources.set(sourceId, new Set());
@@ -47,7 +51,7 @@ export class ToolRegistry {
 	}
 
 	/** 按名称获取工具 */
-	get(name: string): import('./types').ToolDef | undefined {
+	get(name: string): ToolDef | undefined {
 		return this.tools.get(name);
 	}
 
@@ -68,19 +72,19 @@ export class ToolRegistry {
 	 *
 	 * @param name - 工具名称
 	 * @param args - 调用参数，支持 __confirmed 标记跳过确认流程
-	 * @param workspaceRoot - 工作区根目录
+	 * @param ctx - 工具执行上下文
 	 * @returns 执行结果
 	 * @throws PendingConfirmation 需要用户确认时
 	 */
 	async execute(
 		name: string,
 		args: Record<string, unknown>,
-		workspaceRoot: string
-	): Promise<import('./types').ToolResult> {
+		ctx: ToolContext
+	): Promise<ToolResult> {
 		const tool = this.tools.get(name);
 		if (!tool) {
 			return { success: false, output: '', error: `未知工具: ${name}` };
 		}
-		return tool.execute(args, workspaceRoot);
+		return tool.execute(args, ctx);
 	}
 }

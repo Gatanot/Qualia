@@ -1,6 +1,6 @@
 import { exec, execSync } from 'node:child_process';
 import type { ToolDef, ToolResult } from '../types';
-import { classifyCommand } from '../safeguard';
+import type { ToolContext } from '../env';
 import { PendingConfirmation } from '../types';
 
 const DEFAULT_TIMEOUT = 300_000;
@@ -54,7 +54,7 @@ export const execTool: ToolDef = {
 		required: ['command']
 	},
 
-	async execute(args: Record<string, unknown>, workspaceRoot: string): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
 		const command = args.command as string;
 		if (!command) {
 			return { success: false, output: '', error: '缺少参数: command' };
@@ -64,7 +64,7 @@ export const execTool: ToolDef = {
 		if (timeoutSec > MAX_ALLOWED_TIMEOUT / 1000) timeoutSec = MAX_ALLOWED_TIMEOUT / 1000;
 		const timeoutMs = timeoutSec * 1000;
 
-		const classification = classifyCommand(command, workspaceRoot);
+		const classification = ctx.classifyCommand(command);
 
 		if (classification === 'reject') {
 			return {
@@ -83,7 +83,7 @@ export const execTool: ToolDef = {
 		}
 
 		if (args.__confirmed) {
-			const recheck = classifyCommand(command, workspaceRoot);
+			const recheck = ctx.classifyCommand(command);
 			if (recheck === 'reject') {
 				return {
 					success: false,
@@ -110,7 +110,7 @@ export const execTool: ToolDef = {
 			const child = exec(
 				command,
 				{
-					cwd: workspaceRoot,
+					cwd: ctx.root,
 					maxBuffer: MAX_OUTPUT,
 					shell: IS_WINDOWS ? 'powershell.exe' : '/bin/bash'
 				},

@@ -1,7 +1,7 @@
 import { readConfig, getProviderForModel, getActiveModel, getContextWindow } from '$lib/config';
 import { createProvider } from '$lib/ai';
 import { createStorage } from '$lib/storage';
-import { ToolRegistry, readFileTool, writeFileTool, deleteFileTool, editTool, execTool, writeMemoryTool, webSearchTool, readMemoryTool, createSearchHistoryTool, scheduleTaskTool, readTasksTool } from '$lib/tool';
+import { ToolRegistry, CORE_TOOLS, SCHEDULING_TOOLS, createSearchHistoryTool } from '$lib/tool';
 import { AgentLoop, ContextBuilder } from '$lib/agent';
 import type { BuildResult } from '$lib/agent';
 import { runSummarizeJob } from '$lib/agent/background';
@@ -111,18 +111,10 @@ async function initGateway(): Promise<void> {
 
 					release = await sessionLock.acquire(sessionId);
 
-					const registry = new ToolRegistry();
-					registry.register(readFileTool);
-					registry.register(writeFileTool);
-					registry.register(deleteFileTool);
-					registry.register(editTool);
-					registry.register(execTool);
-					registry.register(writeMemoryTool);
-					registry.register(webSearchTool);
-					registry.register(readMemoryTool);
-					registry.register(createSearchHistoryTool(storage));
-					registry.register(scheduleTaskTool);
-					registry.register(readTasksTool);
+				const registry = new ToolRegistry();
+				for (const t of CORE_TOOLS) registry.register(t);
+				for (const t of SCHEDULING_TOOLS) registry.register(t);
+				registry.register(createSearchHistoryTool(storage));
 
 				const contextBuilder = new ContextBuilder();
 				const buildResult = await contextBuilder.build(

@@ -3,6 +3,7 @@ import { sleep } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import type { ToolRegistry } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
+import { ToolContext } from '$lib/tool';
 import type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
 import { AgentState } from './types';
 import { pendingSteering } from '$lib/chat-steering';
@@ -82,6 +83,9 @@ export class AgentLoop {
 	private currentArgs: Record<string, unknown> = {};
 	private pendingConfirmation?: PendingConfirmation;
 
+	// ── Tool context ──
+	private toolContext: ToolContext;
+
 	constructor(
 		provider: AIProvider,
 		storage: Storage,
@@ -96,6 +100,7 @@ export class AgentLoop {
 		this.onConfirm = onConfirm;
 		this.signal = signal;
 		this.hooks = hooks;
+		this.toolContext = new ToolContext(process.cwd());
 	}
 
 	async *run(
@@ -365,7 +370,7 @@ export class AgentLoop {
 		const name = tc.function.name;
 
 		try {
-			const result = await this.registry.execute(name, this.currentArgs, process.cwd());
+			const result = await this.registry.execute(name, this.currentArgs, this.toolContext);
 
 			yield { type: 'tool_result', name, success: result.success, output: result.output };
 
@@ -416,11 +421,11 @@ export class AgentLoop {
 
 		if (approved) {
 			try {
-				const retryResult = await this.registry.execute(
-					error.toolName,
-					{ ...error.args, __confirmed: true },
-					process.cwd()
-				);
+			const retryResult = await this.registry.execute(
+				error.toolName,
+				{ ...error.args, __confirmed: true },
+				this.toolContext
+			);
 				yield { type: 'tool_result', name: error.toolName, success: retryResult.success, output: retryResult.output };
 				const content = retryResult.output || retryResult.error || '';
 				this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });

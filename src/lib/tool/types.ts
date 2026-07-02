@@ -1,3 +1,5 @@
+import type { ToolContext } from './env';
+
 /**
  * 工具定义接口
  *
@@ -6,18 +8,18 @@
 export interface ToolDef {
 	/** 工具名称，用于 LLM function calling 和注册表查找 */
 	name: string;
-	/** 工具描述，会注入 system prompt 供 LLM 理解 */
+	/** 工具描述，用于 LLM 理解功能 */
 	description: string;
 	/** JSON Schema 参数定义 */
 	parameters: Record<string, unknown>;
 	/**
 	 * 执行工具
 	 * @param args - 调用参数
-	 * @param workspaceRoot - 工作区根目录
+	 * @param ctx - 工具执行上下文（工作区根目录、路径安全等）
 	 * @returns 执行结果
 	 * @throws PendingConfirmation 当需要用户确认时
 	 */
-	execute(args: Record<string, unknown>, workspaceRoot: string): Promise<ToolResult>;
+	execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult>;
 }
 
 /**
