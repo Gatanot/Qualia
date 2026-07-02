@@ -2,13 +2,10 @@
 import { join } from 'node:path';
 import type { Message, ImageContent, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
-import type { ToolRegistry } from '$lib/tool';
 import type { BuildResult } from './types';
 import {
 	DEFAULT_SYSTEM_PROMPT,
-	SYSTEM_CONTEXT,
-	TOOL_PROMPT_PREFIX,
-	TOOL_PROMPT_SUFFIX
+	SYSTEM_CONTEXT
 } from './prompts';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
@@ -34,14 +31,13 @@ function formatMemorySection(content: string): string {
  * ContextBuilder — 上下文构建器
  *
  * 负责拼装发给 LLM 的 messages 数组：
- * 1. 系统提示词（用户自定义 + 工具描述注入 + memory 快照）
+ * 1. 系统提示词（用户自定义 + 环境信息 + memory 快照）
  * 2. 会话历史消息
  * 3. 当前用户输入
  *
+ * 工具描述通过 API 的 tools 参数传递，不写入 system prompt 文本。
  * memory 在会话首次构建时从 memory.md 读取并存入 session.memory_snapshot，
- * 后续构建直接使用快照，保证 system 消息稳定、缓存持续命中。
- *
- * 上下文用尽后的延续逻辑已移至 AgentLoop（回复完成后检查并生成摘要新会话）。
+ * 后续构建直接使用快照，保证 system 消息稳定。
  */
 export class ContextBuilder {
 	async build(
@@ -49,11 +45,10 @@ export class ContextBuilder {
 		userMessage: string,
 		images: ImageContent[],
 		storage: Storage,
-		registry: ToolRegistry,
 		contextWindow?: number,
 		systemPrompt?: string
 	): Promise<BuildResult> {
-		const messages = await this.buildMessages(sessionId, userMessage, images, storage, registry, systemPrompt);
+		const messages = await this.buildMessages(sessionId, userMessage, images, storage, systemPrompt);
 		return {
 			messages,
 			contextWindow: contextWindow || DEFAULT_CONTEXT_WINDOW
@@ -96,23 +91,12 @@ export class ContextBuilder {
 		userMessage: string,
 		images: ImageContent[],
 		storage: Storage,
-		registry: ToolRegistry,
 		systemPrompt?: string
 	): Promise<Message[]> {
 		const messages: Message[] = [];
 
-		const tools = registry.getDefinitions();
 		let systemContent = systemPrompt || DEFAULT_SYSTEM_PROMPT;
-
 		systemContent += SYSTEM_CONTEXT;
-
-		if (tools.length > 0) {
-			systemContent += TOOL_PROMPT_PREFIX;
-			systemContent += tools
-				.map((t) => `- **${t.function.name}**: ${t.function.description}`)
-				.join('\n');
-			systemContent += TOOL_PROMPT_SUFFIX;
-		}
 
 		const memoryContent = await this.resolveMemory(sessionId, storage);
 		systemContent += formatMemorySection(memoryContent);

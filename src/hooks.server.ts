@@ -9,10 +9,10 @@ import { GatewayDispatcher, EmailAdapter, TelegramAdapter } from '$lib/gateway';
 import type { EmailConfig, TelegramConfig, GatewayNotification } from '$lib/gateway';
 import { getBoundSession, setBoundSession, getAllChatIds } from '$lib/gateway';
 import { startScheduler, stopScheduler, setTaskNotificationHandler } from '$lib/task';
+import { BackgroundWorker, sessionLock } from '$lib/concurrency';
 
-let running = false;
 let lastScheduledDate = '';
-let timerId: ReturnType<typeof setTimeout> | null = null;
+let summarizeWorker: BackgroundWorker | null = null;
 let gateway: GatewayDispatcher | null = null;
 
 function getToday(): string {
@@ -23,11 +23,8 @@ function getToday(): string {
 async function notifyAll(notification: GatewayNotification): Promise<void> {
 	if (!gateway) return;
 
-	// Email adapter 忽略 chatId，走 notify() 即可（一条通知一封邮件）。
-	// 仅向 Email adapter 分发，避免 Telegram adapter 被以无效 chatId 'default' 调用。
 	await gateway.notify(notification, { adapterFilter: (a) => a.name !== 'telegram' });
 
-	// Telegram 是多目标（每个 chatId 一个会话），需要显式遍历所有已绑定的 chatId。
 	const text = `**${notification.title}**\n\n${notification.body}`;
 	for (const chatId of getAllChatIds()) {
 		await gateway.send('telegram', chatId, text);
@@ -63,42 +60,32 @@ async function initGateway(): Promise<void> {
 	}
 
 	if (gatewayHasAdapters()) {
-		gateway.onInbound(async (msg, _adapter, reply) => {
-			console.log(`[gateway] inbound from ${_adapter.name} chat ${msg.chatId}: "${msg.text.slice(0, 50)}"`);
-			try {
-				const cfg = readConfig();
-				if (!cfg.activeModel) {
-					console.log('[gateway] no active model configured');
-					await reply('未配置 AI 模型，请先在 Qualia 设置中添加供应商。');
-					return;
-				}
-
-				const providerConfig = getProviderForModel(cfg.activeModel);
-				if (!providerConfig) {
-					console.log('[gateway] provider config not found');
-					await reply('未找到对应模型的供应商配置。');
-					return;
-				}
-
-				const model = getActiveModel();
-				const runtimeConfig = { ...providerConfig, activeModel: model?.id || cfg.activeModel, contextWindow: model?.contextWindow || 1_048_576 };
-				const provider = createProvider(runtimeConfig);
-				const storage = createStorage({ enabled: cfg.storageEnabled });
-
-				let sessionId = getBoundSession(msg.chatId);
-				console.log(`[gateway] resolved session: ${sessionId || '(null)'}`);
-				if (!sessionId) {
-					const recent = await storage.getMostRecentSession();
-					if (recent) {
-						sessionId = recent.id;
-					} else {
-						const session = await storage.createSession();
-						sessionId = session.id;
+			gateway.onInbound(async (msg, _adapter, reply) => {
+				console.log(`[gateway] inbound from ${_adapter.name} chat ${msg.chatId}: "${msg.text.slice(0, 50)}"`);
+				let release: (() => void) | undefined;
+				try {
+					const cfg = readConfig();
+					if (!cfg.activeModel) {
+						console.log('[gateway] no active model configured');
+						await reply('未配置 AI 模型，请先在 Qualia 设置中添加供应商。');
+						return;
 					}
-					setBoundSession(msg.chatId, sessionId);
-				} else {
-					const exists = await storage.getSession(sessionId);
-					if (!exists) {
+
+					const providerConfig = getProviderForModel(cfg.activeModel);
+					if (!providerConfig) {
+						console.log('[gateway] provider config not found');
+						await reply('未找到对应模型的供应商配置。');
+						return;
+					}
+
+					const model = getActiveModel();
+					const runtimeConfig = { ...providerConfig, activeModel: model?.id || cfg.activeModel, contextWindow: model?.contextWindow || 1_048_576 };
+					const provider = createProvider(runtimeConfig);
+					const storage = createStorage({ enabled: cfg.storageEnabled });
+
+					let sessionId = getBoundSession(msg.chatId);
+					console.log(`[gateway] resolved session: ${sessionId || '(null)'}`);
+					if (!sessionId) {
 						const recent = await storage.getMostRecentSession();
 						if (recent) {
 							sessionId = recent.id;
@@ -107,22 +94,35 @@ async function initGateway(): Promise<void> {
 							sessionId = session.id;
 						}
 						setBoundSession(msg.chatId, sessionId);
+					} else {
+						const exists = await storage.getSession(sessionId);
+						if (!exists) {
+							const recent = await storage.getMostRecentSession();
+							if (recent) {
+								sessionId = recent.id;
+							} else {
+								const session = await storage.createSession();
+								sessionId = session.id;
+							}
+							setBoundSession(msg.chatId, sessionId);
+						}
 					}
-				}
-				console.log(`[gateway] using session: ${sessionId}`);
+					console.log(`[gateway] using session: ${sessionId}`);
 
-				const registry = new ToolRegistry();
-				registry.register(readFileTool);
-				registry.register(writeFileTool);
-				registry.register(deleteFileTool);
-				registry.register(editTool);
-				registry.register(execTool);
-				registry.register(writeMemoryTool);
-				registry.register(webSearchTool);
-				registry.register(readMemoryTool);
-				registry.register(createSearchHistoryTool(storage));
-				registry.register(scheduleTaskTool);
-				registry.register(readTasksTool);
+					release = await sessionLock.acquire(sessionId);
+
+					const registry = new ToolRegistry();
+					registry.register(readFileTool);
+					registry.register(writeFileTool);
+					registry.register(deleteFileTool);
+					registry.register(editTool);
+					registry.register(execTool);
+					registry.register(writeMemoryTool);
+					registry.register(webSearchTool);
+					registry.register(readMemoryTool);
+					registry.register(createSearchHistoryTool(storage));
+					registry.register(scheduleTaskTool);
+					registry.register(readTasksTool);
 
 				const contextBuilder = new ContextBuilder();
 				const buildResult = await contextBuilder.build(
@@ -130,37 +130,38 @@ async function initGateway(): Promise<void> {
 					msg.text,
 					[],
 					storage,
-					registry,
 					getContextWindow(),
 					cfg.systemPrompt
 				);
 
-				const agent = new AgentLoop(provider, storage, registry, async () => false);
+					const agent = new AgentLoop(provider, storage, registry, async () => false);
 
-				let fullText = '';
-				let forkedId: string | undefined;
+					let fullText = '';
+					let forkedId: string | undefined;
 
-				console.log('[gateway] starting AgentLoop');
-				for await (const event of agent.run(sessionId, msg.text, buildResult)) {
-					if (event.type === 'content') {
-						fullText += event.text;
-					} else if (event.type === 'forked') {
-						forkedId = event.newSessionId;
+					console.log('[gateway] starting AgentLoop');
+					for await (const event of agent.run(sessionId, msg.text, buildResult)) {
+						if (event.type === 'content') {
+							fullText += event.text;
+						} else if (event.type === 'forked') {
+							forkedId = event.newSessionId;
+						}
 					}
-				}
-				console.log(`[gateway] AgentLoop done, response length: ${fullText.length}, forked: ${forkedId || 'none'}`);
+					console.log(`[gateway] AgentLoop done, response length: ${fullText.length}, forked: ${forkedId || 'none'}`);
 
-				if (forkedId) {
-					setBoundSession(msg.chatId, forkedId);
-				}
+					if (forkedId) {
+						setBoundSession(msg.chatId, forkedId);
+					}
 
-				const response = fullText.trim() || '(无输出)';
-				await reply(response);
-			} catch (e) {
-				console.error('[gateway] inbound error:', (e as Error).message);
-				await reply(`错误: ${(e as Error).message}`);
-			}
-		});
+					const response = fullText.trim() || '(无输出)';
+					await reply(response);
+				} catch (e) {
+					console.error('[gateway] inbound error:', (e as Error).message);
+					await reply(`错误: ${(e as Error).message}`);
+				} finally {
+					if (release) release();
+				}
+			});
 
 		await gateway.start();
 	}
@@ -170,60 +171,55 @@ function gatewayHasAdapters(): boolean {
 	return gateway !== null;
 }
 
-async function runBackgroundTasks() {
-	if (running) return;
-	running = true;
+async function summarizeTick(): Promise<void> {
+	const config = readConfig();
+	if (!config.autoSummarize) return;
 
-	try {
-		const config = readConfig();
-		if (!config.autoSummarize) return;
+	let result: { summarized: number; diary: boolean } | undefined;
 
-		let result: { summarized: number; diary: boolean } | undefined;
-
-		if (config.summaryMode === 'scheduled') {
-			const now = new Date();
-			const today = getToday();
-			if (now.getHours() >= (config.summaryScheduleHour || 2) && today !== lastScheduledDate) {
-				lastScheduledDate = today;
-				result = await runSummarizeJob(false, null);
-			}
-		} else {
-			result = await runSummarizeJob();
+	if (config.summaryMode === 'scheduled') {
+		const now = new Date();
+		const today = getToday();
+		if (now.getHours() >= (config.summaryScheduleHour || 2) && today !== lastScheduledDate) {
+			lastScheduledDate = today;
+			result = await runSummarizeJob(false, null);
 		}
+	} else {
+		result = await runSummarizeJob();
+	}
 
-		if (result) {
-			const { summarized, diary } = result;
-			if (summarized > 0 || diary) {
-				const parts: string[] = [];
-				if (summarized > 0) parts.push(`已为 ${summarized} 个对话生成摘要`);
-				if (diary) parts.push('已生成日记条目');
-				await notifyAll({
-					title: 'Qualia 任务完成',
-					body: parts.join('\n'),
-					type: 'task_complete'
-				});
-			}
-		}
-	} catch {
-	} finally {
-		running = false;
-
-		const config = readConfig();
-		if (config.autoSummarize) {
-			const intervalMin = config.summaryIntervalMin || 30;
-			timerId = setTimeout(runBackgroundTasks, intervalMin * 60 * 1000);
+	if (result) {
+		const { summarized, diary } = result;
+		if (summarized > 0 || diary) {
+			const parts: string[] = [];
+			if (summarized > 0) parts.push(`已为 ${summarized} 个对话生成摘要`);
+			if (diary) parts.push('已生成日记条目');
+			await notifyAll({
+				title: 'Qualia 任务完成',
+				body: parts.join('\n'),
+				type: 'task_complete'
+			});
 		}
 	}
+}
+
+function startSummarizeWorker(): void {
+	const config = readConfig();
+	if (!config.autoSummarize) return;
+
+	const intervalMin = config.summaryIntervalMin || 30;
+	summarizeWorker = new BackgroundWorker();
+	summarizeWorker.schedule('summarize', intervalMin * 60 * 1000, summarizeTick);
+	summarizeWorker.start();
 }
 
 export { gateway };
 
 function cleanup() {
-	if (timerId) {
-		clearTimeout(timerId);
-		timerId = null;
+	if (summarizeWorker) {
+		summarizeWorker.stop();
+		summarizeWorker = null;
 	}
-	running = false;
 	stopScheduler();
 	if (gateway) {
 		gateway.stop();
@@ -238,6 +234,11 @@ setTaskNotificationHandler(async (notification) => {
 initGateway();
 runBackgroundTasks();
 startScheduler();
+
+async function runBackgroundTasks() {
+	await summarizeTick();
+	startSummarizeWorker();
+}
 
 if (import.meta.hot) {
 	import.meta.hot.dispose(() => {

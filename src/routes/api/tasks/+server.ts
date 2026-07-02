@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { getAllTasks, pauseTask, resumeTask, deleteTask, formatTasksForAI } from '$lib/task';
-import type { ScheduledTask } from '$lib/task';
 
 export function GET() {
 	const tasks = getAllTasks();
@@ -17,11 +16,11 @@ export async function POST({ request }: { request: Request }) {
 
 	switch (action) {
 		case 'pause':
-			return json({ success: pauseTask(id) });
+			return json({ success: await pauseTask(id) });
 		case 'resume':
-			return json({ success: resumeTask(id) });
+			return json({ success: await resumeTask(id) });
 		case 'delete':
-			return json({ success: deleteTask(id) });
+			return json({ success: await deleteTask(id) });
 		default:
 			return json({ error: `未知操作: ${action}` }, { status: 400 });
 	}

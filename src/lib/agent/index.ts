@@ -17,3 +17,4 @@ export type { SummarizeResult } from './background';
 export type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
 export { AgentState } from './types';
 export { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';
+export { sanitizeMessages } from './message-sanitizer';

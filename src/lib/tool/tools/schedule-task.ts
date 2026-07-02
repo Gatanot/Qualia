@@ -46,7 +46,7 @@ export const scheduleTaskTool: ToolDef = {
 			return { success: false, output: '', error: `计划执行时间不能超过 30 天后` };
 		}
 
-		const task = createTask(name.trim(), prompt.trim(), scheduledAt);
+		const task = await createTask(name.trim(), prompt.trim(), scheduledAt);
 		const formatted = new Date(scheduledAt).toISOString().replace('T', ' ').slice(0, 19);
 
 		return {

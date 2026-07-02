@@ -20,7 +20,10 @@ import { updateTaskStatus } from './store';
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
 
 export async function executeTask(task: ScheduledTask, onComplete: (result: string, error?: string) => Promise<void>): Promise<void> {
-	updateTaskStatus(task.id, 'running');
+	const started = await updateTaskStatus(task.id, 'running');
+	if (!started) {
+		return;
+	}
 
 	let result = '';
 	let error: string | undefined;
@@ -84,16 +87,16 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 		}
 
 		if (error) {
-			updateTaskStatus(task.id, 'failed', { error });
+			await updateTaskStatus(task.id, 'failed', { error });
 		} else {
 			result = result.trim();
-			updateTaskStatus(task.id, 'completed', { result });
+			await updateTaskStatus(task.id, 'completed', { result });
 		}
 
 		await onComplete(result, error);
 	} catch (e) {
 		error = (e as Error).message;
-		updateTaskStatus(task.id, 'failed', { error });
+		await updateTaskStatus(task.id, 'failed', { error });
 		await onComplete('', error);
 	}
 }
