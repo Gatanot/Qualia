@@ -411,13 +411,34 @@ export class AgentLoop {
 			});
 
 		while (!toolDone) {
+			if (this.signal?.aborted) {
+				this.toolContext.onUpdate = undefined;
+				yield { type: 'error', message: '操作已取消' };
+				this.state = AgentState.ERROR;
+				return;
+			}
 			if (updateQueue.length > 0) {
 				while (updateQueue.length > 0) {
 					const chunk = updateQueue.shift()!;
 					yield { type: 'tool_execution_update', name, text: chunk };
 				}
 			} else {
-				await new Promise<void>((resolve) => { wakeUp = resolve; });
+				if (this.signal) {
+					const aborted = await Promise.race([
+						new Promise<void>((resolve) => { wakeUp = resolve; }),
+						new Promise<boolean>((resolve) => {
+							if (this.signal!.aborted) {
+								resolve(true);
+							} else {
+								const onAbort = () => resolve(true);
+								this.signal!.addEventListener('abort', onAbort, { once: true });
+							}
+						})
+					]);
+					if (aborted) continue;
+				} else {
+					await new Promise<void>((resolve) => { wakeUp = resolve; });
+				}
 			}
 		}
 
