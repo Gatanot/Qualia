@@ -20,6 +20,7 @@
 	let pickerEntries = $state<{ name: string; isDirectory: boolean }[]>([]);
 	let pickerParent = $state('');
 	let collapsedGroups = $state(new Set<string>());
+	let workspaceMenuOpen = $state(false);
 
 	import { afterNavigate } from '$app/navigation';
 
@@ -36,6 +37,11 @@
 	}
 
 	async function openPicker() {
+		workspaceMenuOpen = !workspaceMenuOpen;
+	}
+
+	async function openAddWorkspace() {
+		workspaceMenuOpen = false;
 		pickerOpen = true;
 		await browsePath('');
 	}
@@ -56,7 +62,7 @@
 
 	function selectWorkspace(ws: string) {
 		activeWorkspace.set(ws);
-		pickerOpen = false;
+		workspaceMenuOpen = false;
 	}
 
 	function confirmPicker() {
@@ -163,6 +169,27 @@
 			<span class="ws-label">{wsLabel($activeWorkspace)}</span>
 			<span class="material-symbols-rounded ws-arrow">expand_more</span>
 		</button>
+		{#if workspaceMenuOpen}
+			<div class="ws-menu">
+				<button class="ws-option" class:active={!$activeWorkspace} onclick={() => selectWorkspace('')}>
+					<span class="material-symbols-rounded">computer</span>
+					<span>默认工作区</span>
+				</button>
+				{#each groups as group (group.workspace)}
+					{#if group.workspace}
+						<button class="ws-option" class:active={$activeWorkspace === group.workspace} onclick={() => selectWorkspace(group.workspace)}>
+							<span class="material-symbols-rounded">folder</span>
+							<span title={group.workspace}>{wsLabel(group.workspace)}</span>
+						</button>
+					{/if}
+				{/each}
+				<div class="ws-separator"></div>
+				<button class="ws-option ws-add-btn" onclick={openAddWorkspace}>
+					<span class="material-symbols-rounded">create_new_folder</span>
+					<span>添加工作区...</span>
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	<div class="section-label">
@@ -372,6 +399,7 @@
 
 	.workspace-bar {
 		padding: 0 0.75rem 0.5rem;
+		position: relative;
 	}
 
 	.ws-selector {
@@ -413,6 +441,68 @@
 		font-size: 18px;
 		color: var(--text-muted);
 		flex-shrink: 0;
+	}
+
+	.ws-menu {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		background: var(--bg-surface);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-sidebar);
+		z-index: 60;
+		max-height: 260px;
+		overflow-y: auto;
+		padding: 0.3rem;
+		margin-top: 2px;
+	}
+
+	.ws-option {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem 0.6rem;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-primary);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.82rem;
+		text-align: left;
+		transition: background 0.15s var(--ease-out);
+	}
+
+	.ws-option:hover, .ws-option.active {
+		background: var(--bg-surface-active);
+	}
+
+	.ws-option .material-symbols-rounded {
+		font-size: 16px;
+		color: var(--text-muted);
+		flex-shrink: 0;
+	}
+
+	.ws-option.active .material-symbols-rounded {
+		color: var(--accent);
+	}
+
+	.ws-separator {
+		height: 1px;
+		background: var(--border-subtle);
+		margin: 0.3rem 0.5rem;
+	}
+
+	.ws-add-btn {
+		color: var(--accent);
+		font-weight: 500;
+	}
+
+	.ws-add-btn .material-symbols-rounded {
+		color: var(--accent);
 	}
 
 	.section-label {
