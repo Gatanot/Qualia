@@ -200,7 +200,7 @@ The compression is **not** a persistent summary — it only serves context conti
 - `.svelte-kit/` contains auto-generated types — never edit manually
 - `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
 - `process.cwd()` is used as the workspace root for tool path safety checks
-- `hooks.server.ts` has module-level side effects: `initGateway()`, `runBackgroundTasks()`, and `startScheduler()` all auto-start on import. It also exports `gateway` for use by API routes.
+- `hooks.server.ts` has module-level side effects: `initGateway()`, `summarize.start()`, and `startScheduler()` all auto-start on import.
 - `svelte.config.js` forces runes mode via `compilerOptions.runes` — returns `true` for project files, `undefined` for `node_modules`.
 - `src/lib/index.ts` is a SvelteKit scaffold placeholder with no meaningful exports — do not treat it as a barrel file
 - Model definitions (IDs, context windows, reasoning support) live in `src/lib/ai/models.ts`. Add new models there if extending provider support.

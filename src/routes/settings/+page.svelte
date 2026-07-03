@@ -25,7 +25,7 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramBotToken: '', telegramAllowedUsers: '' });
+	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramEnabled: false, telegramBotToken: '', telegramAllowedUsers: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 
@@ -173,6 +173,7 @@
 					onchange={saveNotifications}
 				/>
 				<TelegramSettings
+					bind:enabled={config.telegramEnabled}
 					bind:botToken={config.telegramBotToken}
 					bind:allowedUsers={config.telegramAllowedUsers}
 					onchange={saveNotifications}

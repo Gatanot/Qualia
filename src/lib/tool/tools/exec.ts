@@ -20,7 +20,7 @@ function killProcessTree(pid: number | undefined): boolean {
 		}
 	}
 	try {
-		process.kill(-pid, 'SIGKILL');
+		process.kill(pid, 'SIGKILL');
 		return true;
 	} catch {
 		return false;

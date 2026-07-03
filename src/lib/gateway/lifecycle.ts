@@ -24,7 +24,7 @@ export function initGateway(): GatewayDispatcher | null {
 		gateway.register(email);
 	}
 
-	if (config.telegramBotToken) {
+	if (config.telegramEnabled && config.telegramBotToken) {
 		const tgConfig: TelegramConfig = {
 			botToken: config.telegramBotToken,
 			allowedUsers: config.telegramAllowedUsers || ''

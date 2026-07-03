@@ -38,6 +38,7 @@ export interface AppConfig {
 	emailSmtpPass: string;
 	emailFrom: string;
 	emailTo: string;
+	telegramEnabled: boolean;
 	telegramBotToken: string;
 	telegramAllowedUsers: string;
 }

@@ -37,6 +37,7 @@ const defaultConfig: AppConfig = {
 	emailSmtpPass: '',
 	emailFrom: '',
 	emailTo: '',
+	telegramEnabled: false,
 	telegramBotToken: '',
 	telegramAllowedUsers: ''
 };
@@ -58,7 +59,7 @@ export function readConfig(): AppConfig {
 	const path = getConfigPath();
 
 	if (!existsSync(path)) {
-		return { ...defaultConfig };
+		return structuredClone(defaultConfig);
 	}
 
 	try {
@@ -91,11 +92,12 @@ export function readConfig(): AppConfig {
 			emailSmtpPass: typeof parsed.emailSmtpPass === 'string' ? parsed.emailSmtpPass : '',
 			emailFrom: typeof parsed.emailFrom === 'string' ? parsed.emailFrom : '',
 			emailTo: typeof parsed.emailTo === 'string' ? parsed.emailTo : '',
+			telegramEnabled: parsed.telegramEnabled === true,
 			telegramBotToken: typeof parsed.telegramBotToken === 'string' ? parsed.telegramBotToken : '',
 			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : ''
 		};
 	} catch {
-		return { ...defaultConfig };
+		return structuredClone(defaultConfig);
 	}
 }
 
