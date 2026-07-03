@@ -1,7 +1,41 @@
 import { marked } from 'marked';
 import type { Token } from 'marked';
 import hljs from 'highlight.js';
-import { reset, bold, dim, italic, underline, clearLine } from './terminal.js';
+import { reset, bold, dim, italic, underline } from './terminal.js';
+
+function charWidth(cp: number): number {
+	if (cp === 0) return 0;
+	if (cp < 0x20) return 0;
+	if (cp < 0x7F) return 1;
+	if (cp >= 0x1100 && cp <= 0x115F) return 2;
+	if (cp >= 0x2E80 && cp <= 0xA4CF) return 2;
+	if (cp >= 0xAC00 && cp <= 0xD7A3) return 2;
+	if (cp >= 0xF900 && cp <= 0xFAFF) return 2;
+	if (cp >= 0xFE10 && cp <= 0xFE19) return 2;
+	if (cp >= 0xFE30 && cp <= 0xFE6F) return 2;
+	if (cp >= 0xFF01 && cp <= 0xFF60) return 2;
+	if (cp >= 0xFFE0 && cp <= 0xFFE6) return 2;
+	if (cp >= 0x1F300 && cp <= 0x1F9FF) return 2;
+	return 1;
+}
+
+export function strWidth(str: string): number {
+	let w = 0;
+	for (let i = 0; i < str.length; i++) {
+		w += charWidth(str.codePointAt(i) || str.charCodeAt(i));
+	}
+	return w;
+}
+
+export function truncateToWidth(str: string, maxWidth: number): string {
+	let w = 0;
+	for (let i = 0; i < str.length; i++) {
+		const cw = charWidth(str.codePointAt(i) || str.charCodeAt(i));
+		if (w + cw > maxWidth) return str.slice(0, i);
+		w += cw;
+	}
+	return str;
+}
 
 const COLORS = {
 	code: 248,

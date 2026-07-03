@@ -96,6 +96,7 @@ export class Terminal {
 	private escTimer: ReturnType<typeof setTimeout> | null = null;
 	private escPending = false;
 	private inEscapeSeq = false;
+	private escSeqBuf: number[] = [];
 
 	constructor() {
 		this.stdin = process.stdin;
@@ -105,13 +106,22 @@ export class Terminal {
 		this.onRawData = this.onRawData.bind(this);
 	}
 
+	private dispatchEscSeq(): void {
+		if (this.escSeqBuf.length > 0) {
+			this.dispatchRaw(Buffer.from(this.escSeqBuf));
+			this.escSeqBuf = [];
+		}
+	}
+
 	private onRawData(buf: Buffer): void {
 		for (let i = 0; i < buf.length; i++) {
 			const byte = buf[i];
 
 			if (this.inEscapeSeq) {
+				this.escSeqBuf.push(byte);
 				if (byte >= 0x40 && byte <= 0x7E) {
 					this.inEscapeSeq = false;
+					this.dispatchEscSeq();
 				}
 				continue;
 			}
@@ -124,6 +134,7 @@ export class Terminal {
 				}
 				if (byte === 0x5B || byte === 0x4F) {
 					this.inEscapeSeq = true;
+					this.escSeqBuf = [0x1B, byte];
 				}
 				continue;
 			}
@@ -141,6 +152,7 @@ export class Terminal {
 					if (next === 0x5B || next === 0x4F) {
 						i++;
 						this.inEscapeSeq = true;
+						this.escSeqBuf = [0x1B, next];
 					} else {
 						this.dispatchRaw(Buffer.from([0x1B]));
 					}
@@ -179,6 +191,8 @@ export class Terminal {
 		this.stdin.on('data', this.onRawData);
 		this.rawMode = true;
 		this.write(hideCursor());
+		this.write('\x1b[?1000h');
+		this.write('\x1b[?1003h');
 	}
 
 	exitRawMode(): void {
@@ -194,6 +208,8 @@ export class Terminal {
 			this.stdin.setRawMode(false);
 		}
 		this.rawMode = false;
+		this.write('\x1b[?1003l');
+		this.write('\x1b[?1000l');
 		this.write(showCursor());
 	}
 

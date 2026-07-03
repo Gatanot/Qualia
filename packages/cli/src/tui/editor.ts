@@ -17,9 +17,18 @@ export class Editor {
 	private promptRow = 0;
 	private utf8Buf: Buffer[] = [];
 	private utf8Remaining = 0;
+	private history: string[] = [];
+	private historyIndex = -1;
 
 	private onKey = (buf: Buffer): boolean => {
 		if (!this.active) return false;
+
+		// Arrow keys: ESC [ A/B
+		if (buf.length === 3 && buf[0] === 0x1B && buf[1] === 0x5B) {
+			if (buf[2] === 0x41) { this.historyUp(); return true; }
+			if (buf[2] === 0x42) { this.historyDown(); return true; }
+			return true;
+		}
 
 		const byte = buf[0];
 
@@ -61,8 +70,13 @@ export class Editor {
 		}
 
 		if (byte === 0x03) {
-			this.text = '';
-			this.redraw();
+			if (this.text.length === 0) {
+				this.text = '/exit';
+				this.submit();
+			} else {
+				this.text = '';
+				this.redraw();
+			}
 			return true;
 		}
 
@@ -93,6 +107,10 @@ export class Editor {
 
 	private submit(): void {
 		const text = this.text;
+		if (text.trim()) {
+			this.history.push(text);
+		}
+		this.historyIndex = -1;
 		this.text = '';
 		this.active = false;
 		if (this.term && this.onSubmit) {
@@ -102,6 +120,29 @@ export class Editor {
 			this.onSubmit = null;
 			cb(text);
 		}
+	}
+
+	private historyUp(): void {
+		if (this.history.length === 0) return;
+		if (this.historyIndex === -1) {
+			this.historyIndex = this.history.length - 1;
+		} else if (this.historyIndex > 0) {
+			this.historyIndex--;
+		}
+		this.text = this.history[this.historyIndex];
+		this.redraw();
+	}
+
+	private historyDown(): void {
+		if (this.historyIndex === -1) return;
+		if (this.historyIndex < this.history.length - 1) {
+			this.historyIndex++;
+			this.text = this.history[this.historyIndex];
+		} else {
+			this.historyIndex = -1;
+			this.text = '';
+		}
+		this.redraw();
 	}
 
 	activate(term: Terminal, onSubmit: (text: string) => void): void {

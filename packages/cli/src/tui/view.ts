@@ -1,5 +1,5 @@
 import { Terminal, moveCursor, clearLine, reset, dim, bold } from './terminal.js';
-import { renderMarkdown, renderReasoning, renderToolCall, renderToolResult } from './renderer.js';
+import { renderMarkdown, renderReasoning, renderToolCall, renderToolResult, truncateToWidth } from './renderer.js';
 
 interface MessageBlock {
 	role: 'user' | 'assistant' | 'tool';
@@ -18,6 +18,8 @@ export class ChatView {
 	private prevWidth = 0;
 	private needsFull = true;
 	statusText = '';
+	scrollOffset = 0;
+	private autoScroll = true;
 
 	constructor(term: Terminal) {
 		this.term = term;
@@ -99,13 +101,19 @@ export class ChatView {
 	}
 
 	appendToolOutput(text: string): void {
+		const sanitized = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x07/g, '');
 		const block = this.messages[this.messages.length - 1];
-		if (block && block.isToolOutput) {
-			this.appendToBlock(block, text);
+		if (block && block.isToolOutput && block.isStreaming) {
+			const maxLines = 16;
+			if (block.lines.length < maxLines) {
+				this.appendToBlock(block, sanitized);
+			} else if (block.lines.length === maxLines) {
+				block.lines.push(dim() + '  ... (output truncated)' + reset());
+			}
 		} else {
 			const newBlock: MessageBlock = { role: 'tool', lines: [], isToolOutput: true, isStreaming: true };
 			this.messages.push(newBlock);
-			this.appendToBlock(newBlock, text);
+			this.appendToBlock(newBlock, sanitized);
 		}
 	}
 
@@ -137,8 +145,27 @@ export class ChatView {
 	private getVisibleLines(): string[] {
 		const allLines = this.getAllLines();
 		const maxVisible = this.term.height - 2;
-		const startRow = Math.max(0, allLines.length - maxVisible);
+		if (this.autoScroll) {
+			this.scrollOffset = Math.max(0, allLines.length - maxVisible);
+		}
+		const startRow = Math.max(0, Math.min(this.scrollOffset, Math.max(0, allLines.length - maxVisible)));
 		return allLines.slice(startRow, startRow + maxVisible);
+	}
+
+	scrollUp(lines: number): void {
+		this.autoScroll = false;
+		this.scrollOffset = Math.max(0, this.scrollOffset - lines);
+	}
+
+	scrollDown(lines: number): void {
+		const allLines = this.getAllLines();
+		const maxVisible = this.term.height - 2;
+		const bottom = Math.max(0, allLines.length - maxVisible);
+		this.scrollOffset = Math.min(bottom, this.scrollOffset + lines);
+		if (this.scrollOffset >= bottom) {
+			this.autoScroll = true;
+			this.scrollOffset = bottom;
+		}
 	}
 
 	render(): void {
@@ -172,8 +199,7 @@ export class ChatView {
 		for (let i = 0; i < termH - 1; i++) {
 			this.term.write(clearLine());
 			if (i < visible.length) {
-				const line = visible[i];
-				this.term.write(line.length > this.term.width ? line.slice(0, this.term.width) : line);
+				this.term.write(truncateToWidth(visible[i], this.term.width));
 			}
 			if (i < termH - 2) this.term.write('\r\n');
 		}
@@ -194,8 +220,7 @@ export class ChatView {
 					this.term.write(moveCursor(row, 1));
 				}
 				this.term.write(clearLine());
-				const line = cur.length > this.term.width ? cur.slice(0, this.term.width) : cur;
-				this.term.write(line);
+				this.term.write(truncateToWidth(cur, this.term.width));
 				lastWritten = row;
 			}
 		}
