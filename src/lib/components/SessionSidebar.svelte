@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { slide } from 'svelte/transition';
-	import { visibleSessions, sessions, setSessionTitle, deleteSession, activeWorkspace, workspaces, loadWorkspaces } from '$lib/session-store';
+	import { sessions, setSessionTitle, deleteSession, activeWorkspace } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 	import SearchDialog from './SearchDialog.svelte';
 	import { getTheme, toggleTheme } from '$lib/theme';
@@ -16,8 +15,11 @@
 	let editTitle = $state('');
 	let searchOpen = $state(false);
 	let themeIcon = $state(getTheme() === 'dark' ? 'light_mode' : 'dark_mode');
-	let workspaceMenuOpen = $state(false);
-	let newWorkspaceInput = $state('');
+	let pickerOpen = $state(false);
+	let pickerPath = $state('');
+	let pickerEntries = $state<{ name: string; isDirectory: boolean }[]>([]);
+	let pickerParent = $state('');
+	let collapsedGroups = $state(new Set<string>());
 
 	import { afterNavigate } from '$app/navigation';
 
@@ -33,17 +35,42 @@
 		goto('/');
 	}
 
-	function selectWorkspace(ws: string) {
-		activeWorkspace.set(ws);
-		workspaceMenuOpen = false;
+	async function openPicker() {
+		pickerOpen = true;
+		await browsePath('');
 	}
 
-	async function addWorkspace() {
-		const path = newWorkspaceInput.trim();
-		if (!path) return;
-		activeWorkspace.set(path);
-		newWorkspaceInput = '';
-		workspaceMenuOpen = false;
+	async function browsePath(path: string) {
+		const res = await fetch('/api/browse', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ path })
+		});
+		if (res.ok) {
+			const data = await res.json();
+			pickerPath = data.path;
+			pickerEntries = data.entries;
+			pickerParent = data.parent;
+		}
+	}
+
+	function selectWorkspace(ws: string) {
+		activeWorkspace.set(ws);
+		pickerOpen = false;
+	}
+
+	function confirmPicker() {
+		activeWorkspace.set(pickerPath);
+		pickerOpen = false;
+	}
+
+	function toggleGroup(ws: string) {
+		if (collapsedGroups.has(ws)) {
+			collapsedGroups.delete(ws);
+		} else {
+			collapsedGroups.add(ws);
+		}
+		collapsedGroups = new Set(collapsedGroups);
 	}
 
 	function startEdit(session: Session) {
@@ -81,16 +108,6 @@
 		themeIcon = getTheme() === 'dark' ? 'light_mode' : 'dark_mode';
 	}
 
-	function handleWorkspaceKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			addWorkspace();
-		} else if (e.key === 'Escape') {
-			workspaceMenuOpen = false;
-			newWorkspaceInput = '';
-		}
-	}
-
 	function formatTime(ts: number): string {
 		const d = new Date(ts);
 		const now = new Date();
@@ -106,6 +123,23 @@
 		const parts = ws.replace(/\\/g, '/').split('/');
 		return parts[parts.length - 1] || ws;
 	}
+
+	let groups = $derived.by(() => {
+		const map = new Map<string, Session[]>();
+		for (const s of $sessions) {
+			const key = s.workspace || '';
+			if (!map.has(key)) map.set(key, []);
+			map.get(key)!.push(s);
+		}
+		const result = Array.from(map.entries())
+			.map(([ws, items]) => ({ workspace: ws, sessions: items }))
+			.sort((a, b) => {
+				if (!a.workspace) return -1;
+				if (!b.workspace) return 1;
+				return a.workspace.localeCompare(b.workspace);
+			});
+		return result;
+	});
 </script>
 
 <div class="sidebar" class:mobile-open={mobileOpen}>
@@ -124,35 +158,11 @@
 	</div>
 
 	<div class="workspace-bar">
-		<button class="ws-selector" onclick={() => { workspaceMenuOpen = !workspaceMenuOpen; loadWorkspaces(); }}>
+		<button class="ws-selector" onclick={openPicker}>
 			<span class="material-symbols-rounded ws-icon">folder</span>
 			<span class="ws-label">{wsLabel($activeWorkspace)}</span>
 			<span class="material-symbols-rounded ws-arrow">expand_more</span>
 		</button>
-		{#if workspaceMenuOpen}
-			<div class="ws-menu" transition:slide={{ duration: 150 }}>
-				<button class="ws-option" class:active={!$activeWorkspace} onclick={() => selectWorkspace('')}>
-					<span class="material-symbols-rounded">computer</span>
-					<span>默认工作区</span>
-				</button>
-				{#each $workspaces as ws}
-					<button class="ws-option" class:active={$activeWorkspace === ws} onclick={() => selectWorkspace(ws)}>
-						<span class="material-symbols-rounded">folder</span>
-						<span title={ws}>{wsLabel(ws)}</span>
-					</button>
-				{/each}
-				<div class="ws-add">
-					<span class="material-symbols-rounded">create_new_folder</span>
-					<input
-						class="ws-input"
-						type="text"
-						placeholder="输入工作区路径..."
-						bind:value={newWorkspaceInput}
-						onkeydown={handleWorkspaceKeydown}
-					/>
-				</div>
-			</div>
-		{/if}
 	</div>
 
 	<div class="section-label">
@@ -163,49 +173,62 @@
 	</div>
 
 	<div class="session-list">
-		{#each $visibleSessions.slice(0, 8) as session (session.id)}
-			<div
-				class="session-item"
-				class:active={session.id === $page.params.sessionId}
-				onclick={() => handleSelect(session)}
-				onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
-				role="button"
-				tabindex="0"
-			>
-				<span class="material-symbols-rounded session-icon">chat_bubble</span>
-				<div class="session-info">
-					{#if editingId === session.id}
-						<!-- svelte-ignore a11y_autofocus -->
-						<input
-							class="session-title-input"
-							type="text"
-							bind:value={editTitle}
-							onblur={() => saveEdit(session.id)}
-							onkeydown={(e) => handleEditKeydown(e, session.id)}
-							onclick={(e: MouseEvent) => e.stopPropagation()}
-							autofocus
-						/>
-					{:else}
-						<div
-							class="session-title"
-							ondblclick={() => startEdit(session)}
-							onkeydown={() => {}}
-							role="textbox"
-							tabindex="-1"
-						>
-							{session.title}
+		{#each groups as group (group.workspace)}
+			{@const isCollapsed = collapsedGroups.has(group.workspace)}
+			<button class="group-header" onclick={() => toggleGroup(group.workspace)}>
+				<span class="material-symbols-rounded group-arrow">
+					{isCollapsed ? 'chevron_right' : 'expand_more'}
+				</span>
+				<span class="material-symbols-rounded group-icon">folder</span>
+				<span class="group-name">{wsLabel(group.workspace)}</span>
+				<span class="group-count">{group.sessions.length}</span>
+			</button>
+			{#if !isCollapsed}
+				{#each group.sessions.slice(0, 8) as session (session.id)}
+					<div
+						class="session-item"
+						class:active={session.id === $page.params.sessionId}
+						onclick={() => handleSelect(session)}
+						onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
+						role="button"
+						tabindex="0"
+					>
+						<span class="material-symbols-rounded session-icon">chat_bubble</span>
+						<div class="session-info">
+							{#if editingId === session.id}
+								<!-- svelte-ignore a11y_autofocus -->
+								<input
+									class="session-title-input"
+									type="text"
+									bind:value={editTitle}
+									onblur={() => saveEdit(session.id)}
+									onkeydown={(e) => handleEditKeydown(e, session.id)}
+									onclick={(e: MouseEvent) => e.stopPropagation()}
+									autofocus
+								/>
+							{:else}
+								<div
+									class="session-title"
+									ondblclick={() => startEdit(session)}
+									onkeydown={() => {}}
+									role="textbox"
+									tabindex="-1"
+								>
+									{session.title}
+								</div>
+								<div class="session-time">{formatTime(session.updated_at)}</div>
+							{/if}
 						</div>
-						<div class="session-time">{formatTime(session.updated_at)}</div>
-					{/if}
-				</div>
-				<button
-					class="delete-btn"
-					onclick={(e: MouseEvent) => { e.stopPropagation(); handleDelete(session.id); }}
-					title="删除"
-				>
-					<span class="material-symbols-rounded">delete</span>
-				</button>
-			</div>
+						<button
+							class="delete-btn"
+							onclick={(e: MouseEvent) => { e.stopPropagation(); handleDelete(session.id); }}
+							title="删除"
+						>
+							<span class="material-symbols-rounded">delete</span>
+						</button>
+					</div>
+				{/each}
+			{/if}
 		{/each}
 		<a href="/records" class="view-all-link">
 			<span class="material-symbols-rounded view-all-icon">history</span>
@@ -227,6 +250,37 @@
 		</button>
 	</div>
 </div>
+
+{#if pickerOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_interactive_supports_focus -->
+	<div class="picker-overlay" role="presentation" onclick={() => (pickerOpen = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions -->
+		<div class="picker-dialog" role="dialog" tabindex="-1" onclick={(e: MouseEvent) => e.stopPropagation()}>
+			<div class="picker-header">
+				<span class="material-symbols-rounded">folder_open</span>
+				<span class="picker-path">{pickerPath}</span>
+			</div>
+			<div class="picker-list">
+				{#if pickerParent !== pickerPath}
+					<button class="picker-entry" onclick={() => browsePath(pickerParent)}>
+						<span class="material-symbols-rounded">arrow_upward</span>
+						<span>..</span>
+					</button>
+				{/if}
+				{#each pickerEntries as entry}
+					<button class="picker-entry" onclick={() => browsePath(pickerPath + (pickerPath.endsWith('/') || pickerPath.endsWith('\\') ? '' : '/') + entry.name)}>
+						<span class="material-symbols-rounded">folder</span>
+						<span>{entry.name}</span>
+					</button>
+				{/each}
+			</div>
+			<div class="picker-actions">
+				<button class="picker-btn secondary" onclick={() => (pickerOpen = false)}>取消</button>
+				<button class="picker-btn primary" onclick={confirmPicker}>选择此文件夹</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <SearchDialog sessions={$sessions} bind:open={searchOpen} />
 
@@ -318,7 +372,6 @@
 
 	.workspace-bar {
 		padding: 0 0.75rem 0.5rem;
-		position: relative;
 	}
 
 	.ws-selector {
@@ -360,82 +413,6 @@
 		font-size: 18px;
 		color: var(--text-muted);
 		flex-shrink: 0;
-	}
-
-	.ws-menu {
-		position: absolute;
-		top: 100%;
-		left: 0.75rem;
-		right: 0.75rem;
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sidebar);
-		z-index: 60;
-		max-height: 260px;
-		overflow-y: auto;
-		padding: 0.3rem;
-	}
-
-	.ws-option {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		width: 100%;
-		padding: 0.5rem 0.6rem;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--text-primary);
-		cursor: pointer;
-		font-family: inherit;
-		font-size: 0.82rem;
-		transition: background 0.15s var(--ease-out);
-	}
-
-	.ws-option:hover, .ws-option.active {
-		background: var(--bg-surface-active);
-	}
-
-	.ws-option .material-symbols-rounded {
-		font-size: 16px;
-		color: var(--text-muted);
-		flex-shrink: 0;
-	}
-
-	.ws-option.active .material-symbols-rounded {
-		color: var(--accent);
-	}
-
-	.ws-add {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 0.6rem;
-		border-top: 1px solid var(--border-subtle);
-		margin-top: 0.3rem;
-	}
-
-	.ws-add .material-symbols-rounded {
-		font-size: 16px;
-		color: var(--text-muted);
-		flex-shrink: 0;
-	}
-
-	.ws-input {
-		flex: 1;
-		padding: 0.25rem 0.4rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 4px;
-		background: var(--bg-surface);
-		color: var(--text-primary);
-		font-family: inherit;
-		font-size: 0.82rem;
-		outline: none;
-	}
-
-	.ws-input:focus {
-		border-color: var(--accent);
 	}
 
 	.section-label {
@@ -480,7 +457,7 @@
 		padding: 0.5rem 0.75rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
+		gap: 2px;
 	}
 
 	.session-list::-webkit-scrollbar {
@@ -491,11 +468,60 @@
 		border-radius: 10px;
 	}
 
+	.group-header {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.4rem 0.5rem;
+		margin-top: 4px;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-align: left;
+		transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+	}
+
+	.group-header:hover {
+		background: var(--bg-surface-active);
+		color: var(--text-primary);
+	}
+
+	.group-arrow {
+		font-size: 16px;
+		flex-shrink: 0;
+	}
+
+	.group-icon {
+		font-size: 15px;
+		flex-shrink: 0;
+		color: var(--accent);
+	}
+
+	.group-name {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.group-count {
+		font-size: 0.68rem;
+		background: var(--bg-surface-press);
+		padding: 0.1rem 0.4rem;
+		border-radius: var(--radius-full);
+		color: var(--text-muted);
+	}
+
 	.session-item {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		padding: 0.7rem 0.85rem;
+		padding: 0.65rem 0.75rem 0.65rem 1.85rem;
 		border-radius: var(--radius-md);
 		cursor: pointer;
 		transition: background 0.2s var(--ease-out), transform 0.15s var(--ease-out);
@@ -535,7 +561,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		font-size: 0.92rem;
+		font-size: 0.88rem;
 		font-weight: 400;
 	}
 
@@ -550,17 +576,16 @@
 		border-radius: 6px;
 		background: var(--bg-surface);
 		font-family: inherit;
-		font-size: 0.92rem;
+		font-size: 0.88rem;
 		color: var(--text-primary);
 		outline: none;
 		box-sizing: border-box;
 	}
 
 	.session-time {
-		font-size: 0.72rem;
+		font-size: 0.7rem;
 		color: var(--text-muted);
-		margin-top: 0.2rem;
-		font-weight: 400;
+		margin-top: 0.15rem;
 	}
 
 	.delete-btn {
@@ -644,5 +669,119 @@
 	.footer-link:hover, .footer-link.active {
 		background: var(--bg-surface-active);
 		color: var(--text-primary);
+	}
+
+	/* Folder picker overlay */
+	.picker-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.4);
+		z-index: 100;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.picker-dialog {
+		background: var(--bg-surface);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sidebar);
+		width: 420px;
+		max-height: 480px;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.picker-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.85rem 1rem;
+		border-bottom: 1px solid var(--border-subtle);
+		font-size: 0.85rem;
+		color: var(--text-primary);
+	}
+
+	.picker-header .material-symbols-rounded {
+		color: var(--accent);
+		font-size: 20px;
+	}
+
+	.picker-path {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-family: var(--font-mono, monospace);
+		font-size: 0.78rem;
+	}
+
+	.picker-list {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0.4rem;
+		max-height: 340px;
+	}
+
+	.picker-entry {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-primary);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.85rem;
+		transition: background 0.15s var(--ease-out);
+	}
+
+	.picker-entry:hover {
+		background: var(--bg-surface-active);
+	}
+
+	.picker-entry .material-symbols-rounded {
+		font-size: 18px;
+		color: var(--accent);
+	}
+
+	.picker-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.picker-btn {
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.85rem;
+		transition: background 0.2s var(--ease-out);
+	}
+
+	.picker-btn.secondary {
+		background: transparent;
+		color: var(--text-secondary);
+	}
+
+	.picker-btn.secondary:hover {
+		background: var(--bg-surface-active);
+	}
+
+	.picker-btn.primary {
+		background: var(--accent);
+		color: #fff;
+	}
+
+	.picker-btn.primary:hover {
+		background: var(--accent-hover);
 	}
 </style>
