@@ -29,6 +29,13 @@ describe('SessionLock', () => {
 		expect(order).toEqual([1, 2]);
 	});
 
+	it('throws on double release', async () => {
+		const lock = new SessionLock();
+		const release = await lock.acquire('s1');
+		release();
+		expect(() => release()).toThrow('already released');
+	});
+
 	it('allows concurrent acquires on different sessions', async () => {
 		const lock = new SessionLock();
 		const results: string[] = [];

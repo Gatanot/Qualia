@@ -52,10 +52,17 @@ function repairRoleAlternation(messages: Message[]): Message[] {
 			if (prev.tool_calls || curr.tool_calls) {
 				result.push(curr);
 			} else {
-				result[result.length - 1] = {
+				const merged: Message = {
 					role: 'assistant',
 					content: mergeContent(prev.content, curr.content)
 				};
+				if (prev.reasoning_content || curr.reasoning_content) {
+					merged.reasoning_content = [prev.reasoning_content, curr.reasoning_content]
+						.filter(Boolean)
+						.join('\n\n');
+				}
+				if (prev.name) merged.name = prev.name;
+				result[result.length - 1] = merged;
 			}
 		} else {
 			result.push(curr);

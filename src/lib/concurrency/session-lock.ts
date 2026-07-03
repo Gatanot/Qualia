@@ -6,6 +6,15 @@ type SessionWaiter = {
 export class SessionLock {
 	private sessions = new Map<string, { locked: boolean; waiters: SessionWaiter[] }>();
 
+	private createRelease(sessionId: string): () => void {
+		let released = false;
+		return () => {
+			if (released) throw new Error(`SessionLock: session "${sessionId}" already released`);
+			released = true;
+			this.release(sessionId);
+		};
+	}
+
 	async acquire(sessionId: string): Promise<() => void> {
 		let entry = this.sessions.get(sessionId);
 		if (!entry) {
@@ -15,7 +24,7 @@ export class SessionLock {
 
 		if (!entry.locked) {
 			entry.locked = true;
-			return () => this.release(sessionId);
+			return this.createRelease(sessionId);
 		}
 
 		return new Promise((resolve, reject) => {
@@ -29,7 +38,7 @@ export class SessionLock {
 
 		const next = entry.waiters.shift();
 		if (next) {
-			next.resolve(() => this.release(sessionId));
+			next.resolve(this.createRelease(sessionId));
 		} else {
 			entry.locked = false;
 			this.sessions.delete(sessionId);

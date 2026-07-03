@@ -14,9 +14,9 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 ```
 
 - `npm run check` is the **primary verification** — always run it after changes. It syncs SvelteKit types first, then type-checks.
-- `npm run prepare` runs `svelte-kit sync` on every `npm install`, generating `.svelte-kit/tsconfig.json`.
 - `npm run docs` outputs to `docs/`; entry points defined in `typedoc.json`.
-- There is no test runner or linter yet.
+- `npm run test` runs vitest (`src/**/*.test.ts`); `npm run test:watch` for TDD.
+- `npm run prepare` runs `svelte-kit sync || echo ''` (the `|| echo ''` prevents failure on brand-new installs where `.svelte-kit` doesn't exist yet). It auto-runs on every `npm install`.
 
 ## Stack & constraints
 
@@ -26,19 +26,20 @@ npm run docs         # regenerate TypeDoc HTML to docs/
 | Runes mode | **Forced** project-wide (except node_modules). Always use `$state()`, `$props()`, `$effect()`, not legacy Svelte 4 syntax |
 | Imports | `$lib` → `src/lib/`. Use `$lib/xxx` paths exclusively (alias is SvelteKit-managed, not in tsconfig) |
 | DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
-| Config | `data/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
+| Config | `~/.qualia/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
 | Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
 | Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro), Ollama (local, extends OpenAI compat). DeepSeek & Xiaomi models have `supportsReasoning: true`. `ProviderConfig.reasoningEffort` enables reasoning; per-model UI options come from `ModelDef.reasoningEffortValues`. MiMo V2.5 has `supportsVision: true` — can process image inputs. Ollama models get a dynamic `ModelDef` with 128k default context window. |
-| Config fields | `ProviderConfig` has optional `timeout` and `maxRetries` fields. `AppConfig` has web search settings: `searchEnabled`, `searchProvider` (`searxng`|`tavily`), `searxngURL`, `tavilyApiKey`. |
+| Config fields | `ProviderConfig` has optional `timeout` and `maxRetries` fields. `AppConfig` has web search settings: `searchEnabled`, `searchProvider` (`searxng`|`tavily`), `searxngURL`, `tavilyApiKey`. Compression: `compressionMode` (`auto`|`custom`) and `compressionThreshold` (default 256k). |
 
 ## Architecture
 
 ```
 src/lib/
-├── agent/           # index.ts barrel + ContextBuilder + AgentLoop + summarizer + diary + background + prompts + types
+├── agent/           # index.ts barrel + ContextBuilder + AgentLoop + summarizer + diary + background + prompts + types + message-sanitizer + logger
 ├── assets/          # Static assets (favicon.svg)
 ├── components/      # Svelte UI components + settings/ subdirectory
 │   └── types.ts     # UIMessage/ContentBlock types
+├── concurrency/     # SessionLock (per-session serialization), FileMutex (per-file), BackgroundWorker (interval scheduling)
 ├── config/          # AppConfig JSON read/write + ProviderConfig types
 ├── gateway/          # Gateway abstraction + adapters (email, telegram)
 │   ├── index.ts      # Barrel: GatewayDispatcher, all adapters, types
@@ -57,6 +58,7 @@ src/lib/
 ├── chat-steering.ts             # Shared Map<string, SteeringMessage[]> for real-time intervention
 ├── markdown.ts                  # Markdown renderer (marked) with highlight.js code blocks + KaTeX math
 ├── model-picker-state.svelte.ts # Client-side $state runes for model picker UI
+├── paths.ts                     # Resolves ~/.qualia paths (config, data dir, memory.md, tasks.json, db.sqlite)
 ├── session-store.ts             # Client-side Svelte stores for session list + CRUD helpers
 └── theme.ts                     # Light/dark theme management (localStorage + media query)
 ```
@@ -65,7 +67,7 @@ src/lib/
 `session-store.ts` and `model-picker-state.svelte.ts` are exceptions — they're client-side only (use `writable` stores / `$state()` runes).
 
 API routes:
-- `api/brand-icon/+server.ts` — `GET`/`POST`/`DELETE` custom brand icon (uploaded to `data/brand-icon`)
+- `api/brand-icon/+server.ts` — `GET`/`POST`/`DELETE` custom brand icon (uploaded to `data/brand-icon` in `~/.qualia/data/`)
 - `api/steer/+server.ts` — `POST` inject steering messages into an active AgentLoop
 - `api/chat/+server.ts` — `POST` → SSE streaming (AgentLoop)
 - `api/confirm/+server.ts` — `POST` → resolve tool confirmation
@@ -79,7 +81,9 @@ API routes:
 Pages: `/` (new chat), `/chat/[sessionId]`, `/records` (summarized diary entries), `/settings`.
 Root layout (`+layout.svelte`) loads Material Symbols + Noto Sans SC fonts, renders SessionSidebar.
 
-## SvelteKit route file rules
+## Code style
+
+- **不要防御性编程**。开发阶段暴露错误优于静默处理。对不应发生的状态（如 double-release、无效参数）直接 throw Error，不要用 if-guard 或 fallback 吞掉。错误暴露得越早，调试成本越低。
 
 - **`+server.ts` can ONLY export** `GET`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`, `HEAD`, `fallback`, `prerender`, `trailingSlash`, `config`, `entries`, or `_`-prefixed names. Any other export causes a 500 error.
 - Do NOT export helper functions from `+server.ts`. If two endpoints need shared state, put it in `src/lib/`.
@@ -106,9 +110,19 @@ LLM calls have built-in retry: 5 attempts, exponential backoff (1s base). The lo
 
 **Hard caps**: `MAX_TOOL_ITERATIONS = 50` — the loop will error out if tool calls exceed this limit. `MAX_LLM_RETRIES = 5` for LLM API calls.
 
+## Message sanitizer
+
+`sanitizeMessages` in `src/lib/agent/message-sanitizer.ts` is a pipeline that cleans messages before every LLM call. It runs in 4 stages:
+1. Strips empty messages (no content and no tool_calls, except tool role)
+2. Replaces Unicode surrogates (`\uD800-\uDFFF`) with `\uFFFD`
+3. Merges consecutive same-role messages (user→user, assistant→assistant without tool_calls)
+4. Removes orphan tool results (tool messages whose `tool_call_id` doesn't match any preceding `assistant.tool_calls[]`)
+
+It returns a new array without mutating the input. Do NOT bypass this pipeline.
+
 ## Auto-summarize background system
 
-`hooks.server.ts` starts a polling loop (`runBackgroundTasks`) at server boot (with HMR dispose handler for clean timer teardown). Controlled by config fields:
+`hooks.server.ts` starts a `BackgroundWorker` (`src/lib/concurrency/background-worker.ts`) at server boot, which runs `runSummarizeJob` on a configurable interval (with HMR dispose handler for clean timer teardown). Controlled by config fields:
 
 | Field | Purpose |
 |-------|---------|
@@ -128,7 +142,7 @@ On completion, if `emailNotifications` is enabled, the Gateway sends a summary v
 - **`GatewayAdapter` interface** — `connect/disconnect/send` lifecycle + `capabilities` flags (`receive`, `notify`)
 - **`GatewayDispatcher`** — registry of adapters, `start/stop/notify/send` methods. Notifications fan out to all adapters with `capabilities.notify`.
 - **`EmailAdapter`** — SMTP-only (no IMAP polling). Declares `{ receive: false, notify: true }`. Used for task completion notifications from `hooks.server.ts`.
-- **`TelegramAdapter`** — long-polling `getUpdates`, registers `{ receive: true, notify: true }`. Inbound messages route through `GatewayDispatcher.onInbound()` → AgentLoop. Uses `data/telegram-sessions.json` to bind each `chatId` to the most recent session (main session model). On agent fork, the binding is updated to the new `[延续]` session.
+- **`TelegramAdapter`** — long-polling `getUpdates`, registers `{ receive: true, notify: true }`. Inbound messages route through `GatewayDispatcher.onInbound()` → AgentLoop. Uses `~/.qualia/data/telegram-sessions.json` to bind each `chatId` to the most recent session (main session model). On agent fork, the binding is updated to the new `[延续]` session.
 - **Config fields**: `emailNotifications`, `emailSmtpHost/Port/Secure/User/Pass`, `emailFrom`, `emailTo`. `telegramBotToken`, `telegramAllowedUsers`.
 
 `hooks.server.ts` initializes the Gateway at startup and routes summarize-job results through `gateway.notify()`.
@@ -139,8 +153,8 @@ On completion, if `emailNotifications` is enabled, the Gateway sends a summary v
 
 - **`schedule_task` tool** — creates a task with a future ISO timestamp. The model must use `exec` to read the current system time before setting the schedule.
 - **`read_tasks` tool** — queries task list and results. The AI is NOT automatically notified of completions; it must check manually.
-- **Task execution** — each task runs in an isolated `AgentLoop` with no conversation history, no memory writes, auto-deny for tool confirmations, and a 10-minute timeout. Result saved to `data/tasks.json`.
-- **Retention** — FIFO, last 100 tasks or last 7 days, whichever comes first. Archived results persist in `data/tasks.json`.
+- **Task execution** — each task runs in an isolated `AgentLoop` with no conversation history, no memory writes, auto-deny for tool confirmations, and a 10-minute timeout. Result saved to `~/.qualia/data/tasks.json`.
+- **Retention** — FIFO, last 100 tasks or last 7 days, whichever comes first. Archived results persist in `~/.qualia/data/tasks.json`.
 - **Settings page** — `/settings` → 任务 tab: list tasks with pause/resume/delete per-task.
 - **Notification** — on completion or failure, the scheduler calls `gateway.notify()` which delivers via Email (or future Telegram).
 
@@ -180,8 +194,9 @@ The compression is **not** a persistent summary — it only serves context conti
 
 ## Notable quirks
 
-- `data/` and `docs/` directories are gitignored, auto-created at runtime
-- `data/memory.md` is the persistent memory file written by the `write_memory` tool. Its content is read at session creation and snapshotted into `session.memory_snapshot`, so memory changes only affect new sessions.
+- `data/` and `docs/` directories are gitignored. Runtime data lives at `~/.qualia/data/` — paths are resolved by `src/lib/paths.ts`.
+- `~/.qualia/data/memory.md` is the persistent memory file written by `write_memory`. Content is read at session creation and snapshotted into `session.memory_snapshot`, so memory changes only affect new sessions.
+- `opencode.json` is gitignored — local-only OpenCode agent config.
 - `.svelte-kit/` contains auto-generated types — never edit manually
 - `.npmrc` sets `engine-strict=true` — npm will reject incompatible Node/npm versions
 - `process.cwd()` is used as the workspace root for tool path safety checks
