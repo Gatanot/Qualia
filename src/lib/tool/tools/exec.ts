@@ -1,4 +1,4 @@
-import { exec, execSync } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import type { ToolDef, ToolResult } from '../types';
 import type { ToolContext } from '../env';
 import { PendingConfirmation } from '../types';
@@ -94,54 +94,88 @@ export const execTool: ToolDef = {
 		}
 
 		return new Promise((resolve) => {
+			const stdoutChunks: Buffer[] = [];
+			const stderrChunks: Buffer[] = [];
 			let resolved = false;
-			const timer = setTimeout(() => {
+			let totalOutput = 0;
+
+			const resolveResult = (success: boolean, error?: string) => {
+				if (resolved) return;
 				resolved = true;
-				if (!killProcessTree(child.pid)) {
-					try { child.kill(); } catch { /* 忽略二次杀死失败 */ }
-				}
+				clearTimeout(timer);
+				const out = Buffer.concat(stdoutChunks).toString();
+				const err = Buffer.concat(stderrChunks).toString();
+
+				const output = [out, err ? `\n[stderr]\n${err}` : '']
+					.filter(Boolean)
+					.join('')
+					.slice(0, MAX_OUTPUT);
+
 				resolve({
-					success: false,
-					output: '',
-					error: `命令执行超时 (${timeoutSec} 秒)`
+					success,
+					output: output || '(无输出)',
+					error
 				});
+			};
+
+			const timer = setTimeout(() => {
+				if (!resolved) {
+					if (!killProcessTree(child.pid)) {
+						try { child.kill(); } catch { /* 忽略二次杀死失败 */ }
+					}
+					resolveResult(false, `命令执行超时 (${timeoutSec} 秒)`);
+				}
 			}, timeoutMs);
 
-			const child = exec(
+			const child = spawn(
 				command,
+				[],
 				{
 					cwd: ctx.root,
-					maxBuffer: MAX_OUTPUT,
-					shell: IS_WINDOWS ? 'powershell.exe' : '/bin/bash'
-				},
-				(error, stdout, stderr) => {
-					clearTimeout(timer);
-					if (resolved) return;
-
-					const out = stdout?.toString() || '';
-					const err = stderr?.toString() || '';
-
-					if (error && !out && !err) {
-						resolve({
-							success: false,
-							output: '',
-							error: error.message
-						});
-						return;
-					}
-
-					const output = [out, err ? `\n[stderr]\n${err}` : '']
-						.filter(Boolean)
-						.join('')
-						.slice(0, MAX_OUTPUT);
-
-					resolve({
-						success: error ? !error.killed : true,
-						output: output || '(无输出)',
-						error: error?.killed ? '命令被终止' : undefined
-					});
+					shell: IS_WINDOWS ? 'powershell.exe' : '/bin/bash',
+					stdio: ['ignore', 'pipe', 'pipe']
 				}
 			);
+
+			child.stdout?.on('data', (data: Buffer) => {
+				stdoutChunks.push(data);
+				totalOutput += data.length;
+				if (totalOutput > MAX_OUTPUT) {
+					if (!resolved) {
+						if (!killProcessTree(child.pid)) {
+							try { child.kill(); } catch { /* ignore */ }
+						}
+						resolveResult(false, '命令输出超过上限 (50KB)');
+					}
+				} else {
+					ctx.onUpdate?.(data.toString());
+				}
+			});
+
+			child.stderr?.on('data', (data: Buffer) => {
+				stderrChunks.push(data);
+				totalOutput += data.length;
+				if (totalOutput > MAX_OUTPUT) {
+					if (!resolved) {
+						if (!killProcessTree(child.pid)) {
+							try { child.kill(); } catch { /* ignore */ }
+						}
+						resolveResult(false, '命令输出超过上限 (50KB)');
+					}
+				} else {
+					ctx.onUpdate?.(data.toString());
+				}
+			});
+
+			child.on('close', (code) => {
+				if (resolved) return;
+				resolveResult(code === 0, code !== 0 ? `命令退出码: ${code}` : undefined);
+			});
+
+			child.on('error', (err) => {
+				if (resolved) return;
+				resolveResult(false, err.message);
+			});
 		});
 	}
 };

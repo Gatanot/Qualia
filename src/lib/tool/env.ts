@@ -11,6 +11,8 @@ import type { CommandClassification } from './types';
 export class ToolContext {
 	readonly root: string;
 
+	onUpdate?: (chunk: string) => void;
+
 	constructor(root: string) {
 		this.root = root;
 	}

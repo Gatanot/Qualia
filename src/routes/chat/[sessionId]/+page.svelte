@@ -489,6 +489,26 @@
 				break;
 			}
 
+			case 'tool_execution_update': {
+				const toolName = event.name as string;
+				const updateText = event.text as string;
+				let found = false;
+				if (currentAssistant) {
+					for (let i = currentAssistant.blocks.length - 1; i >= 0; i--) {
+						const block = currentAssistant.blocks[i];
+						if (block.type === 'tool' && block.name === toolName) {
+							if (!block.result) block.result = { success: true, output: '' };
+							block.result = { ...block.result, output: block.result.output + updateText };
+							found = true;
+							break;
+						}
+					}
+					if (found) messages = [...messages];
+				}
+				scrollToBottom();
+				break;
+			}
+
 			case 'confirm_required': {
 				const confirmId = event.confirmId as string;
 				const confirmation = event.confirmation as Record<string, unknown>;

@@ -383,32 +383,65 @@ export class AgentLoop {
 		const tc = this.currentToolCall!;
 		const name = tc.function.name;
 
-		try {
-			const result = await this.registry.execute(name, this.currentArgs, this.toolContext);
+		const updateQueue: string[] = [];
+		let toolDone = false;
+		let toolResult: { success: boolean; output: string; error?: string } | undefined;
+		let toolError: unknown | undefined;
+		let wakeUp: (() => void) | null = null;
 
-			yield { type: 'tool_result', name, success: result.success, output: result.output };
+		this.toolContext.onUpdate = (chunk) => {
+			if (!toolDone) {
+				updateQueue.push(chunk);
+				wakeUp?.();
+			}
+		};
 
-			const content = result.output || result.error || '';
-			this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name });
-			this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name });
+		const execPromise = this.registry.execute(name, this.currentArgs, this.toolContext)
+			.then((r) => { toolResult = r; })
+			.catch((e) => { toolError = e; })
+			.finally(() => {
+				this.toolContext.onUpdate = undefined;
+				toolDone = true;
+				wakeUp?.();
+			});
 
-			await this.hooks.afterToolExecution?.(name, { success: result.success, output: result.output });
+		while (!toolDone) {
+			if (updateQueue.length > 0) {
+				while (updateQueue.length > 0) {
+					const chunk = updateQueue.shift()!;
+					yield { type: 'tool_execution_update', name, text: chunk };
+				}
+			} else {
+				await new Promise<void>((resolve) => { wakeUp = resolve; });
+			}
+		}
 
-			this.state = AgentState.POST_TOOL;
-		} catch (error) {
-			if (error instanceof PendingConfirmation) {
-				this.pendingConfirmation = error;
+		if (toolError) {
+			if (toolError instanceof PendingConfirmation) {
+				this.pendingConfirmation = toolError;
 				this.state = AgentState.AWAIT_CONFIRM;
 				return;
 			}
 
-			const errMsg = (error as Error).message;
+			const errMsg = (toolError as Error).message;
 			yield { type: 'tool_result', name, success: false, output: errMsg };
 			this.toolResultMsgs.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
 			this.messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
 
 			this.state = AgentState.POST_TOOL;
+			return;
 		}
+
+		const result = toolResult!;
+		yield { type: 'tool_result', name, success: result.success, output: result.output };
+
+		const content = result.output || result.error || '';
+		this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name });
+		this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name });
+
+		await this.hooks.afterToolExecution?.(name, { success: result.success, output: result.output });
+
+		this.state = AgentState.POST_TOOL;
 	}
 
 	private async *doAwaitConfirm(): AsyncGenerator<AgentEvent> {
@@ -522,6 +555,16 @@ export class AgentLoop {
 		}
 	}
 
+	private extractPriorCompression(messages: Message[]): string | undefined {
+		const systemMsg = messages.find((m) => m.role === 'system');
+		if (!systemMsg) return undefined;
+		const content = extractTextContent(systemMsg.content);
+		const marker = '[此对话延续自';
+		const idx = content.indexOf(marker);
+		if (idx === -1) return undefined;
+		return content.slice(idx);
+	}
+
 	private async createContinuation(
 		sessionId: string,
 		userMsg: { id: string; content: string; seq: number },
@@ -535,29 +578,39 @@ export class AgentLoop {
 			const rawContent = buildSummaryContent(allMessages, systemPrompt);
 
 						let compression = '';
+			const priorCompression = this.extractPriorCompression(allMessages);
 			try {
-				const res = await this.provider.chat({
-					messages: [
-						{ role: 'user', content: `以下是之前对话的内容（因为上下文过长需要压缩）。请提取**延续当前任务所需的关键信息**，用中文按以下格式输出（精简，只给真正需要的信息）：
+				let prompt = `以下是之前对话的内容（因为上下文过长需要压缩）。请提取**延续当前任务所需的关键信息**，用中文按以下格式输出：
 
-## 当前任务
-- 用户正在做什么（1 句话）
+## 目标
+- 用户想要完成的核心任务（1 句话）
 
-## 工作进度
-- 已完成的步骤
-- 当前进行到哪一步
+## 进度
+- 已完成: <列出已完成的事项>
+- 进行中: <当前正在做的事>
+- 阻塞: <被阻塞的事项，如无可省略>
+
+## 关键决策
+- <已做出的重要技术决策、选型、方案>
+
+## 用户偏好与约束
+- <用户表达的习惯、偏好、显式约束>
 
 ## 关键上下文
-- 涉及的文件路径
-- 重要的技术决策或参数
-- 被阻塞的事项（如有）
+- <涉及的文件路径、关键参数、环境信息>
 
 ## 下一步
-- 接下来应该做什么
+- <接下来应该做什么，按优先级排列>
 
 对话内容：
-${rawContent}` }
-					],
+${rawContent}`;
+
+				if (priorCompression) {
+					prompt += `\n\n以下是已有压缩摘要，请在保留其全部信息的基础上更新（追加新进展，不要丢失原有内容）：\n${priorCompression}`;
+				}
+
+				const res = await this.provider.chat({
+					messages: [{ role: 'user', content: prompt }],
 					max_tokens: 2000,
 					temperature: 0.3
 				});

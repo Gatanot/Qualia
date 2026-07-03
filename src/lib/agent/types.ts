@@ -58,6 +58,8 @@ export type AgentEvent =
 	| { type: 'tool_call'; name: string; args: Record<string, unknown> }
 	/** 工具执行结果 */
 	| { type: 'tool_result'; name: string; success: boolean; output: string }
+	/** 工具执行中的流式输出 */
+	| { type: 'tool_execution_update'; name: string; text: string }
 	/** 需要用户确认的操作 */
 	| { type: 'confirm_required'; confirmId: string; confirmation: PendingConfirmation }
 	/** 错误 */
