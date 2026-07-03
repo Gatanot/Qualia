@@ -3,11 +3,17 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "packages"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

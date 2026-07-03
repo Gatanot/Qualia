@@ -1,37 +1,19 @@
 {
-	"name": "qualia",
-	"private": true,
-	"version": "0.0.1",
-	"type": "module",
-	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"docs": "typedoc",
-		"test": "vitest run",
-		"test:watch": "vitest"
-	},
-	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.57.0",
-		"@sveltejs/vite-plugin-svelte": "^7.0.0",
-		"@types/better-sqlite3": "^7.6.13",
-		"@types/katex": "^0.16.8",
-		"@types/node": "^25.9.1",
-		"svelte": "^5.55.2",
-		"svelte-check": "^4.4.6",
-		"typedoc": "^0.28.19",
-		"typescript": "^6.0.2",
-		"vite": "^8.0.7",
-		"vitest": "^4.1.9"
-	},
-	"dependencies": {
-		"better-sqlite3": "^12.10.0",
-		"highlight.js": "^11.11.1",
-		"katex": "^0.17.0",
-		"marked": "^18.0.4"
-	}
+  "name": "qualia",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @gatanot/qualia_web",
+    "build": "npm run build -w @gatanot/qualia_web",
+    "check": "npm run check -w @gatanot/qualia_web",
+    "check:watch": "npm run check:watch -w @gatanot/qualia_web",
+    "check:core": "npm run check -w @gatanot/qualia_core",
+    "docs": "npm run docs -w @gatanot/qualia_web",
+    "test": "npm run test -w @gatanot/qualia_core"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.9"
+  }
 }

@@ -1,0 +1,53 @@
+{
+  "name": "@gatanot/qualia_core",
+  "version": "0.1.1",
+  "description": "Qualia AI companion — core engine (LLM providers, agent loop, tools, storage)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./agent": "./dist/agent/index.js",
+    "./agent/*": "./dist/agent/*.js",
+    "./ai": "./dist/ai/index.js",
+    "./ai/*": "./dist/ai/*.js",
+    "./config": "./dist/config/index.js",
+    "./config/*": "./dist/config/*.js",
+    "./concurrency": "./dist/concurrency/index.js",
+    "./concurrency/*": "./dist/concurrency/*.js",
+    "./gateway": "./dist/gateway/index.js",
+    "./gateway/*": "./dist/gateway/*.js",
+    "./storage": "./dist/storage/index.js",
+    "./storage/*": "./dist/storage/*.js",
+    "./task": "./dist/task/index.js",
+    "./task/*": "./dist/task/*.js",
+    "./tool": "./dist/tool/index.js",
+    "./tool/*": "./dist/tool/*.js",
+    "./markdown": "./dist/markdown.js",
+    "./paths": "./dist/paths.js",
+    "./chat-confirm": "./dist/chat-confirm.js",
+    "./chat-steering": "./dist/chat-steering.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "highlight.js": "^11.11.1",
+    "katex": "^0.17.0",
+    "marked": "^18.0.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.9"
+  }
+}
