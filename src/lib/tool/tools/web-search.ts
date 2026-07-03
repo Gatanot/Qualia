@@ -42,17 +42,17 @@ async function searchTavily(query: string, num: number, apiKey: string): Promise
 
 export const webSearchTool: ToolDef = {
 	name: 'web_search',
-	description: '在互联网上搜索信息。用于获取最新资讯、查找文档、验证事实等。仅在需要实时信息或外部知识时使用。结果包含标题、URL 和摘要。',
+	description: 'Search the internet for information. Use for latest news, documentation lookup, fact verification, etc. Only use when real-time or external knowledge is needed. Results include title, URL, and snippet.',
 	parameters: {
 		type: 'object',
 		properties: {
 			query: {
 				type: 'string',
-				description: '搜索关键词或问题，用中文或英文'
+				description: 'Search query (keyword or question)'
 			},
 			num: {
 				type: 'integer',
-				description: '返回结果数量，默认 5，最大 10'
+				description: 'Number of results, default 5, max 10'
 			}
 		},
 		required: ['query']

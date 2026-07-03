@@ -3,21 +3,21 @@ import { createTask } from '$lib/task';
 
 export const scheduleTaskTool: ToolDef = {
 	name: 'schedule_task',
-	description: '创建一个定时任务。任务将在指定时间后自动执行（无对话上下文），完成后通过通知渠道告知用户。使用前请先通过 exec 工具获取当前系统时间，确保 scheduledAt 是未来时间。',
+	description: 'Create a scheduled one-shot task. The task runs automatically at the specified future time (no conversation context) and the user is notified on completion. Before using, run exec to get the current system time to ensure scheduledAt is in the future.',
 	parameters: {
 		type: 'object',
 		properties: {
 			name: {
 				type: 'string',
-				description: '任务名称（简短描述，如"数据处理"）'
+				description: 'Task name (short description, e.g. "Data processing")'
 			},
 			prompt: {
 				type: 'string',
-				description: '任务描述——这是任务执行时唯一的指令，必须自包含。即模型在后台执行时没有任何上下文，仅根据这个描述工作。应包含：要做什么、期望的输出格式、任何必要的细节'
+				description: 'Task description — this is the sole instruction the model receives when executing in the background with no conversation context. Must be self-contained: what to do, expected output format, any necessary details'
 			},
 			scheduledAt: {
 				type: 'string',
-				description: 'ISO 8601 时间字符串（如 2026-06-16T14:30:00Z），必须是未来时间。请先通过 exec 工具获取当前系统时间'
+				description: 'ISO 8601 datetime string (e.g. 2026-06-16T14:30:00Z). Must be in the future. Use exec to get current system time first.'
 			}
 		},
 		required: ['name', 'prompt', 'scheduledAt']

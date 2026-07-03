@@ -580,33 +580,33 @@ export class AgentLoop {
 						let compression = '';
 			const priorCompression = this.extractPriorCompression(allMessages);
 			try {
-				let prompt = `以下是之前对话的内容（因为上下文过长需要压缩）。请提取**延续当前任务所需的关键信息**，用中文按以下格式输出：
+				let prompt = `The following is a conversation history that needs compression due to context length. Extract the **key information needed to continue the current task**, output in Chinese using the format below:
 
 ## 目标
-- 用户想要完成的核心任务（1 句话）
+- Core task the user wants to accomplish (1 sentence)
 
 ## 进度
-- 已完成: <列出已完成的事项>
-- 进行中: <当前正在做的事>
-- 阻塞: <被阻塞的事项，如无可省略>
+- 已完成: <completed items>
+- 进行中: <in progress>
+- 阻塞: <blocked items, omit if none>
 
 ## 关键决策
-- <已做出的重要技术决策、选型、方案>
+- <key technical decisions, tool choices, approaches taken>
 
 ## 用户偏好与约束
-- <用户表达的习惯、偏好、显式约束>
+- <user habits, preferences, explicit constraints>
 
 ## 关键上下文
-- <涉及的文件路径、关键参数、环境信息>
+- <file paths, key parameters, environment info>
 
 ## 下一步
-- <接下来应该做什么，按优先级排列>
+- <next steps, ordered by priority>
 
-对话内容：
+Conversation:
 ${rawContent}`;
 
 				if (priorCompression) {
-					prompt += `\n\n以下是已有压缩摘要，请在保留其全部信息的基础上更新（追加新进展，不要丢失原有内容）：\n${priorCompression}`;
+					prompt += `\n\nBelow is an existing compression summary. Update it by preserving ALL existing information and adding new developments:\n${priorCompression}`;
 				}
 
 				const res = await this.provider.chat({

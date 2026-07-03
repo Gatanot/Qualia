@@ -25,21 +25,21 @@ function validateParam(name: string, value: unknown): number {
  */
 export const readFileTool: ToolDef = {
 	name: 'read_file',
-	description: '读取指定文件的内容。支持 offset / limit 按行翻页读取。用于查看代码、配置、文档等文件。',
+	description: 'Read file contents. Supports offset/limit for paginated line-by-line reading. Use for viewing code, config, docs, etc.',
 	parameters: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: '要读取的文件路径（支持相对于工作区的路径或绝对路径）'
+				description: 'File path (relative to workspace or absolute)'
 			},
 			offset: {
 				type: 'integer',
-				description: '起始行号（从 1 开始），默认为 1'
+				description: 'Starting line number (1-based), default 1'
 			},
 			limit: {
 				type: 'integer',
-				description: '最大读取行数，默认 500'
+				description: 'Max lines to read, default 500'
 			}
 		},
 		required: ['path']

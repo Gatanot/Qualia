@@ -12,13 +12,13 @@ import { PendingConfirmation } from '../types';
  */
 export const deleteFileTool: ToolDef = {
 	name: 'delete_file',
-	description: '删除指定的文件。删除操作始终需要用户确认。',
+	description: 'Delete a file. Always requires user confirmation.',
 	parameters: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: '要删除的文件路径（支持相对于工作区的路径或绝对路径）'
+				description: 'File path (relative to workspace or absolute)'
 			}
 		},
 		required: ['path']

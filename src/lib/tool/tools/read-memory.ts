@@ -6,13 +6,13 @@ const MEMORY_PATH = getDataPath('memory.md');
 
 export const readMemoryTool: ToolDef = {
 	name: 'read_memory',
-	description: '读取长期记忆（data/memory.md）。可选传入 query 进行关键词搜索，只返回匹配的内容行及其所属分类标题。不传 query 时返回完整记忆内容。当你需要了解之前存储过的关于用户、自己或重要事件的信息时使用。注意：会话创建时的记忆快照可能已过时，此工具始终返回最新内容。',
+	description: 'Read long-term memory (data/memory.md). Optionally pass a query for keyword search — returns matching lines with their category headers. Without query, returns the full memory content. Use when you need to recall previously stored information about users, yourself, or important events. Note: the memory snapshot taken at session creation may be stale; this tool always returns the latest.',
 	parameters: {
 		type: 'object',
 		properties: {
 			query: {
 				type: 'string',
-				description: '可选。搜索关键词（大小写不敏感），只返回包含该词的内容行及其所属分类标题。不传则返回全部记忆。'
+				description: 'Optional. Search keyword (case-insensitive). Returns matching lines with their category headers. Omit to return all memory.'
 			}
 		},
 		required: []

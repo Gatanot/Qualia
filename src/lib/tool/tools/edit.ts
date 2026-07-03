@@ -35,25 +35,25 @@ function countOccurrences(haystack: string, needle: string): number {
 export const editTool: ToolDef = {
 	name: 'edit',
 	description:
-		'在文件中执行精确的字符串替换。查找 oldString 并用 newString 替换。非 replaceAll 模式下，oldString 必须在文件中恰好出现一次（防止误替换）。会自动保留原文件的 BOM 和行尾格式（CRLF/LF）。',
+		'Perform exact string replacement in a file. Find oldString and replace with newString. In non-replaceAll mode, oldString must appear exactly once (prevents accidental changes). Preserves BOM and line endings (CRLF/LF).',
 	parameters: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: '要编辑的文件路径（支持相对于工作区的路径或绝对路径）'
+				description: 'File path (relative to workspace or absolute)'
 			},
 			oldString: {
 				type: 'string',
-				description: '要被替换的原始文本（必须与文件中的内容完全匹配，包括缩进和空行）'
+				description: 'Original text to replace (must match file content exactly, including indentation and blank lines)'
 			},
 			newString: {
 				type: 'string',
-				description: '替换后的新文本'
+				description: 'Replacement text'
 			},
 			replaceAll: {
 				type: 'boolean',
-				description: '是否替换所有匹配项。默认为 false，此时 oldString 必须恰好出现一次。'
+				description: 'Replace all occurrences. Default false — oldString must appear exactly once in the file.'
 			}
 		},
 		required: ['path', 'oldString', 'newString']

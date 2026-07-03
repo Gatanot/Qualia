@@ -64,18 +64,18 @@ function updateSection(current: string, category: string, content: string): stri
 
 export const writeMemoryTool: ToolDef = {
 	name: 'write_memory',
-	description: '将重要信息写入长期记忆（memory.md）。仅在发现值得长期记住的内容时使用。信息会自动注入后续新会话的系统提示词。三个类别：self（关于你自己）、user（关于用户）、event（重要事件里程碑）。每次调用会覆盖对应类别的全部内容。',
+	description: 'Write important information to long-term memory (memory.md). Only use for information worth remembering long-term. Content is automatically injected into the system prompt of future sessions. Three categories: self (about yourself), user (about the user), event (important milestones). Each call overwrites the entire content of the given category.',
 	parameters: {
 		type: 'object',
 		properties: {
 			category: {
 				type: 'string',
-				description: '记忆类别：self（关于你自己）、user（关于用户）、event（重要事件）',
+				description: 'Memory category: self (about yourself), user (about the user), event (important events)',
 				enum: ['self', 'user', 'event']
 			},
 			content: {
 				type: 'string',
-				description: '该类别的新内容（会覆盖该类别已有内容）。用中文简明扼要，每条信息独立成行。'
+				description: 'New content for this category (replaces existing). Write in Chinese, concise and brief, one item per line.'
 			}
 		},
 		required: ['category', 'content']

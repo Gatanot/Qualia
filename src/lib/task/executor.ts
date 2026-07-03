@@ -48,9 +48,9 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 		const timeout = setTimeout(() => abortController.abort(), TASK_TIMEOUT_MS);
 
 		try {
-			const systemPrompt = `你是一个后台自动化任务执行 Agent。请严格按照任务描述执行，完成后输出简洁的结果摘要。
-不要询问用户任何问题，不要等待确认，不要创建新的定时任务。
-如果某个操作需要确认，直接跳过并说明原因。`;
+			const systemPrompt = `You are a background automation agent. Execute the task description strictly and output a concise result summary in Chinese.
+Do not ask the user any questions. Do not wait for confirmation. Do not create new scheduled tasks.
+If an operation requires confirmation, skip it and explain why.`;
 
 			const buildResult: BuildResult = {
 				messages: [

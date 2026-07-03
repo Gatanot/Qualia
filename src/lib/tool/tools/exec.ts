@@ -38,17 +38,17 @@ function killProcessTree(pid: number | undefined): boolean {
  */
 export const execTool: ToolDef = {
 	name: 'execute_command',
-	description: '在工作区目录执行终端命令并返回输出。仅用于开发任务，非交互式命令。默认超时 5 分钟。',
+	description: 'Execute a terminal command in the workspace directory and return output. For development tasks only, non-interactive. Default timeout 5 minutes.',
 	parameters: {
 		type: 'object',
 		properties: {
 			command: {
 				type: 'string',
-				description: '要执行的终端命令'
+				description: 'The terminal command to execute'
 			},
 			timeout: {
 				type: 'number',
-				description: '超时秒数，默认 300（5 分钟），最大 3600（1 小时）'
+				description: 'Timeout in seconds, default 300 (5 min), max 3600 (1 hour)'
 			}
 		},
 		required: ['command']

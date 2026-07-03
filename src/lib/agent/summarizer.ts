@@ -115,26 +115,26 @@ export async function generateSummary(
 		messages.push(m);
 	}
 
-	let userInstruction = `请总结以上对话，用中文，严格按照以下结构化格式输出：
+	let userInstruction = `Please summarize the conversation above. Output in Chinese using the structured format below:
 
 ## 目标
-- 用户当前想要完成的主要目标
+- The user's current main goal
 
 ## 进度
-- 已完成: <列出已完成的事项>
-- 进行中: <列出正在进行的事项>
-- 阻塞: <列出被阻塞的事项（如无可省略此行）>
+- 已完成: <completed items>
+- 进行中: <in progress>
+- 阻塞: <blocked items, omit if none>
 
 ## 关键决策
-- <列出已做出的重要决策或选择>
+- <key decisions or choices made>
 
 ## 用户偏好
-- <列出用户表达的习惯、偏好、约束>
+- <user habits, preferences, constraints>
 
 ## 情感上下文
-- <用户情绪、态度等有助于延续对话的信息>`;
+- <user mood, attitude, and other context helpful for continuing the conversation>`;
 	if (existingSummary) {
-		userInstruction += `\n\n以下是已有摘要，请在此基础上更新（保留已有信息并追加新内容）：\n${existingSummary}`;
+		userInstruction += `\n\nBelow is the existing summary. Update it by preserving all existing information and appending new developments:\n${existingSummary}`;
 	}
 
 	messages.push({ role: 'user', content: userInstruction });

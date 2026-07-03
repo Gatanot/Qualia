@@ -15,17 +15,17 @@ import { detectMeta, atomicWrite } from './file-utils';
  */
 export const writeFileTool: ToolDef = {
 	name: 'write_file',
-	description: '将内容写入指定文件（覆盖已有内容）。会自动创建不存在的父目录。覆盖已有文件时保留原文件的编码格式（BOM、换行符风格）。',
+	description: 'Write content to a file (overwrites). Creates missing parent directories automatically. Preserves existing file encoding (BOM, line endings) when overwriting.',
 	parameters: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: '要写入的文件路径（支持相对于工作区的路径或绝对路径）'
+				description: 'File path (relative to workspace or absolute)'
 			},
 			content: {
 				type: 'string',
-				description: '要写入的完整文件内容'
+				description: 'Complete file content to write'
 			}
 		},
 		required: ['path', 'content']

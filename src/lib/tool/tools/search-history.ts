@@ -26,21 +26,21 @@ function formatResults(results: MessageSearchResult[], query: string): string {
 export function createSearchHistoryTool(storage: Storage): ToolDef {
 	return {
 		name: 'search_history',
-		description: '搜索历史对话内容。在之前的所有会话中全文模糊匹配消息内容。当你需要回忆用户之前说过什么、讨论过什么话题时使用。注意：此工具搜索的是对话记录，而非长期记忆（使用 read_memory 查看长期记忆）。',
+		description: 'Search conversation history across all sessions with fuzzy text matching. Use when you need to recall what the user discussed before. Note: this searches chat records, not long-term memory (use read_memory for that).',
 		parameters: {
 			type: 'object',
 			properties: {
 				query: {
 					type: 'string',
-					description: '搜索关键词或短语（大小写不敏感）。会匹配所有消息的 content 字段。'
+					description: 'Search keyword or phrase (case-insensitive). Matches content field of all messages.'
 				},
 				session_id: {
 					type: 'string',
-					description: '可选。限定在指定会话内搜索。不传则搜索所有会话。'
+					description: 'Optional. Limit search to a specific session. Omit to search all sessions.'
 				},
 				limit: {
 					type: 'number',
-					description: '可选。返回结果的最大条数，默认 10。'
+					description: 'Optional. Max results, default 10.'
 				}
 			},
 			required: ['query']
