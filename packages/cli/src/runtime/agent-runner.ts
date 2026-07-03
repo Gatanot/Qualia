@@ -1,153 +1,123 @@
-import process from 'node:process';
-import type { AppConfig } from '@gatanot/qualia_core/config';
-import {
-	readConfig,
-	getProviderForModel,
-	getContextWindow,
-	getActiveModel,
-} from '@gatanot/qualia_core/config';
+import { randomUUID } from 'node:crypto';
+import { AgentLoop, ContextBuilder, type AgentEvent, type ConfirmFn } from '@gatanot/qualia_core/agent';
 import { createProvider } from '@gatanot/qualia_core/ai';
-import type { Usage } from '@gatanot/qualia_core/ai';
-import { createStorage } from '@gatanot/qualia_core/storage';
-import type { Storage, Session } from '@gatanot/qualia_core/storage';
-import { ToolRegistry, CORE_TOOLS, SCHEDULING_TOOLS, createSearchHistoryTool } from '@gatanot/qualia_core/tool';
-import { AgentLoop, ContextBuilder } from '@gatanot/qualia_core/agent';
-import type { AgentEvent, ConfirmFn, BuildResult } from '@gatanot/qualia_core/agent';
+import { createStorage, type Storage } from '@gatanot/qualia_core/storage';
+import {
+	CORE_TOOLS,
+	SCHEDULING_TOOLS,
+	ToolRegistry,
+	createSearchHistoryTool
+} from '@gatanot/qualia_core/tool';
 import { sessionLock } from '@gatanot/qualia_core/concurrency';
+import { CliError } from '../errors.js';
+import { loadRuntimeConfig } from './config-loader.js';
 
 export interface AgentRunOptions {
+	workspace: string;
 	message: string;
 	sessionId?: string;
-	workspace?: string;
 	modelId?: string;
+	storageEnabled?: boolean;
 	systemPrompt?: string;
 	signal?: AbortSignal;
 	onConfirm: ConfirmFn;
-	onEvent: (event: AgentEvent) => void | Promise<void>;
+	onEvent(event: AgentEvent): Promise<void> | void;
 }
 
 export interface AgentRunResult {
 	sessionId: string;
 	doneMessageId?: string;
-	usage?: Usage;
 	forkedSessionId?: string;
+	content: string;
+	reasoning: string;
 }
 
 export class AgentRunner {
-	private config: AppConfig;
-	private storage: Storage;
-	private registry: ToolRegistry;
+	async run(options: AgentRunOptions): Promise<AgentRunResult> {
+		const runtime = loadRuntimeConfig({
+			modelId: options.modelId,
+			storageEnabled: options.storageEnabled
+		});
 
-	constructor() {
-		this.config = readConfig();
-		this.storage = createStorage({ enabled: this.config.storageEnabled });
-		this.registry = new ToolRegistry();
-		for (const t of CORE_TOOLS) this.registry.register(t);
-		for (const t of SCHEDULING_TOOLS) this.registry.register(t);
-		this.registry.register(createSearchHistoryTool(this.storage));
-	}
-
-	validate(): { ok: boolean; error?: string } {
-		if (!this.config.activeModel && !this.config.providers.length) {
-			return { ok: false, error: '未配置模型。请先运行 qualia serve 然后在 settings 中配置。' };
-		}
-		return { ok: true };
-	}
-
-	get storageEnabled(): boolean {
-		return this.config.storageEnabled;
-	}
-
-	async createSession(workspace?: string): Promise<string> {
-		const session = await this.storage.createSession(undefined, undefined, workspace);
-		return session.id;
-	}
-
-	async listSessions(): Promise<Session[]> {
-		return this.storage.listSessions();
-	}
-
-	async getSession(id: string): Promise<Session | null> {
-		return this.storage.getSession(id);
-	}
-
-	async run(opts: AgentRunOptions): Promise<AgentRunResult> {
-		const modelId = opts.modelId || this.config.activeModel;
-		if (!modelId) {
-			throw new Error('未选择模型');
-		}
-
-		const providerConfig = getProviderForModel(modelId);
-		if (!providerConfig) {
-			throw new Error(`未找到模型 ${modelId} 的供应商配置`);
-		}
-
-		const model = getActiveModel();
-		if (!model) {
-			throw new Error('未找到可用模型');
-		}
-
-		const runtimeConfig = {
-			...providerConfig,
-			activeModel: model.id,
-			contextWindow: model.contextWindow,
-		};
-		const provider = createProvider(runtimeConfig);
+		const provider = createProvider({
+			...runtime.provider,
+			activeModel: runtime.activeModelId,
+			contextWindow: runtime.contextWindow
+		});
+		const storage = createStorage({ enabled: runtime.storageEnabled });
+		const registry = createRegistry(storage);
 		const contextBuilder = new ContextBuilder();
-		const contextWindow = getContextWindow();
-		const workspace = opts.workspace || process.cwd();
 
-		let sid = opts.sessionId;
-		if (!sid) {
-			const session = await this.storage.createSession(undefined, undefined, workspace);
-			sid = session.id;
-		} else {
-			const exists = await this.storage.getSession(sid);
-			if (!exists) {
-				const session = await this.storage.createSession(undefined, undefined, workspace);
-				sid = session.id;
-			}
-		}
-
+		const sessionId = await this.resolveSessionId(storage, options);
 		const buildResult = await contextBuilder.build(
-			sid,
-			opts.message,
+			sessionId,
+			options.message,
 			[],
-			this.storage,
-			contextWindow,
-			opts.systemPrompt || this.config.systemPrompt,
+			storage,
+			runtime.contextWindow,
+			options.systemPrompt ?? runtime.app.systemPrompt
 		);
 
 		const agent = new AgentLoop(
 			provider,
-			this.storage,
-			this.registry,
-			opts.onConfirm,
-			opts.signal,
+			storage,
+			registry,
+			options.onConfirm,
+			options.signal,
 			undefined,
-			this.config.compressionMode,
-			this.config.compressionThreshold,
+			runtime.app.compressionMode,
+			runtime.app.compressionThreshold
 		);
 
-		const result: AgentRunResult = { sessionId: sid };
-
 		let release: (() => void) | undefined;
-		try {
-			release = await sessionLock.acquire(sid);
+		let content = '';
+		let reasoning = '';
+		let doneMessageId: string | undefined;
+		let forkedSessionId: string | undefined;
 
-			for await (const event of agent.run(sid, opts.message, buildResult)) {
-				if (event.type === 'done') {
-					result.doneMessageId = event.messageId;
-					result.usage = event.usage;
-				} else if (event.type === 'forked') {
-					result.forkedSessionId = event.newSessionId;
-				}
-				await opts.onEvent(event);
+		try {
+			release = await sessionLock.acquire(sessionId);
+			for await (const event of agent.run(sessionId, options.message, buildResult, randomUUID())) {
+				if (event.type === 'content') content += event.text;
+				if (event.type === 'reasoning') reasoning += event.text;
+				if (event.type === 'done') doneMessageId = event.messageId;
+				if (event.type === 'forked') forkedSessionId = event.newSessionId;
+				await options.onEvent(event);
 			}
+		} catch (error) {
+			if (options.signal?.aborted) {
+				throw new CliError('CANCELLED', '运行已取消', { cause: error });
+			}
+			throw new CliError('AGENT', (error as Error).message || 'Agent 运行失败', { cause: error });
 		} finally {
 			if (release) release();
 		}
 
-		return result;
+		return {
+			sessionId: forkedSessionId || sessionId,
+			doneMessageId,
+			forkedSessionId,
+			content,
+			reasoning
+		};
 	}
+
+	private async resolveSessionId(storage: Storage, options: AgentRunOptions): Promise<string> {
+		if (options.sessionId) {
+			const existing = await storage.getSession(options.sessionId);
+			if (existing) return existing.id;
+			throw new CliError('USAGE', `会话不存在：${options.sessionId}`);
+		}
+
+		const session = await storage.createSession(undefined, undefined, options.workspace);
+		return session.id;
+	}
+}
+
+function createRegistry(storage: Storage): ToolRegistry {
+	const registry = new ToolRegistry();
+	for (const tool of CORE_TOOLS) registry.register(tool);
+	for (const tool of SCHEDULING_TOOLS) registry.register(tool);
+	registry.register(createSearchHistoryTool(storage));
+	return registry;
 }

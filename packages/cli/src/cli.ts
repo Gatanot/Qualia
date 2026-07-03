@@ -1,22 +1,16 @@
 #!/usr/bin/env node
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { runCli } from './commands/index.js';
+import { exitCodeFor, messageFor } from './errors.js';
 
-// better-sqlite3 是 CJS native 模块，需要 ESM polyfill
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-Object.assign(globalThis, { __filename, __dirname });
-
-import { register, dispatch } from './commands/index.js';
-import { chatCommand } from './commands/chat.js';
-import { promptCommand } from './commands/prompt.js';
-import { serveCommand } from './commands/serve.js';
-import { modelCommand } from './commands/model.js';
-
-register(chatCommand);
-register(promptCommand);
-register(serveCommand);
-register(modelCommand);
-
-const exitCode = await dispatch(process.argv.slice(2));
-process.exit(exitCode);
+try {
+	await runCli(process.argv.slice(2), {
+		stdin: process.stdin,
+		stdout: process.stdout,
+		stderr: process.stderr,
+		cwd: process.cwd()
+	});
+} catch (error) {
+	const message = messageFor(error);
+	process.stderr.write(`错误：${message}\n`);
+	process.exitCode = exitCodeFor(error);
+}

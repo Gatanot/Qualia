@@ -1,43 +1,30 @@
-import { readConfig, getAllAvailableModels, setActiveModel } from '@gatanot/qualia_core/config';
-import type { Command } from './index.js';
+import { getAllAvailableModels, readConfig, setActiveModel } from '@gatanot/qualia_core/config';
+import { CliError } from '../errors.js';
+import { type CliIO, type ParsedArgs } from './index.js';
 
-async function run(args: string[]): Promise<number> {
-	const sub = args[0];
-
-	if (!sub || sub === 'list') {
+export async function runModel(args: ParsedArgs, io: CliIO): Promise<void> {
+	const sub = args.positionals[0] || 'list';
+	if (sub === 'list') {
+		const config = readConfig();
 		const models = getAllAvailableModels();
 		if (models.length === 0) {
-			console.log('没有可用模型。请先在 settings 中配置供应商。');
-			return 0;
+			io.stdout.write('没有可用模型。请先配置供应商。\n');
+			return;
 		}
-		const config = readConfig();
-		for (const { model, providerName } of models) {
-			const active = model.id === config.activeModel ? ' [active]' : '';
-			console.log(`${model.id}${active}  (${providerName})  ctx: ${(model.contextWindow / 1024).toFixed(0)}K`);
+		for (const item of models) {
+			const active = item.model.id === config.activeModel ? '*' : ' ';
+			io.stdout.write(`${active} ${item.model.id}\t${item.model.name}\t${item.providerName}\n`);
 		}
-		return 0;
+		return;
 	}
 
 	if (sub === 'use') {
-		const modelId = args[1];
-		if (!modelId) {
-			console.error('用法: qualia model use <modelId>');
-			return 2;
-		}
+		const modelId = args.positionals[1];
+		if (!modelId) throw new CliError('USAGE', '用法：qualia model use <modelId>');
 		setActiveModel(modelId);
-		console.log(`已切换到: ${modelId}`);
-		return 0;
+		io.stdout.write(`已选择模型：${modelId}\n`);
+		return;
 	}
 
-	console.error(`未知子命令: ${sub}`);
-	console.error('用法: qualia model [list|use <id>]');
-	return 2;
+	throw new CliError('USAGE', `未知 model 子命令：${sub}`);
 }
-
-export const modelCommand: Command = {
-	name: 'model',
-	aliases: ['models'],
-	description: '查看或切换模型',
-	usage: 'qualia model [list|use <modelId>]',
-	run,
-};
