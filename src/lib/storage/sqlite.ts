@@ -29,6 +29,7 @@ interface SessionRow {
 	summary: string;
 	last_summarized_at: number | null;
 	memory_snapshot: string;
+	workspace: string;
 }
 
 /**
@@ -51,18 +52,19 @@ export class SQLiteStorage implements Storage {
 
 	private initTables(): void {
 		this.db.exec(`
-			CREATE TABLE IF NOT EXISTS sessions (
-				id          TEXT PRIMARY KEY,
-				title       TEXT NOT NULL DEFAULT '',
-				created_at  INTEGER NOT NULL,
-				updated_at  INTEGER NOT NULL,
-				parent_id   TEXT,
-				status      TEXT NOT NULL DEFAULT 'active',
-				token_count INTEGER NOT NULL DEFAULT 0,
-				summary     TEXT NOT NULL DEFAULT '',
-				last_summarized_at INTEGER,
-				memory_snapshot TEXT NOT NULL DEFAULT ''
-			);
+		CREATE TABLE IF NOT EXISTS sessions (
+			id          TEXT PRIMARY KEY,
+			title       TEXT NOT NULL DEFAULT '',
+			created_at  INTEGER NOT NULL,
+			updated_at  INTEGER NOT NULL,
+			parent_id   TEXT,
+			status      TEXT NOT NULL DEFAULT 'active',
+			token_count INTEGER NOT NULL DEFAULT 0,
+			summary     TEXT NOT NULL DEFAULT '',
+			last_summarized_at INTEGER,
+			memory_snapshot TEXT NOT NULL DEFAULT '',
+			workspace   TEXT NOT NULL DEFAULT ''
+		);
 			CREATE TABLE IF NOT EXISTS messages (
 				id                 TEXT PRIMARY KEY,
 				session_id         TEXT NOT NULL,
@@ -97,11 +99,14 @@ export class SQLiteStorage implements Storage {
 		if (!columnNames.has('memory_snapshot')) {
 			this.db.exec(`ALTER TABLE sessions ADD COLUMN memory_snapshot TEXT NOT NULL DEFAULT ''`);
 		}
+		if (!columnNames.has('workspace')) {
+			this.db.exec(`ALTER TABLE sessions ADD COLUMN workspace TEXT NOT NULL DEFAULT ''`);
+		}
 	}
 
 	private prepareStatements() {
 		return {
-			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count, summary, last_summarized_at, memory_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, '', NULL, ?)`),
+			createSession: this.db.prepare(`INSERT INTO sessions (id, title, created_at, updated_at, parent_id, status, token_count, summary, last_summarized_at, memory_snapshot, workspace) VALUES (?, ?, ?, ?, ?, ?, ?, '', NULL, ?, ?)`),
 			getSession: this.db.prepare(`SELECT * FROM sessions WHERE id = ?`),
 			listAllSessions: this.db.prepare(`SELECT * FROM sessions ORDER BY updated_at DESC`),
 			deleteSession: this.db.prepare(`DELETE FROM sessions WHERE id = ?`),
@@ -126,11 +131,11 @@ export class SQLiteStorage implements Storage {
 		};
 	}
 
-	async createSession(title?: string, memorySnapshot?: string): Promise<Session> {
+	async createSession(title?: string, memorySnapshot?: string, workspace?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const effectiveTitle = title || this.generateDefaultTitle(now);
-		this.stmts.createSession.run(id, effectiveTitle, now, now, null, 'active', 0, memorySnapshot || '');
+		this.stmts.createSession.run(id, effectiveTitle, now, now, null, 'active', 0, memorySnapshot || '', workspace || '');
 		return (await this.getSession(id))!;
 	}
 
@@ -290,6 +295,11 @@ export class SQLiteStorage implements Storage {
 		return null;
 	}
 
+	async listWorkspaces(): Promise<string[]> {
+		const rows = this.db.prepare(`SELECT DISTINCT workspace FROM sessions WHERE status = 'active' AND workspace != '' ORDER BY workspace ASC`).all() as Array<{ workspace: string }>;
+		return rows.map((r) => r.workspace);
+	}
+
 	async getStaleSessions(idleMs: number | null): Promise<Session[]> {
 		let rows: SessionRow[];
 		if (idleMs === null) {
@@ -333,7 +343,8 @@ export class SQLiteStorage implements Storage {
 			token_count: row.token_count,
 			summary: row.summary || '',
 			last_summarized_at: row.last_summarized_at ?? null,
-			memory_snapshot: row.memory_snapshot || ''
+			memory_snapshot: row.memory_snapshot || '',
+			workspace: row.workspace || ''
 		};
 	}
 

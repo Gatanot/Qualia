@@ -6,7 +6,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage, pendingFirstImages, forkSession } from '$lib/session-store';
+	import { sessions, loadSessions, createSession, bumpSession, loadMessages, pendingFirstMessage, pendingFirstImages, forkSession, activeWorkspace } from '$lib/session-store';
 	import type { MessageRecord } from '$lib/storage';
 	import { pickerState } from '$lib/model-picker-state.svelte';
 
@@ -311,7 +311,7 @@
 		streamReader = null;
 
 		try {
-			const body: Record<string, unknown> = { sessionId: sessionId, message: text };
+			const body: Record<string, unknown> = { sessionId: sessionId, message: text, workspace: $activeWorkspace };
 			if (!skipUserMsg) body.clientMessageId = userMsgId;
 			if (msgImages.length > 0) {
 				body.images = msgImages.map((img) => ({ url: img.url, detail: img.detail || 'auto' }));

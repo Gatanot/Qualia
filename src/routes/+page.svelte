@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { loadSessions, createSession, pendingFirstMessage, pendingFirstImages } from '$lib/session-store';
+	import { loadSessions, createSession, pendingFirstMessage, pendingFirstImages, activeWorkspace } from '$lib/session-store';
 	import type { ImageAttachment } from '$lib/components/types';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
@@ -37,7 +37,7 @@
 		input = '';
 		showNoProviderHint = false;
 
-		const session = await createSession();
+		const session = await createSession($activeWorkspace);
 		if (!session) { sending = false; return; }
 
 		pendingFirstMessage.set(text);

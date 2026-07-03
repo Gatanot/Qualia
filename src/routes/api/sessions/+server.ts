@@ -27,7 +27,8 @@ export async function POST({ request }: { request: Request }) {
 
 		switch (action) {
 			case 'create': {
-				const session = await storage.createSession();
+				const { workspace } = body as { workspace?: string };
+				const session = await storage.createSession(undefined, undefined, workspace || '');
 				return new Response(JSON.stringify(session), {
 					headers: { 'Content-Type': 'application/json' }
 				});
@@ -56,7 +57,7 @@ export async function POST({ request }: { request: Request }) {
 					});
 				}
 				const beforeMessages = allMessages.filter((m) => m.seq < targetMsg.seq && m.role !== 'system');
-				const newSession = await storage.createSession(`[分叉] ${parentSession.title}`, parentSession.memory_snapshot);
+				const newSession = await storage.createSession(`[分叉] ${parentSession.title}`, parentSession.memory_snapshot, parentSession.workspace);
 				for (const msg of beforeMessages) {
 					await storage.addMessage(newSession.id, {
 						session_id: newSession.id,
@@ -91,6 +92,12 @@ export async function POST({ request }: { request: Request }) {
 				const { sessionId } = body as { sessionId: string };
 				const messages = await storage.getMessages(sessionId);
 				return new Response(JSON.stringify(messages), {
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			case 'listWorkspaces': {
+				const workspaces = await storage.listWorkspaces();
+				return new Response(JSON.stringify(workspaces), {
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}

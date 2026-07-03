@@ -13,7 +13,7 @@ export class MemoryStorage implements Storage {
 	private messageById = new Map<string, MessageRecord>();
 	private seqCounter = new Map<string, number>();
 
-	async createSession(title?: string, memorySnapshot?: string): Promise<Session> {
+	async createSession(title?: string, memorySnapshot?: string, workspace?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const today = new Date(now);
@@ -33,7 +33,8 @@ export class MemoryStorage implements Storage {
 			token_count: 0,
 			summary: '',
 			last_summarized_at: null,
-			memory_snapshot: memorySnapshot || ''
+			memory_snapshot: memorySnapshot || '',
+			workspace: workspace || ''
 		};
 		this.sessions.set(id, session);
 		this.messages.set(id, []);
@@ -254,5 +255,15 @@ export class MemoryStorage implements Storage {
 			if (s.status === 'active') return s;
 		}
 		return null;
+	}
+
+	async listWorkspaces(): Promise<string[]> {
+		const workspaces = new Set<string>();
+		for (const s of this.sessions.values()) {
+			if (s.status === 'active' && s.workspace) {
+				workspaces.add(s.workspace);
+			}
+		}
+		return Array.from(workspaces).sort();
 	}
 }

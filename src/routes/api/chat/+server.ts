@@ -12,11 +12,12 @@ import { sessionLock } from '$lib/concurrency';
 export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
-		let { sessionId, message, images, clientMessageId } = body as {
+		let { sessionId, message, images, clientMessageId, workspace } = body as {
 			sessionId?: string;
 			message: string;
 			images?: { url: string; detail?: 'low' | 'high' | 'auto' }[];
 			clientMessageId?: string;
+			workspace?: string;
 		};
 
 		if (!message?.trim()) {
@@ -77,12 +78,12 @@ export async function POST({ request }: { request: Request }) {
 
 		let sid = sessionId;
 		if (!sid) {
-			const session = await storage.createSession();
+			const session = await storage.createSession(undefined, undefined, workspace);
 			sid = session.id;
 		} else {
 			const exists = await storage.getSession(sid);
 			if (!exists) {
-				const session = await storage.createSession();
+				const session = await storage.createSession(undefined, undefined, workspace);
 				sid = session.id;
 			}
 		}

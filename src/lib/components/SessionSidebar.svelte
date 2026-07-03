@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { sessions, setSessionTitle, deleteSession } from '$lib/session-store';
+	import { slide } from 'svelte/transition';
+	import { visibleSessions, sessions, setSessionTitle, deleteSession, activeWorkspace, workspaces, loadWorkspaces } from '$lib/session-store';
 	import type { Session } from '$lib/storage';
 	import SearchDialog from './SearchDialog.svelte';
 	import { getTheme, toggleTheme } from '$lib/theme';
@@ -15,6 +16,8 @@
 	let editTitle = $state('');
 	let searchOpen = $state(false);
 	let themeIcon = $state(getTheme() === 'dark' ? 'light_mode' : 'dark_mode');
+	let workspaceMenuOpen = $state(false);
+	let newWorkspaceInput = $state('');
 
 	import { afterNavigate } from '$app/navigation';
 
@@ -28,6 +31,19 @@
 
 	function handleNew() {
 		goto('/');
+	}
+
+	function selectWorkspace(ws: string) {
+		activeWorkspace.set(ws);
+		workspaceMenuOpen = false;
+	}
+
+	async function addWorkspace() {
+		const path = newWorkspaceInput.trim();
+		if (!path) return;
+		activeWorkspace.set(path);
+		newWorkspaceInput = '';
+		workspaceMenuOpen = false;
 	}
 
 	function startEdit(session: Session) {
@@ -65,6 +81,16 @@
 		themeIcon = getTheme() === 'dark' ? 'light_mode' : 'dark_mode';
 	}
 
+	function handleWorkspaceKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			addWorkspace();
+		} else if (e.key === 'Escape') {
+			workspaceMenuOpen = false;
+			newWorkspaceInput = '';
+		}
+	}
+
 	function formatTime(ts: number): string {
 		const d = new Date(ts);
 		const now = new Date();
@@ -73,6 +99,12 @@
 			return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 		}
 		return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+	}
+
+	function wsLabel(ws: string): string {
+		if (!ws) return '默认工作区';
+		const parts = ws.replace(/\\/g, '/').split('/');
+		return parts[parts.length - 1] || ws;
 	}
 </script>
 
@@ -91,77 +123,109 @@
 		</button>
 	</div>
 
-	<div class="section-label">
-			<span>对话</span>
-			<button class="new-btn" onclick={handleNew}>
-				<span class="material-symbols-rounded">add</span>
-			</button>
-		</div>
-
-		<div class="session-list">
-			{#each $sessions.slice(0, 8) as session (session.id)}
-				<div
-					class="session-item"
-					class:active={session.id === $page.params.sessionId}
-					onclick={() => handleSelect(session)}
-					onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
-					role="button"
-					tabindex="0"
-				>
-					<span class="material-symbols-rounded session-icon">chat_bubble</span>
-					<div class="session-info">
-						{#if editingId === session.id}
-							<!-- svelte-ignore a11y_autofocus -->
-							<input
-								class="session-title-input"
-								type="text"
-								bind:value={editTitle}
-								onblur={() => saveEdit(session.id)}
-								onkeydown={(e) => handleEditKeydown(e, session.id)}
-								onclick={(e: MouseEvent) => e.stopPropagation()}
-								autofocus
-							/>
-						{:else}
-							<div
-								class="session-title"
-								ondblclick={() => startEdit(session)}
-								onkeydown={() => {}}
-								role="textbox"
-								tabindex="-1"
-							>
-								{session.title}
-							</div>
-							<div class="session-time">{formatTime(session.updated_at)}</div>
-						{/if}
-					</div>
-					<button
-						class="delete-btn"
-						onclick={(e: MouseEvent) => { e.stopPropagation(); handleDelete(session.id); }}
-						title="删除"
-					>
-						<span class="material-symbols-rounded">delete</span>
+	<div class="workspace-bar">
+		<button class="ws-selector" onclick={() => { workspaceMenuOpen = !workspaceMenuOpen; loadWorkspaces(); }}>
+			<span class="material-symbols-rounded ws-icon">folder</span>
+			<span class="ws-label">{wsLabel($activeWorkspace)}</span>
+			<span class="material-symbols-rounded ws-arrow">expand_more</span>
+		</button>
+		{#if workspaceMenuOpen}
+			<div class="ws-menu" transition:slide={{ duration: 150 }}>
+				<button class="ws-option" class:active={!$activeWorkspace} onclick={() => selectWorkspace('')}>
+					<span class="material-symbols-rounded">computer</span>
+					<span>默认工作区</span>
+				</button>
+				{#each $workspaces as ws}
+					<button class="ws-option" class:active={$activeWorkspace === ws} onclick={() => selectWorkspace(ws)}>
+						<span class="material-symbols-rounded">folder</span>
+						<span title={ws}>{wsLabel(ws)}</span>
 					</button>
+				{/each}
+				<div class="ws-add">
+					<span class="material-symbols-rounded">create_new_folder</span>
+					<input
+						class="ws-input"
+						type="text"
+						placeholder="输入工作区路径..."
+						bind:value={newWorkspaceInput}
+						onkeydown={handleWorkspaceKeydown}
+					/>
 				</div>
-			{/each}
-			<a href="/records" class="view-all-link">
-				<span class="material-symbols-rounded view-all-icon">history</span>
-				<span class="view-all-text">查看全部记录</span>
-			</a>
-		</div>
+			</div>
+		{/if}
+	</div>
 
-		<div class="sidebar-footer">
-			<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
-				<span class="material-symbols-rounded">settings</span>
-				设置
-			</a>
-			<button class="footer-link search-btn" onclick={() => (searchOpen = true)}>
-				<span class="material-symbols-rounded">search</span>
-				搜索
-			</button>
-			<button class="footer-link theme-btn" onclick={handleToggleTheme} title="切换主题">
-				<span class="material-symbols-rounded">{themeIcon}</span>
-			</button>
-		</div>
+	<div class="section-label">
+		<span>对话</span>
+		<button class="new-btn" onclick={handleNew}>
+			<span class="material-symbols-rounded">add</span>
+		</button>
+	</div>
+
+	<div class="session-list">
+		{#each $visibleSessions.slice(0, 8) as session (session.id)}
+			<div
+				class="session-item"
+				class:active={session.id === $page.params.sessionId}
+				onclick={() => handleSelect(session)}
+				onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleSelect(session)}
+				role="button"
+				tabindex="0"
+			>
+				<span class="material-symbols-rounded session-icon">chat_bubble</span>
+				<div class="session-info">
+					{#if editingId === session.id}
+						<!-- svelte-ignore a11y_autofocus -->
+						<input
+							class="session-title-input"
+							type="text"
+							bind:value={editTitle}
+							onblur={() => saveEdit(session.id)}
+							onkeydown={(e) => handleEditKeydown(e, session.id)}
+							onclick={(e: MouseEvent) => e.stopPropagation()}
+							autofocus
+						/>
+					{:else}
+						<div
+							class="session-title"
+							ondblclick={() => startEdit(session)}
+							onkeydown={() => {}}
+							role="textbox"
+							tabindex="-1"
+						>
+							{session.title}
+						</div>
+						<div class="session-time">{formatTime(session.updated_at)}</div>
+					{/if}
+				</div>
+				<button
+					class="delete-btn"
+					onclick={(e: MouseEvent) => { e.stopPropagation(); handleDelete(session.id); }}
+					title="删除"
+				>
+					<span class="material-symbols-rounded">delete</span>
+				</button>
+			</div>
+		{/each}
+		<a href="/records" class="view-all-link">
+			<span class="material-symbols-rounded view-all-icon">history</span>
+			<span class="view-all-text">查看全部记录</span>
+		</a>
+	</div>
+
+	<div class="sidebar-footer">
+		<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
+			<span class="material-symbols-rounded">settings</span>
+			设置
+		</a>
+		<button class="footer-link search-btn" onclick={() => (searchOpen = true)}>
+			<span class="material-symbols-rounded">search</span>
+			搜索
+		</button>
+		<button class="footer-link theme-btn" onclick={handleToggleTheme} title="切换主题">
+			<span class="material-symbols-rounded">{themeIcon}</span>
+		</button>
+	</div>
 </div>
 
 <SearchDialog sessions={$sessions} bind:open={searchOpen} />
@@ -250,6 +314,128 @@
 		font-size: var(--text-xl);
 		color: var(--text-primary);
 		letter-spacing: 0.03em;
+	}
+
+	.workspace-bar {
+		padding: 0 0.75rem 0.5rem;
+		position: relative;
+	}
+
+	.ws-selector {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.55rem 0.75rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--bg-surface);
+		color: var(--text-primary);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.85rem;
+		transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+	}
+
+	.ws-selector:hover {
+		border-color: var(--accent);
+		background: var(--bg-surface-active);
+	}
+
+	.ws-icon {
+		font-size: 18px;
+		color: var(--accent);
+		flex-shrink: 0;
+	}
+
+	.ws-label {
+		flex: 1;
+		text-align: left;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.ws-arrow {
+		font-size: 18px;
+		color: var(--text-muted);
+		flex-shrink: 0;
+	}
+
+	.ws-menu {
+		position: absolute;
+		top: 100%;
+		left: 0.75rem;
+		right: 0.75rem;
+		background: var(--bg-surface);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-sidebar);
+		z-index: 60;
+		max-height: 260px;
+		overflow-y: auto;
+		padding: 0.3rem;
+	}
+
+	.ws-option {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem 0.6rem;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-primary);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.82rem;
+		transition: background 0.15s var(--ease-out);
+	}
+
+	.ws-option:hover, .ws-option.active {
+		background: var(--bg-surface-active);
+	}
+
+	.ws-option .material-symbols-rounded {
+		font-size: 16px;
+		color: var(--text-muted);
+		flex-shrink: 0;
+	}
+
+	.ws-option.active .material-symbols-rounded {
+		color: var(--accent);
+	}
+
+	.ws-add {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.6rem;
+		border-top: 1px solid var(--border-subtle);
+		margin-top: 0.3rem;
+	}
+
+	.ws-add .material-symbols-rounded {
+		font-size: 16px;
+		color: var(--text-muted);
+		flex-shrink: 0;
+	}
+
+	.ws-input {
+		flex: 1;
+		padding: 0.25rem 0.4rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: 4px;
+		background: var(--bg-surface);
+		color: var(--text-primary);
+		font-family: inherit;
+		font-size: 0.82rem;
+		outline: none;
+	}
+
+	.ws-input:focus {
+		border-color: var(--accent);
 	}
 
 	.section-label {

@@ -128,6 +128,11 @@ export class AgentLoop {
 		this.iteration = 0;
 		this.state = AgentState.INIT;
 
+		const session = await this.storage.getSession(sessionId);
+		if (session?.workspace) {
+			this.toolContext = new ToolContext(session.workspace);
+		}
+
 		pendingSteering.delete(sessionId);
 
 		try {
@@ -622,7 +627,7 @@ ${rawContent}`;
 			if (!compression) return null;
 
 			const newTitle = `[延续] ${parentSession.title}`;
-			const newSession = await this.storage.createSession(newTitle, parentSession.memory_snapshot);
+			const newSession = await this.storage.createSession(newTitle, parentSession.memory_snapshot, parentSession.workspace);
 
 			await this.storage.addMessage(newSession.id, {
 				session_id: newSession.id,

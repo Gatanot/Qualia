@@ -24,6 +24,8 @@ export interface Session {
 	last_summarized_at: number | null;
 	/** 会话创建时 memory.md 的快照 */
 	memory_snapshot: string;
+	/** 工作区路径（空字符串 = process.cwd()） */
+	workspace: string;
 }
 
 /**
@@ -81,8 +83,8 @@ export interface MessageQueryOptions {
  * 上层代码通过工厂函数创建，无需关心底层实现。
  */
 export interface Storage {
-	/** 创建新会话（可选 memory 快照） */
-	createSession(title?: string, memorySnapshot?: string): Promise<Session>;
+	/** 创建新会话（可选 memory 快照、工作区路径） */
+	createSession(title?: string, memorySnapshot?: string, workspace?: string): Promise<Session>;
 	/** 获取会话 */
 	getSession(id: string): Promise<Session | null>;
 	/** 列出所有会话（按更新时间倒序） */
@@ -136,4 +138,7 @@ export interface Storage {
 
 	/** 获取最近活跃的会话（按 updated_at 倒序第一个未归档的） */
 	getMostRecentSession(): Promise<Session | null>;
+
+	/** 列出所有不重复的工作区路径 */
+	listWorkspaces(): Promise<string[]>;
 }
