@@ -19,3 +19,4 @@ export { AgentState } from './types';
 export { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';
 export { sanitizeMessages } from './message-sanitizer';
 export { AgentLogger } from './logger';
+export { createSummarizeWorker } from './summarize-worker';
