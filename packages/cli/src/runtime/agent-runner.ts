@@ -9,7 +9,7 @@ import {
 import { createProvider } from '@gatanot/qualia_core/ai';
 import type { Usage } from '@gatanot/qualia_core/ai';
 import { createStorage } from '@gatanot/qualia_core/storage';
-import type { Storage } from '@gatanot/qualia_core/storage';
+import type { Storage, Session } from '@gatanot/qualia_core/storage';
 import { ToolRegistry, CORE_TOOLS, SCHEDULING_TOOLS, createSearchHistoryTool } from '@gatanot/qualia_core/tool';
 import { AgentLoop, ContextBuilder } from '@gatanot/qualia_core/agent';
 import type { AgentEvent, ConfirmFn, BuildResult } from '@gatanot/qualia_core/agent';
@@ -54,9 +54,21 @@ export class AgentRunner {
 		return { ok: true };
 	}
 
+	get storageEnabled(): boolean {
+		return this.config.storageEnabled;
+	}
+
 	async createSession(workspace?: string): Promise<string> {
 		const session = await this.storage.createSession(undefined, undefined, workspace);
 		return session.id;
+	}
+
+	async listSessions(): Promise<Session[]> {
+		return this.storage.listSessions();
+	}
+
+	async getSession(id: string): Promise<Session | null> {
+		return this.storage.getSession(id);
 	}
 
 	async run(opts: AgentRunOptions): Promise<AgentRunResult> {
