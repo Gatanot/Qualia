@@ -15,7 +15,7 @@ function ensureDataDir(): void {
 const defaultConfig: AppConfig = {
 	providers: [],
 	activeModel: '',
-	storageEnabled: false,
+	storageEnabled: true,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
 	customBrandIcon: false,
 	autoSummarize: true,

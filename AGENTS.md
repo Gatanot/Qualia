@@ -33,7 +33,7 @@ Always run `npm run check` after changes. `npm run prepare` (svelte-kit sync) ru
 - `better-sqlite3` (sync, native)
 - Imports: use `$lib/xxx` exclusively (SvelteKit built-in alias, not in tsconfig)
 - Config: `~/.qualia/config.json`, no `.env` file
-- Storage: `storageEnabled: false` by default (memory-only)
+- Storage: `storageEnabled: true` by default (SQLite)
 - AI providers: OpenAI, DeepSeek, Xiaomi, Ollama. Models in `src/lib/ai/models.ts`.
 
 ## Architecture
