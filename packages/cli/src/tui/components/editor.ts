@@ -700,7 +700,7 @@ export class Editor implements Component, Focusable {
 
 					if (this.autocompletePrefix.startsWith("/")) {
 						this.cancelAutocomplete();
-						// Fall through to submit
+						return;
 					} else {
 						this.cancelAutocomplete();
 						if (this.onChange) this.onChange(this.getText());
