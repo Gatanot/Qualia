@@ -60,7 +60,8 @@ export class TuiApp {
 	private providerName = '';
 	private confirmBar = new Container();
 	private confirmResolver: ((approved: boolean) => void) | null = null;
-	private lastInput = '';
+	private chatSnapshot = -1;
+	private lastSentText = '';
 
 	constructor(private readonly o: TuiAppOptions) {
 		this.sessionId = o.newSession ? undefined : o.sessionId;
@@ -153,7 +154,8 @@ export class TuiApp {
 		}
 		if (parsed.type === 'none') return;
 
-		this.lastInput = v;
+		this.lastSentText = v;
+		this.chatSnapshot = this.chat.children.length;
 		this.sending = true;
 		this.send(parsed.type === 'send' ? parsed.value : t).finally(() => { this.sending = false; });
 	}
@@ -205,6 +207,8 @@ export class TuiApp {
 	private cmdNew(): void {
 		this.sessionId = undefined;
 		this.chat.clear();
+		this.chatSnapshot = -1;
+		this.lastSentText = '';
 		this.chat.addChild(newTextError(this.mkTheme, 'New conversation started'));
 	}
 
@@ -247,6 +251,8 @@ export class TuiApp {
 			}
 			this.sessionId = id;
 			this.chat.clear();
+			this.chatSnapshot = -1;
+			this.lastSentText = '';
 			await this.loadHistory();
 			this.ui.requestRender();
 		} catch {
@@ -286,10 +292,14 @@ export class TuiApp {
 	}
 
 	private cmdUndo(): void {
-		if (this.lastInput) {
-			this.editor.setText(this.lastInput);
-			this.ui.requestRender();
+		if (this.chatSnapshot < 0) return;
+		while (this.chat.children.length > this.chatSnapshot) {
+			this.chat.children.pop();
 		}
+		this.editor.setText(this.lastSentText);
+		this.chatSnapshot = -1;
+		this.lastSentText = '';
+		this.ui.requestRender();
 	}
 
 	private async send(msg: string): Promise<void> {
