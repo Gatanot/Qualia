@@ -305,7 +305,7 @@
 	}
 	.btn-danger {
 		color: var(--danger-btn);
-		border-color: rgba(211, 47, 47, 0.2);
+		border-color: var(--danger-bg);
 		background: var(--bg-surface);
 	}
 	.btn-danger:hover {
@@ -397,7 +397,7 @@
 		position: absolute;
 		inset: 0;
 		border-radius: var(--radius-full);
-		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+		box-shadow: 0 0 0 9999px var(--overlay-heavy);
 		pointer-events: none;
 	}
 
@@ -478,7 +478,7 @@
 		position: absolute;
 		inset: 0;
 		border-radius: 50%;
-		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+		box-shadow: 0 0 0 9999px var(--overlay-heavy);
 		pointer-events: none;
 	}
 

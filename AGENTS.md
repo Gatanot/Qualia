@@ -17,15 +17,17 @@ Root `src/` is the source of truth. `packages/*/src/` are stale snapshots for np
 ## Commands
 
 ```sh
-npm run dev            # dev server → http://localhost:5173
-npm run check          # primary verification: svelte-kit sync + svelte-check
+npm run dev            # dev server → http://localhost:5173 (delegates to packages/web)
+npm run check          # primary verification: svelte-kit sync + svelte-check (packages/web)
+npm run check:watch    # check in watch mode (packages/web)
+npm run check:core     # tsc --noEmit on packages/core
 npm run test           # vitest on packages/core/src (NOT root)
 npx vitest run         # run tests against root src/**/*.test.ts
-npx vitest             # TDD mode
-npm run check:core     # tsc --noEmit on packages/core
+npx vitest             # TDD mode (watch, root src/**/*.test.ts)
 ```
 
-Always run `npm run check` after changes. `npm run prepare` (svelte-kit sync) runs on `npm install`.
+Always run `npm run check` after changes. `svelte-kit sync` runs on `npm install` via `prepare` in packages/web.
+`npm run build` delegates to packages/web only (not core/cli).
 
 ## Stack
 
@@ -65,7 +67,7 @@ API routes under `src/routes/api/`: `chat` (SSE), `confirm`, `steer`, `config`, 
 
 - No defensive programming. Throw on unexpected state.
 - `+server.ts` exports only HTTP method names or `_`-prefixed. Any other export breaks with 500.
-- **No regex for text matching/parsing.** Use hand-written character-level DFA instead. Exceptions: route patterns in `+server.ts`, framework config files, and command classification in `safeguard.ts`.
+- **No regex for text matching/parsing.** Use hand-written character-level DFA instead. Exceptions: route patterns in `+server.ts`, framework config files, command classification in `safeguard.ts`, and Unicode surrogate replacement in `message-sanitizer.ts`.
 
 ## Tool confirmation & steering
 
@@ -94,11 +96,11 @@ AI schedules one-shot tasks. `schedule_task` requires reading current time via `
 
 ## Tool safety
 
-`safeguard.ts`: `safe` (execute), `confirm` (wait for user), `reject` (deny). `args.__confirmed` skips re-confirm.
+`safeguard.ts`: `safe` (execute), `confirm` (wait for user), `reject` (deny). `args.__confirmed` skips re-confirm. `ToolContext.root` defaults to `process.cwd()`, overridden by `session.workspace` when set on the session.
 
 ## Context auto-continue
 
-When `contextWindow - token_count < 20000` after reply: LLM compresses conversation → new session `[延续] xxx` with compression as system message → current exchange copied in → `forked` SSE event → frontend navigates to new session.
+When `contextWindow - token_count < 20000` after reply: LLM compresses conversation → new session `[延续] xxx` with compression as system message → current exchange copied in → `forked` SSE event → frontend navigates to new session. Config `compressionMode`: `auto` (uses threshold above) or `custom` (uses `compressionThreshold`, default 256000).
 
 Compression is a temporary context-continuation mechanism. Summary（摘要）is a separate background system for diary/records.
 
@@ -129,7 +131,7 @@ Root excludes `packages/`. `packages/web/` extends `.svelte-kit/tsconfig.json`. 
 - Root uses `@sveltejs/adapter-auto`; `packages/web/` uses `@sveltejs/adapter-node`.
 - `src/lib/index.ts` is a SvelteKit placeholder, not a barrel.
 - `~/.qualia/data/memory.md` snapshotted at session creation; changes only affect new sessions.
-- `process.cwd()` is the workspace root for tool path safety.
+- `process.cwd()` is the default workspace root for tool path safety; `session.workspace` overrides it.
 - `.svelte-kit/` is auto-generated; never edit.
 - `.npmrc`: `engine-strict=true`.
 - `data/`, `docs/`, `opencode.json` are gitignored.

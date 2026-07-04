@@ -292,13 +292,13 @@
 
 	.btn-danger {
 		color: var(--danger-btn);
-		border-color: rgba(211, 47, 47, 0.2);
+		border-color: var(--danger-bg);
 		background: var(--bg-surface);
 	}
 
 	.btn-danger:hover {
 		background: var(--danger-btn-hover-bg);
-		border-color: rgba(211, 47, 47, 0.3);
+		border-color: var(--danger-btn-hover-bg);
 	}
 
 	.btn-sm {

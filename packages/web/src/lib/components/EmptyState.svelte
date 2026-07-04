@@ -43,13 +43,13 @@
 		justify-content: center;
 		margin-bottom: 0.75rem;
 		overflow: hidden;
-		box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.5), var(--shadow-md);
+		box-shadow: inset 0 2px 8px var(--accent-subtle), var(--shadow-md);
 		animation: breathe 4s ease-in-out infinite;
 	}
 
 	@keyframes breathe {
-		0%, 100% { box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.5), var(--shadow-md); }
-		50% { box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.5), var(--shadow-lg); }
+		0%, 100% { box-shadow: inset 0 2px 8px var(--accent-subtle), var(--shadow-md); }
+		50% { box-shadow: inset 0 2px 8px var(--accent-subtle), var(--shadow-lg); }
 	}
 
 	.empty-icon {
