@@ -1,6 +1,6 @@
 {
   "name": "@gatanot/qualia_core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Qualia AI companion — core engine (LLM providers, agent loop, tools, storage)",
   "license": "MIT",
   "type": "module",

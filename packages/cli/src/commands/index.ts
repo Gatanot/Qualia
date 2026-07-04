@@ -21,7 +21,7 @@ export interface ParsedArgs {
 	flags: Map<string, string | boolean>;
 }
 
-export const VERSION = '0.1.3';
+export const VERSION = '0.1.4';
 
 const HELP = `Qualia CLI
 
