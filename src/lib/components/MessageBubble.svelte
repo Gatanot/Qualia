@@ -262,7 +262,7 @@
 	}
 
 	:global(.message-row.user .markdown-body code:not(pre code)) {
-		background: rgba(255, 255, 255, 0.15);
+		background: var(--accent-subtle);
 		color: var(--code-text-alt);
 	}
 
@@ -289,7 +289,7 @@
 		top: 0.5rem;
 		right: 0.75rem;
 		font-size: 0.7rem;
-		color: rgba(229, 218, 203, 0.4);
+		color: var(--code-lang-label);
 		font-family: var(--font-sans);
 		pointer-events: none;
 		letter-spacing: 0.03em;
@@ -297,7 +297,7 @@
 	}
 
 	.message-row.user .markdown-body :global(pre) {
-		background: rgba(0, 0, 0, 0.2);
+		background: var(--accent-subtle);
 	}
 
 	.markdown-body :global(blockquote) {
@@ -318,8 +318,8 @@
 	}
 
 	.message-row.user .markdown-body :global(blockquote) {
-		border-left-color: rgba(255, 255, 255, 0.3);
-		background: rgba(255, 255, 255, 0.08);
+		border-left-color: var(--border-accent);
+		background: var(--accent-subtle);
 		color: var(--code-text-alt);
 	}
 

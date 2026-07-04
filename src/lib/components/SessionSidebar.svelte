@@ -765,7 +765,7 @@
 	.picker-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.4);
+		background: var(--overlay);
 		z-index: 100;
 		display: flex;
 		align-items: center;
@@ -868,7 +868,7 @@
 
 	.picker-btn.primary {
 		background: var(--accent);
-		color: #fff;
+		color: var(--text-on-accent);
 	}
 
 	.picker-btn.primary:hover {

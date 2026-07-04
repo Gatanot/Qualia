@@ -472,8 +472,8 @@
 		height: 20px;
 		border-radius: var(--radius-full);
 		border: none;
-		background: rgba(0, 0, 0, 0.55);
-		color: #fff;
+		background: var(--overlay);
+		color: var(--text-on-accent);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -483,7 +483,7 @@
 	}
 
 	.image-remove-btn:hover {
-		background: rgba(0, 0, 0, 0.75);
+		background: var(--overlay-heavy);
 	}
 
 	.image-remove-btn .material-symbols-rounded {

@@ -19,11 +19,11 @@
 	};
 
 	const statusColor: Record<string, string> = {
-		pending: '#f59e0b',
-		running: '#3b82f6',
-		completed: '#10b981',
-		failed: '#ef4444',
-		paused: '#6b7280'
+		pending: 'var(--status-pending)',
+		running: 'var(--status-running)',
+		completed: 'var(--status-done)',
+		failed: 'var(--status-error)',
+		paused: 'var(--status-unknown)'
 	};
 
 	async function loadTasks() {
@@ -79,7 +79,7 @@
 				<div class="task-item" class:completed={task.status === 'completed'} class:failed={task.status === 'failed'}>
 					<div class="task-header">
 						<div class="task-name">{task.name}</div>
-						<span class="task-status" style="color: {statusColor[task.status] || '#6b7280'}">
+						<span class="task-status" style="color: {statusColor[task.status] || 'var(--status-unknown)'}">
 							{statusLabel[task.status] || task.status}
 						</span>
 					</div>
@@ -151,7 +151,7 @@
 	}
 
 	.task-item.failed {
-		border-color: #fecaca;
+		border-color: var(--danger-bg);
 	}
 
 	.task-header {
@@ -231,8 +231,8 @@
 	}
 
 	.action-btn.danger:hover {
-		background: #fecaca;
-		color: #b91c1c;
-		border-color: #fca5a5;
+		background: var(--danger-btn-hover-bg);
+		color: var(--danger-text);
+		border-color: var(--danger-bg);
 	}
 </style>
