@@ -124,7 +124,7 @@ export class TuiApp {
 	private async executeSlashCommand(action: string, arg?: string): Promise<void> {
 		switch (action) {
 			case 'model':
-				await this.cmdModel(arg);
+				await this.cmdModel();
 				break;
 			case 'new':
 				this.cmdNew();
@@ -142,27 +142,35 @@ export class TuiApp {
 		this.ui.requestRender();
 	}
 
-	private async cmdModel(modelId?: string): Promise<void> {
-		if (!modelId) {
-			const models = getAllAvailableModels();
-			const lines: string[] = ['Available models:'];
-			for (const m of models) {
-				const mark = m.model.id === this.modelId ? ' *' : '  ';
-				lines.push(`${mark} ${m.model.id} — ${m.model.name}`);
-			}
-			this.chat.addChild(newTextError(this.mkTheme, lines.join('\n')));
+	private async cmdModel(): Promise<void> {
+		const models = getAllAvailableModels();
+		if (models.length === 0) {
+			this.chat.addChild(newTextError(this.mkTheme, 'No models available'));
 			return;
 		}
-		try {
-			setActiveModel(modelId);
-			this.modelId = modelId;
-			const provider = getProviderForModel(modelId);
-			this.providerName = provider?.name || '';
-			this.updateFooter();
-			this.chat.addChild(newTextError(this.mkTheme, `Switched to model: ${modelId}`));
-		} catch (err) {
-			this.chat.addChild(newTextError(this.mkTheme, `Switch failed: ${(err as Error).message}`));
-		}
+		const items: SelectItem[] = models.map((m) => ({
+			value: m.model.id,
+			label: m.model.id,
+			description: m.model.id === this.modelId ? m.model.name + ' (active)' : m.model.name,
+		}));
+		const list = new SelectList(items, Math.min(10, items.length), selectListTheme);
+		list.onSelect = async (item) => {
+			this.ui.hideOverlay();
+			this.ui.setFocus(this.editor);
+			try {
+				setActiveModel(item.value);
+				this.modelId = item.value;
+				this.providerName = getProviderForModel(item.value)?.name || '';
+				this.updateFooter();
+			} catch (err) {
+				this.chat.addChild(newTextError(this.mkTheme, `Switch failed: ${(err as Error).message}`));
+			}
+		};
+		list.onCancel = () => {
+			this.ui.hideOverlay();
+			this.ui.setFocus(this.editor);
+		};
+		this.ui.showOverlay(list, { anchor: 'center', width: '60%', maxHeight: '50%', margin: 1 });
 	}
 
 	private cmdNew(): void {
