@@ -284,7 +284,7 @@ export class TuiApp {
 	}
 
 	private async loadHistory(): Promise<void> {
-		if (!this.sessionId || !this.o.storageEnabled) return;
+		if (!this.sessionId) return;
 		try {
 			const storage = createStorage({ enabled: true });
 			const session = await storage.getSession(this.sessionId);
