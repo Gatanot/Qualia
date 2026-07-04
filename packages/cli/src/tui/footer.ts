@@ -1,12 +1,12 @@
 import type { Component } from './index.js';
-import { truncateToWidth, visibleWidth } from './index.js';
+import { visibleWidth } from './index.js';
 import { theme } from './theme.js';
 
 export interface FooterData {
-	modelId: string; providerName?: string;
+	modelId: string;
 	thinkingLevel?: string;
 	totalInput?: number; totalOutput?: number;
-	cwd?: string;
+	contextWindow?: number;
 }
 
 function fmt(n: number): string {
@@ -27,29 +27,26 @@ export class FooterComponent implements Component {
 		if (d.totalInput) parts.push(`\u2191${fmt(d.totalInput)}`);
 		if (d.totalOutput) parts.push(`\u2193${fmt(d.totalOutput)}`);
 
-		let right = d.modelId;
-		if (d.thinkingLevel && d.thinkingLevel !== 'off') right = `${d.modelId} \u2022 ${d.thinkingLevel}`;
-		if (d.providerName) right = `(${d.providerName}) ${right}`;
-
-		let left = parts.join(' ');
-		const lw = visibleWidth(left), rw = visibleWidth(right), gap = 3;
-
-		let statsLine: string;
-		if (lw + gap + rw <= width) {
-			statsLine = left + ' '.repeat(width - lw - rw) + right;
-		} else {
-			const avail = width - lw - gap;
-			if (avail > 0) {
-				const tr = truncateToWidth(right, avail, '');
-				statsLine = left + ' '.repeat(Math.max(0, width - lw - visibleWidth(tr))) + tr;
-			} else {
-				statsLine = truncateToWidth(left, width, '...');
-			}
+		const totalTokens = (d.totalInput || 0) + (d.totalOutput || 0);
+		if (totalTokens > 0) {
+			parts.push(`\u2195${fmt(totalTokens)}`);
 		}
 
-		const lines: string[] = [];
-		if (d.cwd) lines.push(truncateToWidth(theme.fg('dim', d.cwd), width, theme.fg('dim', '...')));
-		lines.push(theme.fg('dim', statsLine));
-		return lines;
+		const modelParts: string[] = [d.modelId];
+		if (d.thinkingLevel && d.thinkingLevel !== 'off') {
+			modelParts.push(d.thinkingLevel);
+		}
+		parts.push(modelParts.join(' \u2022 '));
+
+		if (totalTokens > 0 && d.contextWindow && d.contextWindow > 0) {
+			const pct = ((totalTokens / d.contextWindow) * 100).toFixed(1);
+			parts.push(`${pct}%`);
+		}
+
+		const line = parts.join('  ');
+		const vw = visibleWidth(line);
+		const statsLine = vw < width ? line + ' '.repeat(width - vw) : line;
+
+		return [theme.fg('dim', statsLine)];
 	}
 }

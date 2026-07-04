@@ -55,9 +55,9 @@ export class TuiApp {
 	private mkTheme = getMarkdownTheme();
 	private totalInput = 0;
 	private totalOutput = 0;
+	private providerName = '';
 	private contextWindow = 0;
 	private modelId = '';
-	private providerName = '';
 	private confirmBar = new Container();
 	private confirmResolver: ((approved: boolean) => void) | null = null;
 	private chatSnapshot = -1;
@@ -510,9 +510,9 @@ export class TuiApp {
 	private updateFooter(): void {
 		this.footer.setData({
 			modelId: this.modelId,
-			providerName: this.providerName || undefined,
 			totalInput: this.totalInput || undefined,
 			totalOutput: this.totalOutput || undefined,
+			contextWindow: this.contextWindow || undefined,
 		});
 	}
 }
