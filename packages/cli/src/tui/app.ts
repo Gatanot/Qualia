@@ -153,7 +153,7 @@ export class TuiApp {
 			label: m.model.id,
 			description: m.model.id === this.modelId ? m.model.name + ' (active)' : m.model.name,
 		}));
-		const list = new SelectList(items, Math.min(10, items.length), selectListTheme);
+		const list = new SelectList(items, Math.min(10, items.length), selectListTheme, { bordered: true, title: 'Models' });
 		list.onSelect = async (item) => {
 			this.ui.hideOverlay();
 			this.ui.setFocus(this.editor);
@@ -194,7 +194,7 @@ export class TuiApp {
 				label: s.title.length > 40 ? s.title.slice(0, 40) + '…' : s.title,
 				description: s.id.slice(0, 8),
 			}));
-			const list = new SelectList(items, Math.min(10, items.length), selectListTheme);
+			const list = new SelectList(items, Math.min(10, items.length), selectListTheme, { bordered: true, title: 'Sessions' });
 			list.onSelect = async (item) => {
 				this.ui.hideOverlay();
 				this.ui.setFocus(this.editor);

@@ -35,6 +35,8 @@ export interface SelectListLayoutOptions {
 	minPrimaryColumnWidth?: number;
 	maxPrimaryColumnWidth?: number;
 	truncatePrimary?: (context: SelectListTruncatePrimaryContext) => string;
+	bordered?: boolean;
+	title?: string;
 }
 
 export class SelectList implements Component {
@@ -74,22 +76,19 @@ export class SelectList implements Component {
 	render(width: number): string[] {
 		const lines: string[] = [];
 
-		// If no items match filter, show message
 		if (this.filteredItems.length === 0) {
 			lines.push(this.theme.noMatch("  No matching commands"));
-			return lines;
+			return this.applyBorder(lines, width);
 		}
 
 		const primaryColumnWidth = this.getPrimaryColumnWidth();
 
-		// Calculate visible range with scrolling
 		const startIndex = Math.max(
 			0,
 			Math.min(this.selectedIndex - Math.floor(this.maxVisible / 2), this.filteredItems.length - this.maxVisible),
 		);
 		const endIndex = Math.min(startIndex + this.maxVisible, this.filteredItems.length);
 
-		// Render visible items
 		for (let i = startIndex; i < endIndex; i++) {
 			const item = this.filteredItems[i];
 			if (!item) continue;
@@ -99,14 +98,45 @@ export class SelectList implements Component {
 			lines.push(this.renderItem(item, isSelected, width, descriptionSingleLine, primaryColumnWidth));
 		}
 
-		// Add scroll indicators if needed
 		if (startIndex > 0 || endIndex < this.filteredItems.length) {
 			const scrollText = `  (${this.selectedIndex + 1}/${this.filteredItems.length})`;
-			// Truncate if too long for terminal
 			lines.push(this.theme.scrollInfo(truncateToWidth(scrollText, width - 2, "")));
 		}
 
-		return lines;
+		return this.applyBorder(lines, width);
+	}
+
+	private applyBorder(lines: string[], width: number): string[] {
+		if (!this.layout.bordered) return lines;
+
+		const border = this.theme.scrollInfo;
+		const innerW = width - 2;
+		const pad = (s: string): string => {
+			const vw = visibleWidth(s);
+			return s + ' '.repeat(Math.max(0, innerW - vw));
+		};
+
+		const result: string[] = [];
+
+		if (this.layout.title) {
+			const titleText = ` ${this.layout.title} `;
+			const tw = visibleWidth(titleText);
+			const side = border('┌');
+			const rightSide = border('┐');
+			const rest = width - 2 - tw;
+			const leftLen = Math.floor(rest / 2);
+			const rightLen = rest - leftLen;
+			result.push(side + border('─'.repeat(leftLen)) + titleText + border('─'.repeat(rightLen)) + rightSide);
+		} else {
+			result.push(border('┌' + '─'.repeat(innerW) + '┐'));
+		}
+
+		for (const line of lines) {
+			result.push(border('│') + pad(line) + border('│'));
+		}
+
+		result.push(border('└' + '─'.repeat(innerW) + '┘'));
+		return result;
 	}
 
 	handleInput(keyData: string): void {
