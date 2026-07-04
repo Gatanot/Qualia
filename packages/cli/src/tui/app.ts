@@ -288,6 +288,7 @@ export class TuiApp {
 	private cmdUndo(): void {
 		if (this.lastInput) {
 			this.editor.setText(this.lastInput);
+			this.ui.requestRender();
 		}
 	}
 
