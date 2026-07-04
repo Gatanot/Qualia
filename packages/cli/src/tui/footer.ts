@@ -7,6 +7,7 @@ export interface FooterData {
 	thinkingLevel?: string;
 	totalInput?: number; totalOutput?: number;
 	contextWindow?: number;
+	cwd?: string;
 }
 
 function fmt(n: number): string {
@@ -43,10 +44,22 @@ export class FooterComponent implements Component {
 			parts.push(`${pct}%`);
 		}
 
-		const line = parts.join('  ');
-		const vw = visibleWidth(line);
-		const statsLine = vw < width ? line + ' '.repeat(width - vw) : line;
+		const left = parts.join('  ');
+		const lw = visibleWidth(left);
 
-		return [theme.fg('dim', statsLine)];
+		let line: string;
+		if (d.cwd) {
+			const rw = visibleWidth(d.cwd);
+			if (lw + rw + 2 <= width) {
+				line = left + ' '.repeat(width - lw - rw) + d.cwd;
+			} else {
+				line = left;
+			}
+		} else {
+			const vw = visibleWidth(left);
+			line = vw < width ? left + ' '.repeat(width - vw) : left;
+		}
+
+		return [theme.fg('dim', line)];
 	}
 }

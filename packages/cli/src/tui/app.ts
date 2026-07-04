@@ -1,6 +1,6 @@
 import process from 'node:process';
 import type { AgentEvent } from '@gatanot/qualia_core/agent';
-import { createStorage, type MessageRecord } from '@gatanot/qualia_core/storage';
+import { createStorage } from '@gatanot/qualia_core/storage';
 import { AgentRunner } from '../runtime/agent-runner.js';
 import { loadRuntimeConfig } from '../runtime/config-loader.js';
 import { type CliIO, VERSION } from '../commands/index.js';
@@ -94,53 +94,10 @@ export class TuiApp {
 		this.ui.start();
 		this.updateFooter();
 
-		await this.loadHistory();
 		if (this.chat.children.length === 0) {
 			this.showWelcome();
 		}
-		if (this.chat.children.length > 0) this.ui.requestRender();
-	}
-
-	private async loadHistory(): Promise<void> {
-		if (!this.sessionId || !this.o.storageEnabled) return;
-		try {
-			const storage = createStorage({ enabled: true });
-			const session = await storage.getSession(this.sessionId);
-			if (!session) return;
-			const msgs = await storage.getMessages(this.sessionId);
-			if (msgs.length === 0) return;
-			this.renderHistory(msgs);
-		} catch { /* non-fatal */ }
-	}
-
-	private renderHistory(msgs: MessageRecord[]): void {
-		const renderedTools = new Map<string, ToolExecutionComponent>();
-		for (const msg of msgs) {
-			switch (msg.role) {
-				case 'user':
-					if (msg.content.trim()) this.chat.addChild(new UserMessageComponent(msg.content, this.mkTheme));
-					break;
-				case 'assistant': {
-					const am = new AssistantMessageComponent(this.mkTheme);
-					am.update(msg.content, msg.reasoning_content || '');
-					this.chat.addChild(am);
-					if (msg.tool_calls) {
-						for (const tc of msg.tool_calls) {
-							const c = new ToolExecutionComponent(tc.function.name, tc.id, safeJson(tc.function.arguments), this.mkTheme);
-							renderedTools.set(tc.id, c);
-							this.chat.addChild(c);
-						}
-					}
-					break;
-				}
-				case 'tool': {
-					const c = renderedTools.get(msg.tool_call_id || '');
-					if (c) { c.finish(!msg.content.toLowerCase().startsWith('error'), msg.content); renderedTools.delete(msg.tool_call_id!); }
-					break;
-				}
-			}
-		}
-		for (const [, c] of renderedTools) c.finish(false, 'Tool result not received');
+		this.ui.requestRender();
 	}
 
 	private submit(v: string): void {
@@ -256,7 +213,7 @@ export class TuiApp {
 			this.chat.clear();
 			this.chatSnapshot = -1;
 			this.lastSentText = '';
-			await this.loadHistory();
+			this.showWelcome();
 			this.ui.requestRender();
 		} catch {
 			this.chat.addChild(newTextError(this.mkTheme, 'Session switch failed'));
@@ -513,6 +470,7 @@ export class TuiApp {
 			totalInput: this.totalInput || undefined,
 			totalOutput: this.totalOutput || undefined,
 			contextWindow: this.contextWindow || undefined,
+			cwd: this.o.workspace,
 		});
 	}
 }
@@ -522,5 +480,3 @@ function newTextError(mkTheme: ReturnType<typeof getMarkdownTheme>, msg: string)
 	am.showError(msg);
 	return am;
 }
-
-function safeJson(s: string): Record<string, unknown> { try { return JSON.parse(s); } catch { return {}; } }
