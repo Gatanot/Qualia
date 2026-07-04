@@ -92,16 +92,11 @@ Root layout loads Material Symbols + Noto Sans SC fonts, renders SessionSidebar.
 - **不要防御性编程**。对不应发生的状态直接 throw Error，不要用 if-guard 吞掉。
 - **`+server.ts` can ONLY export** `GET`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`, `HEAD`, `fallback`, `prerender`, `trailingSlash`, `config`, `entries`, or `_`-prefixed names. Any other export causes a 500 error. Do NOT export helpers from `+server.ts` — put shared state in `src/lib/`.
 
-## Tool confirmation flow
+## Tool confirmation & steering
 
-1. Agent yields `confirm_required` SSE event (with `confirmId`)
-2. API handler stores a Promise in `src/lib/chat-confirm.ts` Map
-3. Frontend shows dialog, POSTs to `/api/confirm` with `{ confirmId, approved }`
-4. Confirm endpoint resolves the stored Promise → AgentLoop continues
+**Confirmation**: Agent yields `confirm_required` SSE event → Promise stored in `src/lib/chat-confirm.ts` Map → frontend dialog POSTs to `/api/confirm` → Promise resolved, AgentLoop continues. Tools use `args.__confirmed` to skip re-confirm on retry.
 
-## Steering (real-time intervention)
-
-Inject messages into a running AgentLoop via `/api/steer`. The loop drains `pendingSteering` (from `src/lib/chat-steering.ts`) before each LLM call. Consumed steering emits `steering_consumed` SSE events.
+**Steering**: Inject messages into a running AgentLoop via `/api/steer`. The loop drains `pendingSteering` (from `src/lib/chat-steering.ts`) before each LLM call. Consumed steering emits `steering_consumed` SSE events.
 
 ## AgentLoop FSM
 
@@ -181,34 +176,7 @@ Compression is temporary (context continuation only). **摘要** (summary) is a 
 
 ## npm publishing
 
-Three packages: `@gatanot/qualia_core` (engine), `@gatanot/qualia_web` (SvelteKit app), `@gatanot/qualia` (CLI, bin: qualia).
-
-Test locally first to avoid version inflation:
-
-```sh
-# 1. npm link for fast iteration
-cd packages/cli && npm link && qualia serve
-
-# 2. Simulate real install
-npm run build -w @gatanot/qualia_core
-npm run build -w @gatanot/qualia_web
-npm run build -w @gatanot/qualia
-npm pack -w @gatanot/qualia_core
-npm pack -w @gatanot/qualia_web
-npm pack -w @gatanot/qualia
-npm install -g "./gatanot-qualia_core-*.tgz" "./gatanot-qualia_web-*.tgz" "./gatanot-qualia-*.tgz"
-qualia serve
-
-# 3. Publish (dependency order)
-npm publish -w @gatanot/qualia_core --access public
-npm publish -w @gatanot/qualia_web  --access public
-npm publish -w @gatanot/qualia     --access public
-```
-
-**Before publishing**: sync root `src/lib/` → `packages/core/src/` and root `src/routes/` → `packages/web/src/routes/`. Ensure:
-- `packages/web/vite.config.ts` has `ssr.external: ['@gatanot/qualia_core', 'better-sqlite3']`
-- Package `description` fields contain no Unicode special chars
-- `@gatanot/qualia` dependency versions match actual releases
+Three packages: `@gatanot/qualia_core` (engine) → `@gatanot/qualia_web` (SvelteKit app) → `@gatanot/qualia` (CLI, bin: qualia). **Before publishing**, sync root `src/` → `packages/*/src/`. Publish in dependency order (core → web → cli). Test locally with `npm link` or `npm pack` + `npm install -g` first. Do NOT edit `packages/core/src/` or `packages/web/src/` directly — they are stale snapshots.
 
 ## tsconfig
 
@@ -230,6 +198,5 @@ npm publish -w @gatanot/qualia     --access public
 - `.vscode/extensions.json` recommends `svelte.svelte-vscode`.
 - `data/`, `docs/`, `opencode.json` are gitignored.
 - `README.md` is auto-generated SvelteKit scaffolding — not real project docs.
-- `plan.md` contains detailed CLI/TUI development roadmap (629 lines).
 - 消息编辑重生成：已有「回退到此」功能（双击 undo 按钮）删除该消息及后续内容并将原文放入输入框，不需要单独实现"消息编辑"功能。
-- `packages/core/src/` is a stale snapshot of root `src/lib/` subdirectories. Sync before publishing. Do not edit `packages/core/src/` directly.
+
