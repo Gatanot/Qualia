@@ -16,6 +16,7 @@ export interface AgentRunOptions {
 	workspace: string;
 	message: string;
 	sessionId?: string;
+	newSession?: boolean;
 	modelId?: string;
 	storageEnabled?: boolean;
 	systemPrompt?: string;
@@ -103,6 +104,10 @@ export class AgentRunner {
 	}
 
 	private async resolveSessionId(storage: Storage, options: AgentRunOptions): Promise<string> {
+		if (options.newSession) {
+			const session = await storage.createSession(undefined, undefined, options.workspace);
+			return session.id;
+		}
 		if (options.sessionId) {
 			const existing = await storage.getSession(options.sessionId);
 			if (existing) return existing.id;

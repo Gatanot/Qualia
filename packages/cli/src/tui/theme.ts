@@ -133,6 +133,45 @@ const SYNTAX_THEME: SyntaxTheme = {
 
 const HLJS_PREFIX = 'hljs-';
 
+function extractSpanScope(tag: string): string | undefined {
+	// DFA: find class="..." or class='...' in a <span ...> tag
+	let i = 0;
+	while (i < tag.length) {
+		if (tag[i] === 'c' && tag.slice(i, i + 6) === 'class=') {
+			i += 6;
+			const quote = tag[i];
+			if (quote !== '"' && quote !== "'") continue;
+			i++;
+			let cls = '';
+			while (i < tag.length && tag[i] !== quote) {
+				cls += tag[i];
+				i++;
+			}
+			// Split by whitespace, find hljs-xxx
+			let start = 0;
+			for (let j = 0; j <= cls.length; j++) {
+				if (j === cls.length || cls[j] === ' ' || cls[j] === '\t' || cls[j] === '\n' || cls[j] === '\r') {
+					const part = cls.slice(start, j);
+					if (part.startsWith(HLJS_PREFIX)) return part.slice(HLJS_PREFIX.length);
+					start = j + 1;
+				}
+			}
+			return undefined;
+		}
+		i++;
+	}
+	return undefined;
+}
+
+function decodeHtmlEntity(entity: string): string | undefined {
+	if (entity === 'amp') return '&';
+	if (entity === 'lt') return '<';
+	if (entity === 'gt') return '>';
+	if (entity === 'quot') return '"';
+	if (entity === 'apos') return "'";
+	return undefined;
+}
+
 function renderHighlightedHtml(html: string, theme: SyntaxTheme): string {
 	let output = '';
 	let textBuffer = '';
@@ -141,15 +180,18 @@ function renderHighlightedHtml(html: string, theme: SyntaxTheme): string {
 	const flush = () => {
 		if (!textBuffer) return;
 		let fmt: SyntaxFormatter | undefined;
-		for (let i = scopes.length - 1; i >= 0; i--) {
-			const scope = scopes[i];
+		for (let idx = scopes.length - 1; idx >= 0; idx--) {
+			const scope = scopes[idx];
 			if (scope) {
-				// Try exact match, then prefix match on '.' and '-'
-				const dotIdx = scope.indexOf('.');
-				const dashIdx = scope.indexOf('-');
 				fmt = theme[scope];
-				if (!fmt && dotIdx !== -1) fmt = theme[scope.slice(0, dotIdx)];
-				if (!fmt && dashIdx !== -1) fmt = theme[scope.slice(0, dashIdx)];
+				if (!fmt) {
+					// Try prefix match: truncate at first '.' or '-'
+					let end = scope.length;
+					for (let k = 0; k < scope.length; k++) {
+						if (scope[k] === '.' || scope[k] === '-') { end = k; break; }
+					}
+					if (end < scope.length) fmt = theme[scope.slice(0, end)];
+				}
 				if (fmt) break;
 			}
 		}
@@ -159,41 +201,35 @@ function renderHighlightedHtml(html: string, theme: SyntaxTheme): string {
 
 	let i = 0;
 	while (i < html.length) {
-		if (html.startsWith('<span', i)) {
+		if (html[i] === '<' && html.slice(i, i + 5) === '<span') {
 			const nextChar = html[i + 5];
 			if (nextChar === '>' || nextChar === ' ') {
 				const tagEnd = html.indexOf('>', i + 5);
 				if (tagEnd !== -1) {
 					flush();
 					const tag = html.slice(i, tagEnd + 1);
-					const m = /\sclass\s*=\s*["']([^"']*)["']/.exec(tag);
-					if (m) {
-						for (const cls of m[1].split(/\s+/)) {
-							if (cls.startsWith(HLJS_PREFIX)) {
-								scopes.push(cls.slice(HLJS_PREFIX.length));
-								break;
-							}
-						}
-					} else {
-						scopes.push(undefined);
-					}
+					const scope = extractSpanScope(tag);
+					scopes.push(scope);
 					i = tagEnd + 1;
 					continue;
 				}
 			}
 		}
-		if (html.startsWith('</span>', i)) {
+		if (html[i] === '<' && html.slice(i, i + 7) === '</span>') {
 			flush();
 			if (scopes.length > 0) scopes.pop();
 			i += 7;
 			continue;
 		}
 		if (html[i] === '&') {
-			const entityEnd = html.indexOf(';', i);
-			if (entityEnd !== -1 && entityEnd - i < 10) {
+			let entityEnd = -1;
+			for (let j = i + 1; j < html.length && j < i + 10; j++) {
+				if (html[j] === ';') { entityEnd = j; break; }
+			}
+			if (entityEnd !== -1) {
 				const entity = html.slice(i + 1, entityEnd);
-				const decoded: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
-				textBuffer += decoded[entity] ?? html.slice(i, entityEnd + 1);
+				const decoded = decodeHtmlEntity(entity);
+				textBuffer += decoded ?? html.slice(i, entityEnd + 1);
 				i = entityEnd + 1;
 				continue;
 			}

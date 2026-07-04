@@ -13,6 +13,7 @@ import { AssistantMessageComponent } from './assistant-message.js';
 import { ToolExecutionComponent } from './tool-execution.js';
 import { FooterComponent } from './footer.js';
 import { StatusIndicator } from './status-indicator.js';
+import { ConfirmInline } from './confirm-dialog.js';
 
 const selectListTheme: SelectListTheme = {
 	selectedPrefix: (t) => theme.fg('accent', t),
@@ -29,7 +30,7 @@ const editorTheme: EditorTheme = {
 
 export interface TuiAppOptions {
 	io: CliIO; workspace: string;
-	sessionId?: string; modelId?: string; storageEnabled?: boolean;
+	sessionId?: string; newSession?: boolean; modelId?: string; storageEnabled?: boolean;
 }
 
 export class TuiApp {
@@ -55,9 +56,11 @@ export class TuiApp {
 	private contextWindow = 0;
 	private modelId = '';
 	private providerName = '';
+	private confirmBar = new Container();
+	private confirmResolver: ((approved: boolean) => void) | null = null;
 
 	constructor(private readonly o: TuiAppOptions) {
-		this.sessionId = o.sessionId;
+		this.sessionId = o.newSession ? undefined : o.sessionId;
 		const t = new ProcessTerminal();
 		this.ui = new TUI(t);
 		this.editor = new Editor(this.ui, editorTheme, { paddingX: 1 });
@@ -77,6 +80,7 @@ export class TuiApp {
 
 		this.ui.addChild(this.chat);
 		this.ui.addChild(this.statusContainer);
+		this.ui.addChild(this.confirmBar);
 		this.ui.addChild(this.editor);
 		this.ui.addChild(this.footer);
 		this.ui.setFocus(this.editor);
@@ -143,7 +147,16 @@ export class TuiApp {
 	private async send(msg: string): Promise<void> {
 		this.abortController = new AbortController();
 		this.pendingTools.clear();
-		const onSigint = () => { this.abortController?.abort(); };
+		const onSigint = () => {
+			if (this.confirmResolver) {
+				this.confirmResolver(false);
+				this.confirmResolver = null;
+				this.confirmBar.clear();
+				this.ui.setFocus(this.editor);
+				return;
+			}
+			this.abortController?.abort();
+		};
 		process.on('SIGINT', onSigint);
 
 		this.chat.addChild(new UserMessageComponent(msg, this.mkTheme));
@@ -152,10 +165,15 @@ export class TuiApp {
 		try {
 			const r = await this.runner.run({
 				workspace: this.o.workspace, message: msg,
-				sessionId: this.sessionId, modelId: this.o.modelId,
+				sessionId: this.sessionId, newSession: this.o.newSession,
+				modelId: this.o.modelId,
 				storageEnabled: this.o.storageEnabled,
 				signal: this.abortController.signal,
-				onConfirm: async () => false,
+				onConfirm: async () => {
+				return new Promise<boolean>((resolve) => {
+					this.confirmResolver = resolve;
+				});
+			},
 				onEvent: (e) => { this.handleEvent(e); },
 			});
 			this.sessionId = r.sessionId;
@@ -247,7 +265,19 @@ export class TuiApp {
 				this.ui.requestRender();
 				break;
 
-			case 'confirm_required': break;
+			case 'confirm_required': {
+			const confirm = new ConfirmInline(e.confirmation);
+			confirm.onResponse = (approved) => {
+				this.confirmBar.clear();
+				this.ui.setFocus(this.editor);
+				this.confirmResolver?.(approved);
+				this.confirmResolver = null;
+			};
+			this.confirmBar.clear();
+			this.confirmBar.addChild(confirm);
+			this.ui.setFocus(confirm);
+			break;
+		}
 			case 'steering_consumed': break;
 		}
 	}

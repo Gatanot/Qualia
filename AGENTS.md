@@ -1,202 +1,137 @@
 # AGENTS.md
 
-## Project identity
+## Project
 
-Qualia — a local personal AI companion. SvelteKit full-stack app (Node.js backend + browser frontend in one process). Chinese-language UI, Material Design style.
+Qualia — local personal AI companion. SvelteKit full-stack app (Node.js + browser, single process).
 
-## Monorepo dual-mode structure
+## Monorepo structure
 
-The repo has two views of the same code:
+Root `src/` is the source of truth. `packages/*/src/` are stale snapshots for npm publishing. Never edit them directly.
 
-| Layer | Dev workspace (root) | Published package |
-|-------|---------------------|-------------------|
-| Engine | `src/lib/agent/`, `src/lib/ai/`, `src/lib/storage/`, etc. | `packages/core/src/` → `@gatanot/qualia_core` |
-| Web UI | `src/routes/`, `src/lib/components/`, `src/lib/session-store.ts`, etc. | `packages/web/src/` → `@gatanot/qualia_web` |
+| Layer | Dev (root) | Published |
+|-------|-----------|-----------|
+| Engine | `src/lib/agent/`, `src/lib/ai/`, `src/lib/storage/`... | `packages/core/src/` → `@gatanot/qualia_core` |
+| Web | `src/routes/`, `src/lib/components/`... | `packages/web/src/` → `@gatanot/qualia_web` |
 | CLI | — | `packages/cli/src/` → `@gatanot/qualia` |
 
-**Root `src/` is the primary development source of truth.** `packages/core/src/` and `packages/web/src/` are snapshots for npm publishing only — they drift stale between publishes. All code changes go in root `src/`. Before publishing, sync root → packages.
+## Commands
 
-Root `npm run` scripts delegate to workspaces via `-w`:
 ```sh
-npm run dev            # → @gatanot/qualia_web (starts dev server at http://localhost:5173)
-npm run check          # → @gatanot/qualia_web (svelte-kit sync + svelte-check)
-npm run check:watch    # → @gatanot/qualia_web
-npm run test           # → @gatanot/qualia_core (vitest run on packages/core/src, NOT root src/)
-npm run check:core     # → @gatanot/qualia_core (tsc --noEmit)
-npm run docs           # → @gatanot/qualia_web (TypeDoc → docs/)
+npm run dev            # dev server → http://localhost:5173
+npm run check          # primary verification: svelte-kit sync + svelte-check
+npm run test           # vitest on packages/core/src (NOT root)
+npx vitest run         # run tests against root src/**/*.test.ts
+npx vitest             # TDD mode
+npm run check:core     # tsc --noEmit on packages/core
 ```
 
-To run tests against root `src/` (the dev workspace), use `npx vitest run` at root. For TDD: `npx vitest`. File pattern: `src/**/*.test.ts`.
+Always run `npm run check` after changes. `npm run prepare` (svelte-kit sync) runs on `npm install`.
 
-- **`npm run check` is the primary verification** — always run it after changes.
-- `npm run prepare` runs `svelte-kit sync || echo ''` (auto-runs on `npm install`).
+## Stack
 
-## Stack & constraints
-
-| Concern | Detail |
-|---------|--------|
-| Framework | SvelteKit 2 + Svelte 5 + TypeScript 6 + Vite 8 |
-| Runes mode | **Forced** project-wide (except node_modules). Use `$state()`, `$props()`, `$effect()`, never legacy Svelte 4 syntax |
-| Imports | `$lib` → `src/lib/`. Use `$lib/xxx` paths exclusively (alias is SvelteKit-managed, not in tsconfig) |
-| DB | `better-sqlite3` (sync, native). Install after clone: `npm install` |
-| Config | `~/.qualia/config.json` (auto-created; gitignored). Defaults in `src/lib/config/store.ts`. No `.env` file — all config is in-app. |
-| Storage | `storageEnabled: false` by default (memory-only). Toggle in `/settings` |
-| Providers | OpenAI (GPT-4o, GPT-4o Mini), DeepSeek (V4 Pro, V4 Flash), Xiaomi (MiMo V2.5, MiMo V2.5 Pro), Ollama (local). DeepSeek & Xiaomi models have `supportsReasoning: true`. MiMo V2.5 has `supportsVision: true`. Ollama gets a dynamic `ModelDef`. Model definitions in `src/lib/ai/models.ts`. |
-| Config fields | `ProviderConfig` has optional `timeout` and `maxRetries`. `AppConfig`: `searchEnabled`, `searchProvider` (`searxng`|`tavily`), `searxngURL`, `tavilyApiKey`. `compressionMode` (`auto`|`custom`), `compressionThreshold` (default 256k). |
+- SvelteKit 2 + Svelte 5 (runes mode forced) + TypeScript 6 + Vite 8
+- `better-sqlite3` (sync, native)
+- Imports: use `$lib/xxx` exclusively (SvelteKit built-in alias, not in tsconfig)
+- Config: `~/.qualia/config.json`, no `.env` file
+- Storage: `storageEnabled: false` by default (memory-only)
+- AI providers: OpenAI, DeepSeek, Xiaomi, Ollama. Models in `src/lib/ai/models.ts`.
 
 ## Architecture
 
 ```
 src/lib/
-├── agent/           # AgentLoop, ContextBuilder, summarizer, diary, logger, prompts, types, message-sanitizer, summarize-worker
-├── ai/              # AI providers (OpenAI, DeepSeek, Xiaomi, Ollama) + factory + types + utils
-│   └── models.ts    # ModelDef per provider (contextWindow, reasoningEffortValues, supportsVision)
-├── components/      # Svelte UI components + settings/ subdirectory + types.ts (UIMessage/ContentBlock)
-├── concurrency/     # SessionLock, FileMutex, BackgroundWorker
-├── config/          # AppConfig JSON read/write + ProviderConfig types
-├── gateway/         # GatewayDispatcher + adapters (email, telegram, telegram-sessions)
-├── storage/         # Storage interface + MemoryStorage + SQLiteStorage
-├── task/            # Scheduled task system (store + scheduler + executor)
-├── tool/            # ToolRegistry + 11 tools + safeguard.ts + types.ts
-│   └── tools/       # Tool implementations + file-utils.ts
-├── chat-confirm.ts              # Shared Map for pending confirmations
-├── chat-steering.ts             # Shared Map for real-time intervention
-├── markdown.ts                  # Markdown renderer (marked + highlight.js + KaTeX)
-├── model-picker-state.svelte.ts # Client-side $state runes for model picker
-├── paths.ts                     # ~/.qualia path resolution
-├── session-store.ts             # Client-side writable stores for session list + CRUD
-└── theme.ts                     # Light/dark theme (localStorage + media query)
+├── agent/       # AgentLoop, ContextBuilder, summarizer, diary, message-sanitizer
+├── ai/          # Provider implementations + factory
+├── components/  # Svelte UI + settings/
+├── config/      # AppConfig + ProviderConfig
+├── concurrency/ # SessionLock, FileMutex
+├── gateway/     # GatewayDispatcher + email/telegram adapters
+├── storage/     # MemoryStorage + SQLiteStorage
+├── task/        # Scheduled task system
+├── tool/        # ToolRegistry + 11 tools + safeguard.ts
+├── chat-confirm.ts / chat-steering.ts  # Shared maps for confirm/steer
+├── markdown.ts  # marked + highlight.js + KaTeX
+├── paths.ts     # ~/.qualia path resolution
+├── session-store.ts          # Client-side session list
+├── model-picker-state.svelte.ts  # Client-side model picker
+└── theme.ts     # Light/dark (localStorage + media query)
 ```
 
-`src/lib/` code is server-side **unless** imported by a `.svelte` component.
-`session-store.ts` and `model-picker-state.svelte.ts` are client-side exceptions.
+Server-side unless imported by `.svelte`. Exceptions: `session-store.ts`, `model-picker-state.svelte.ts`.
 
-API routes under `src/routes/api/`:
-- `chat/+server.ts` — POST → SSE streaming (AgentLoop)
-- `confirm/+server.ts` — POST resolve tool confirmation
-- `steer/+server.ts` — POST inject steering messages
-- `config/+server.ts` — GET/PUT config CRUD
-- `models/+server.ts` — GET list all models across configured providers
-- `sessions/+server.ts` — GET list / POST create, setTitle, delete, getMessages
-- `messages/+server.ts` — POST deleteFrom a given messageId
-- `summarize/+server.ts` — POST trigger summarization
-- `tasks/+server.ts` — GET list / POST pause, resume, delete
-- `brand-icon/+server.ts` — GET/POST/DELETE custom brand icon
-- `browse/+server.ts` — POST list directory (for tool file selection)
-
-Pages: `/` (new chat), `/chat/[sessionId]`, `/records` (diary entries), `/settings`.
-Root layout loads Material Symbols + Noto Sans SC fonts, renders SessionSidebar.
+API routes under `src/routes/api/`: `chat` (SSE), `confirm`, `steer`, `config`, `models`, `sessions`, `messages`, `summarize`, `tasks`, `brand-icon`, `browse`, `theme`.
 
 ## Code style
 
-- **不要防御性编程**。对不应发生的状态直接 throw Error，不要用 if-guard 吞掉。
-- **`+server.ts` can ONLY export** `GET`, `POST`, `PATCH`, `PUT`, `DELETE`, `OPTIONS`, `HEAD`, `fallback`, `prerender`, `trailingSlash`, `config`, `entries`, or `_`-prefixed names. Any other export causes a 500 error. Do NOT export helpers from `+server.ts` — put shared state in `src/lib/`.
+- No defensive programming. Throw on unexpected state.
+- `+server.ts` exports only HTTP method names or `_`-prefixed. Any other export breaks with 500.
+- **No regex for text matching/parsing.** Use hand-written character-level DFA instead. Exceptions: route patterns in `+server.ts`, framework config files, and command classification in `safeguard.ts`.
 
 ## Tool confirmation & steering
 
-**Confirmation**: Agent yields `confirm_required` SSE event → Promise stored in `src/lib/chat-confirm.ts` Map → frontend dialog POSTs to `/api/confirm` → Promise resolved, AgentLoop continues. Tools use `args.__confirmed` to skip re-confirm on retry.
-
-**Steering**: Inject messages into a running AgentLoop via `/api/steer`. The loop drains `pendingSteering` (from `src/lib/chat-steering.ts`) before each LLM call. Consumed steering emits `steering_consumed` SSE events.
+- **Confirm**: agent emits `confirm_required` → Promise in `chat-confirm.ts` Map → UI dialog → POST `/api/confirm` resolves. `args.__confirmed` skips re-confirm.
+- **Steer**: inject via `/api/steer` → loop drains `pendingSteering` from `chat-steering.ts` before each LLM call.
 
 ## AgentLoop FSM
 
-`AgentState` enum in `src/lib/agent/types.ts`: `INIT → PRE_LLM → LLM_STREAMING → POST_LLM → (PRE_TOOL → TOOL_EXECUTING → AWAIT_CONFIRM → POST_TOOL)* → PERSIST_TURN → DONE`. On LLM failure: `POST_LLM → LLM_RETRY_WAIT → LLM_STREAMING` (up to 5 retries, exponential backoff 1s base). `ERROR` state for unrecoverable failures. `LoopHooks` interface for lifecycle interception.
-
-Hard caps: `MAX_TOOL_ITERATIONS = 50`, `MAX_LLM_RETRIES = 5`.
-
-The summarizer (`src/lib/agent/summarizer.ts`) uses a separate `MAX_TOOL_ITERATIONS = 10`.
+`INIT → PRE_LLM → LLM_STREAMING → POST_LLM → (PRE_TOOL → TOOL_EXECUTING → AWAIT_CONFIRM → POST_TOOL)* → PERSIST_TURN → DONE`. LLM failure: `POST_LLM → LLM_RETRY_WAIT → LLM_STREAMING` (5 retries, 1s base backoff). `MAX_TOOL_ITERATIONS = 50`, summarizer uses 10.
 
 ## Message sanitizer
 
-`sanitizeMessages` in `src/lib/agent/message-sanitizer.ts` runs before every LLM call (4 stages):
-1. Strips empty messages (except tool role)
-2. Replaces Unicode surrogates with `\uFFFD`
-3. Merges consecutive same-role messages
-4. Removes orphan tool results (no matching `assistant.tool_calls[]`)
-
-Returns new array without mutating input. Do NOT bypass this pipeline.
+`sanitizeMessages` runs before every LLM call: strips empty messages, replaces Unicode surrogates, merges consecutive same-role messages, removes orphan tool results. Returns new array. Do not bypass.
 
 ## Auto-summarize
 
-`src/hooks.server.ts` starts `createSummarizeWorker` at server boot (with HMR dispose handler). Config fields:
-
-| Field | Purpose |
-|-------|---------|
-| `autoSummarize` | Master toggle |
-| `summaryMode` | `'idle'` (after N hours) or `'scheduled'` (at fixed hour daily) |
-| `summaryIdleHours` | Idle threshold (default 8) |
-| `summaryScheduleHour` | Hour of day (default 2) |
-| `summaryIntervalMin` | Polling interval (default 30) |
-
-Calls `generateSummary` → `generateDiary`. Both require `storageEnabled: true`.
+Worker starts in `hooks.server.ts`. Config: `autoSummarize`, `summaryMode` (`idle`/`scheduled`), `summaryIdleHours` (8), `summaryScheduleHour` (2), `summaryIntervalMin` (30). Requires `storageEnabled`.
 
 ## Gateway
 
-`src/lib/gateway/` adapter framework:
-- **`GatewayAdapter`** interface — `connect/disconnect/send` + `capabilities` (`receive`, `notify`)
-- **`GatewayDispatcher`** — registry, `start/stop/notify/send`. Notifications fan out to all `capabilities.notify` adapters.
-- **`EmailAdapter`** — SMTP only, `{ receive: false, notify: true }`.
-- **`TelegramAdapter`** — long-polling, `{ receive: true, notify: true }`. Inbound → AgentLoop. Session bindings in `~/.qualia/data/telegram-sessions.json`.
-- Config: `emailNotifications`, `emailSmtpHost/Port/Secure/User/Pass`, `emailFrom`, `emailTo`. `telegramBotToken`, `telegramAllowedUsers`.
+`GatewayDispatcher` + adapters: `EmailAdapter` (SMTP, notify-only), `TelegramAdapter` (long-polling, receive+notify). Config: email SMTP settings, `telegramBotToken`, `telegramAllowedUsers`.
 
 ## Scheduled tasks
 
-`src/lib/task/` — AI can schedule one-shot tasks for future execution:
-- `schedule_task` tool: models must use `exec` to read current time first
-- `read_tasks` tool: reports results; AI must check manually (no auto-notification)
-- Tasks run in isolated `AgentLoop` (no history, no memory writes, auto-deny confirmations, 10min timeout)
-- Retention: last 100 tasks or 7 days, FIFO
-- Notification via `gateway.notify()` on completion/failure
+AI schedules one-shot tasks. `schedule_task` requires reading current time via `exec` first. Tasks run in isolated AgentLoop (no history, no memory, auto-deny confirm, 10min timeout). Retention: 100 tasks / 7 days. Notification via `gateway.notify()`.
 
 ## Tool safety
 
-`safeguard.ts` classifies commands as `safe | confirm | reject`:
-- `safe`: execute immediately
-- `confirm`: throw `PendingConfirmation`, wait for user
-- `reject`: refuse (format, diskpart)
+`safeguard.ts`: `safe` (execute), `confirm` (wait for user), `reject` (deny). `args.__confirmed` skips re-confirm.
 
-Tools use `args.__confirmed` to skip re-confirm on retry.
+## Context auto-continue
 
-## Context window & auto-continue (压缩)
+When `contextWindow - token_count < 20000` after reply: LLM compresses conversation → new session `[延续] xxx` with compression as system message → current exchange copied in → `forked` SSE event → frontend navigates to new session.
 
-`ContextBuilder` loads all history. When `contextWindow - token_count < 20000` after reply:
-1. LLM generates compression of conversation
-2. New session `[延续] xxx` with compression as system message
-3. Current exchange copied into new session
-4. `forked` SSE event → frontend navigates to new session
+Compression is a temporary context-continuation mechanism. Summary（摘要）is a separate background system for diary/records.
 
-Compression is temporary (context continuation only). **摘要** (summary) is a separate background system for diary/records.
+## Unified theme
 
-## Git conventions
+`src/lib/theme/default-theme.json` defines all colors as `{ "color-key": { light, dark } }`. Web generates CSS variables from it. CLI reads `~/.qualia/theme.json`'s `colors` dark values via `KEY_MAP`. API: `GET/PUT /api/theme`.
 
-- Branch naming: `feature/<name>`, `fix/<name>`. Always work on a branch, never commit to `main`.
-- Do NOT merge to `main` unless explicitly asked.
-- Commit messages in Chinese: `prefix: 简要描述`.
+## Git
+
+- Branch: `feature/<name>`, `fix/<name>`. Never commit to `main`.
+- Merge to `main` only when asked.
+- Commit messages: `prefix: short description`.
 - Run `npm run check` before committing.
 
-## npm publishing
+## Publishing
 
-Three packages: `@gatanot/qualia_core` (engine) → `@gatanot/qualia_web` (SvelteKit app) → `@gatanot/qualia` (CLI, bin: qualia). **Before publishing**, sync root `src/` → `packages/*/src/`. Publish in dependency order (core → web → cli). Test locally with `npm link` or `npm pack` + `npm install -g` first. Do NOT edit `packages/core/src/` or `packages/web/src/` directly — they are stale snapshots.
+Sync root → packages. Publish in order: core → web → cli. Test with `npm link` or `npm pack` first.
 
 ## tsconfig
 
-- Root `tsconfig.json` excludes `packages/` — minimum config for root `src/`.
-- `packages/web/tsconfig.json` extends `.svelte-kit/tsconfig.json` (auto-generated by `svelte-kit sync`).
-- `packages/core/tsconfig.json` and `packages/cli/tsconfig.json` are self-contained (`tsc` compilation).
-- Prefer extensionless imports (e.g. `'./types'`, not `'./types.js'`).
+Root excludes `packages/`. `packages/web/` extends `.svelte-kit/tsconfig.json`. Extensionless imports (`'./types'`, not `'./types.js'`).
 
-## Notable quirks
+## Quirks
 
-- `src/hooks.server.ts` has module-level side effects: `initGateway()`, `summarize.start()`, `startScheduler()` all auto-start on import.
-- `svelte.config.js` forces runes mode via `compilerOptions.runes` (returns `true` for project files, `undefined` for `node_modules`).
-- Root `svelte.config.js` uses `@sveltejs/adapter-auto` (dev). `packages/web/svelte.config.js` uses `@sveltejs/adapter-node` (production build).
-- `src/lib/index.ts` is a SvelteKit scaffold placeholder — not a barrel file.
-- `~/.qualia/data/memory.md` is read at session creation and snapshotted into `session.memory_snapshot`. Memory changes only affect new sessions.
-- `process.cwd()` is used as the workspace root for tool path safety checks.
-- `.svelte-kit/` contains auto-generated types — never edit manually.
-- `.npmrc` sets `engine-strict=true`.
-- `.vscode/extensions.json` recommends `svelte.svelte-vscode`.
+- `hooks.server.ts` auto-starts gateway, summarizer, and scheduler on import.
+- `svelte.config.js` forces runes for project files (not `node_modules`).
+- `packages/web/vite.config.ts` has `ssr.external: ['@gatanot/qualia_core', 'better-sqlite3']` — required because `better-sqlite3` is a native module that cannot be bundled, and `@gatanot/qualia_core` depends on it.
+- Root uses `@sveltejs/adapter-auto`; `packages/web/` uses `@sveltejs/adapter-node`.
+- `src/lib/index.ts` is a SvelteKit placeholder, not a barrel.
+- `~/.qualia/data/memory.md` snapshotted at session creation; changes only affect new sessions.
+- `process.cwd()` is the workspace root for tool path safety.
+- `.svelte-kit/` is auto-generated; never edit.
+- `.npmrc`: `engine-strict=true`.
 - `data/`, `docs/`, `opencode.json` are gitignored.
-- `README.md` is auto-generated SvelteKit scaffolding — not real project docs.
-- 消息编辑重生成：已有「回退到此」功能（双击 undo 按钮）删除该消息及后续内容并将原文放入输入框，不需要单独实现"消息编辑"功能。
-
+- `README.md` is scaffolding, not real docs.
+- Message editing: the existing "rollback to here" feature (double-click undo button) already deletes the message and subsequent content, placing the original text in the input box. Do not implement a separate "message editing" feature.

@@ -34,6 +34,7 @@ export async function runPrompt(args: ParsedArgs, io: CliIO): Promise<void> {
 		workspace,
 		message,
 		sessionId: flag(args, '--session'),
+		newSession: boolFlag(args, '--new-session'),
 		modelId: flag(args, '--model'),
 		storageEnabled: parseStorageOverride(flag(args, '--storage')),
 		signal: controller.signal,
