@@ -14,13 +14,33 @@ function parseStoredContent(content: string): string | ContentPart[] {
 	return content;
 }
 
-const _registry = new ToolRegistry();
-for (const t of CORE_TOOLS) {
-	if (t.name === 'edit' || t.name === 'read_memory') continue;
-	_registry.register(t);
+let _registry: ToolRegistry | null = null;
+let _toolContext: ToolContext | null = null;
+let _toolDefsCache: ReturnType<ToolRegistry['getDefinitions']> | null = null;
+
+function getRegistry(): ToolRegistry {
+	if (!_registry) {
+		_registry = new ToolRegistry();
+		for (const t of CORE_TOOLS) {
+			if (t.name === 'edit' || t.name === 'read_memory') continue;
+			_registry.register(t);
+		}
+		_toolDefsCache = _registry.getDefinitions();
+	}
+	return _registry;
 }
-const _toolContext = new ToolContext(process.cwd());
-export const _toolDefs = _registry.getDefinitions();
+
+function getToolContext(): ToolContext {
+	if (!_toolContext) {
+		_toolContext = new ToolContext(process.cwd());
+	}
+	return _toolContext;
+}
+
+function getToolDefs() {
+	if (!_toolDefsCache) getRegistry();
+	return _toolDefsCache!;
+}
 
 export function buildSystemMessage(): Message {
 	let content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
@@ -36,7 +56,7 @@ export async function completeWithToolLoop(
 	maxTokens: number,
 	temperature: number
 ): Promise<{ content: string; usage?: Usage }> {
-	const tools = _toolDefs;
+	const tools = getToolDefs();
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const response = await provider.chat({
@@ -61,7 +81,7 @@ export async function completeWithToolLoop(
 			try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
 
 			try {
-				const result = await _registry.execute(tc.function.name, args, _toolContext);
+				const result = await getRegistry().execute(tc.function.name, args, getToolContext());
 				messages.push({
 					role: 'tool',
 					content: result.output || result.error || '',
