@@ -3,10 +3,10 @@ import type { AgentEvent } from '@gatanot/qualia_core/agent';
 import { createStorage, type MessageRecord } from '@gatanot/qualia_core/storage';
 import { AgentRunner } from '../runtime/agent-runner.js';
 import { loadRuntimeConfig } from '../runtime/config-loader.js';
-import type { CliIO } from '../commands/index.js';
+import { type CliIO, VERSION } from '../commands/index.js';
 import { CliError } from '../errors.js';
 
-import { Container, Editor, type EditorTheme, SelectList, type SelectItem, type SelectListTheme, ProcessTerminal, TUI } from './index.js';
+import { Container, Editor, type EditorTheme, SelectList, type SelectItem, type SelectListTheme, ProcessTerminal, TUI, Text } from './index.js';
 import { getMarkdownTheme, theme } from './theme.js';
 import { UserMessageComponent } from './user-message.js';
 import { AssistantMessageComponent } from './assistant-message.js';
@@ -95,6 +95,9 @@ export class TuiApp {
 		this.updateFooter();
 
 		await this.loadHistory();
+		if (this.chat.children.length === 0) {
+			this.showWelcome();
+		}
 		if (this.chat.children.length > 0) this.ui.requestRender();
 	}
 
@@ -300,6 +303,26 @@ export class TuiApp {
 		this.chatSnapshot = -1;
 		this.lastSentText = '';
 		this.ui.requestRender();
+	}
+
+	private showWelcome(): void {
+		const logo = [
+			'   ██████╗ ██╗   ██╗ █████╗ ██╗     ██╗ █████╗',
+			'  ██╔═══██╗██║   ██║██╔══██╗██║     ██║██╔══██╗',
+			'  ██║   ██║██║   ██║███████║██║     ██║███████║',
+			'  ██║▄▄ ██║██║   ██║██╔══██║██║     ██║██╔══██║',
+			'  ╚██████╔╝╚██████╔╝██║  ██║███████╗██║██║  ██║',
+			'   ╚══▀▀═╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═╝',
+			'',
+		];
+		const info = [
+			`  Qualia v${VERSION}  ·  local AI companion`,
+			'',
+			'  Type / to see available commands.',
+			'',
+		];
+		const text = theme.fg('accent', logo.join('\n')) + theme.fg('muted', info.join('\n'));
+		this.chat.addChild(new Text(text, 1, 0));
 	}
 
 	private async send(msg: string): Promise<void> {
