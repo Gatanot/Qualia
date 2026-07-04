@@ -41,7 +41,7 @@ export class ConfirmInline implements Component {
 		const label = fg('warning', '⚠');
 		const tool = fg('accent', this.confirmation.toolName);
 		const reason = fg('muted', this.confirmation.reason);
-		const hint = fg('muted', '[Y] 确认  [N/Esc] 拒绝');
+		const hint = fg('muted', '[Y] Confirm  [N/Esc] Deny');
 
 		const left = ` ${label} ${tool}: ${reason}`;
 		const leftWidth = visibleWidth(left);

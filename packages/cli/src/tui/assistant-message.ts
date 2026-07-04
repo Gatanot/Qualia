@@ -22,7 +22,7 @@ export class AssistantMessageComponent extends Container {
 		mkTheme: MarkdownTheme,
 		outputPad = 1,
 		hideThinkingBlock = false,
-		hiddenThinkingLabel = '思考中...',
+		hiddenThinkingLabel = 'Thinking...',
 	) {
 		super();
 		this.mkTheme = mkTheme;
@@ -94,19 +94,19 @@ export class AssistantMessageComponent extends Container {
 		if (!this.hasToolCalls && this.stopReason === 'length') {
 			this.contentContainer.addChild(new Spacer(1));
 			this.contentContainer.addChild(new Text(
-				theme.fg('error', '错误：模型因达到最大输出 token 限制而停止，响应可能不完整。'),
+				theme.fg('error', 'Error: Model stopped due to max output token limit, response may be incomplete.'),
 				this.outputPad, 0,
 			));
 		} else if (!this.hasToolCalls && this.stopReason === 'aborted') {
 			this.contentContainer.addChild(new Spacer(1));
 			this.contentContainer.addChild(new Text(
-				theme.fg('error', this.errorMessage || '操作已中止'),
+				theme.fg('error', this.errorMessage || 'Operation aborted'),
 				this.outputPad, 0,
 			));
 		} else if (!this.hasToolCalls && this.stopReason === 'error') {
 			this.contentContainer.addChild(new Spacer(1));
 			this.contentContainer.addChild(new Text(
-				theme.fg('error', `错误：${this.errorMessage || '未知错误'}`),
+				theme.fg('error', `Error: ${this.errorMessage || 'Unknown error'}`),
 				this.outputPad, 0,
 			));
 		}

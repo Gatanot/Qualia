@@ -6,7 +6,7 @@ import { loadRuntimeConfig } from '../runtime/config-loader.js';
 import type { CliIO } from '../commands/index.js';
 import { CliError } from '../errors.js';
 
-import { Container, Editor, type EditorTheme, type SelectListTheme, ProcessTerminal, TUI } from './index.js';
+import { Container, Editor, type EditorTheme, SelectList, type SelectItem, type SelectListTheme, ProcessTerminal, TUI } from './index.js';
 import { getMarkdownTheme, theme } from './theme.js';
 import { UserMessageComponent } from './user-message.js';
 import { AssistantMessageComponent } from './assistant-message.js';
@@ -14,6 +14,8 @@ import { ToolExecutionComponent } from './tool-execution.js';
 import { FooterComponent } from './footer.js';
 import { StatusIndicator } from './status-indicator.js';
 import { ConfirmInline } from './confirm-dialog.js';
+import { createAutocompleteProvider, parseSlashCommand } from './slash-commands.js';
+import { getAllAvailableModels, getProviderForModel, setActiveModel, addProvider } from '@gatanot/qualia_core/config';
 
 const selectListTheme: SelectListTheme = {
 	selectedPrefix: (t) => theme.fg('accent', t),
@@ -58,6 +60,7 @@ export class TuiApp {
 	private providerName = '';
 	private confirmBar = new Container();
 	private confirmResolver: ((approved: boolean) => void) | null = null;
+	private lastInput = '';
 
 	constructor(private readonly o: TuiAppOptions) {
 		this.sessionId = o.newSession ? undefined : o.sessionId;
@@ -84,6 +87,8 @@ export class TuiApp {
 		this.ui.addChild(this.editor);
 		this.ui.addChild(this.footer);
 		this.ui.setFocus(this.editor);
+
+		this.editor.setAutocompleteProvider(createAutocompleteProvider(this.o.workspace));
 
 		this.ui.start();
 		this.updateFooter();
@@ -131,7 +136,7 @@ export class TuiApp {
 				}
 			}
 		}
-		for (const [, c] of renderedTools) c.finish(false, '工具结果未收到');
+		for (const [, c] of renderedTools) c.finish(false, 'Tool result not received');
 	}
 
 	private submit(v: string): void {
@@ -140,8 +145,150 @@ export class TuiApp {
 		this.editor.setText('');
 		if (t === '/exit' || t === '/quit') { this.ui.stop(); process.exit(0); }
 		if (this.sending) return;
+
+		const parsed = parseSlashCommand(t);
+		if (parsed.type === 'command') {
+			void this.executeSlashCommand(parsed.action, parsed.arg);
+			return;
+		}
+		if (parsed.type === 'none') return;
+
+		this.lastInput = v;
 		this.sending = true;
-		this.send(t).finally(() => { this.sending = false; });
+		this.send(parsed.type === 'send' ? parsed.value : t).finally(() => { this.sending = false; });
+	}
+
+	private async executeSlashCommand(action: string, arg?: string): Promise<void> {
+		switch (action) {
+			case 'model':
+				await this.cmdModel(arg);
+				break;
+			case 'new':
+				this.cmdNew();
+				break;
+			case 'session':
+				await this.cmdSession();
+				break;
+			case 'provider':
+				this.cmdProvider(arg);
+				break;
+			case 'undo':
+				this.cmdUndo();
+				break;
+		}
+		this.ui.requestRender();
+	}
+
+	private async cmdModel(modelId?: string): Promise<void> {
+		if (!modelId) {
+			const models = getAllAvailableModels();
+			const lines: string[] = ['Available models:'];
+			for (const m of models) {
+				const mark = m.model.id === this.modelId ? ' *' : '  ';
+				lines.push(`${mark} ${m.model.id} — ${m.model.name}`);
+			}
+			this.chat.addChild(newTextError(this.mkTheme, lines.join('\n')));
+			return;
+		}
+		try {
+			setActiveModel(modelId);
+			this.modelId = modelId;
+			const provider = getProviderForModel(modelId);
+			this.providerName = provider?.name || '';
+			this.updateFooter();
+			this.chat.addChild(newTextError(this.mkTheme, `Switched to model: ${modelId}`));
+		} catch (err) {
+			this.chat.addChild(newTextError(this.mkTheme, `Switch failed: ${(err as Error).message}`));
+		}
+	}
+
+	private cmdNew(): void {
+		this.sessionId = undefined;
+		this.chat.clear();
+		this.chat.addChild(newTextError(this.mkTheme, 'New conversation started'));
+	}
+
+	private async cmdSession(): Promise<void> {
+		const storage = createStorage({ enabled: true });
+		try {
+			const sessions = await storage.listSessions();
+			if (sessions.length === 0) {
+				this.chat.addChild(newTextError(this.mkTheme, 'No sessions'));
+				return;
+			}
+			const items: SelectItem[] = sessions.slice(0, 50).map((s) => ({
+				value: s.id,
+				label: s.title.length > 40 ? s.title.slice(0, 40) + '…' : s.title,
+				description: s.id.slice(0, 8),
+			}));
+			const list = new SelectList(items, Math.min(10, items.length), selectListTheme);
+			list.onSelect = async (item) => {
+				this.ui.hideOverlay();
+				this.ui.setFocus(this.editor);
+				await this.switchToSession(item.value);
+			};
+			list.onCancel = () => {
+				this.ui.hideOverlay();
+				this.ui.setFocus(this.editor);
+			};
+			this.ui.showOverlay(list, { anchor: 'center', width: '70%', maxHeight: '50%', margin: 1 });
+		} catch {
+			this.chat.addChild(newTextError(this.mkTheme, 'Unable to list sessions'));
+		}
+	}
+
+	private async switchToSession(id: string): Promise<void> {
+		const storage = createStorage({ enabled: true });
+		try {
+			const session = await storage.getSession(id);
+			if (!session) {
+				this.chat.addChild(newTextError(this.mkTheme, 'Session not found'));
+				return;
+			}
+			this.sessionId = id;
+			this.chat.clear();
+			await this.loadHistory();
+			this.ui.requestRender();
+		} catch {
+			this.chat.addChild(newTextError(this.mkTheme, 'Session switch failed'));
+		}
+	}
+
+	private cmdProvider(arg?: string): void {
+		if (!arg) {
+			this.chat.addChild(newTextError(this.mkTheme,
+				'Usage: /provider <type> <API Key>\nTypes: openai, deepseek, xiaomi, ollama\nExample: /provider openai sk-xxx'));
+			return;
+		}
+		const parts = arg.split(/\s+/);
+		const type = parts[0] as 'openai' | 'deepseek' | 'xiaomi' | 'ollama';
+		const apiKey = parts.slice(1).join(' ');
+		if (!['openai', 'deepseek', 'xiaomi', 'ollama'].includes(type)) {
+			this.chat.addChild(newTextError(this.mkTheme, `Unsupported provider type: ${type}`));
+			return;
+		}
+		if (!apiKey) {
+			this.chat.addChild(newTextError(this.mkTheme, 'API Key required'));
+			return;
+		}
+		try {
+			const name = `${type}-${Date.now().toString(36)}`;
+			addProvider({
+				type,
+				name,
+				apiKey,
+				baseURL: '',
+			});
+			this.chat.addChild(newTextError(this.mkTheme, `Provider added: ${type} (${name})`));
+		} catch (err) {
+			this.chat.addChild(newTextError(this.mkTheme, `Add failed: ${(err as Error).message}`));
+		}
+	}
+
+	private cmdUndo(): void {
+		if (this.lastInput) {
+			this.editor.setText(this.lastInput);
+		}
 	}
 
 	private async send(msg: string): Promise<void> {
@@ -247,7 +394,7 @@ export class TuiApp {
 			case 'retrying':
 				this.endStream();
 				this.clearStatus();
-				this.currentStatus = new StatusIndicator('retry', this.ui, `重试中 (${e.attempt}/${e.maxRetries})...`);
+				this.currentStatus = new StatusIndicator('retry', this.ui, `Retrying (${e.attempt}/${e.maxRetries})...`);
 				this.statusContainer.addChild(this.currentStatus);
 				this.ui.requestRender();
 				break;
@@ -284,7 +431,7 @@ export class TuiApp {
 
 	private startWorking(): void {
 		this.clearStatus();
-		this.currentStatus = new StatusIndicator('working', this.ui, 'AI 正在思考...');
+		this.currentStatus = new StatusIndicator('working', this.ui, 'AI is thinking...');
 		this.statusContainer.addChild(this.currentStatus);
 		this.ui.requestRender(true);
 	}

@@ -114,7 +114,7 @@ export class ToolExecutionComponent extends Container {
 			// Compact running: tool name + key arg + status
 			let line = nameText;
 			if (this.executionStarted && this.resultSuccess === undefined) {
-				line += ' ' + theme.fg('muted', '执行中...');
+				line += ' ' + theme.fg('muted', 'Running...');
 			}
 			if (this.keyArg) line += '  ' + theme.fg('muted', this.keyArg);
 			this.contentBox.addChild(new Text(line, 0, 0));
@@ -124,7 +124,7 @@ export class ToolExecutionComponent extends Container {
 		// Expanded mode: full details
 		let title = nameText;
 		if (this.executionStarted && this.resultSuccess === undefined) {
-			title += ' ' + theme.fg('muted', '执行中...');
+			title += ' ' + theme.fg('muted', 'Running...');
 		}
 		this.contentBox.addChild(new Text(title, 0, 0));
 
