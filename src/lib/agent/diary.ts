@@ -21,7 +21,7 @@ function getTodayDate(): { date: Date; y: number; m: string; d: string } {
 }
 
 function formatDatePath(y: number, m: string, d: string): string {
-	return `data/diary/${y}-${m}-${d}.md`;
+	return join(DIARY_DIR, `${y}-${m}-${d}.md`);
 }
 
 function getTodayFile(): string {

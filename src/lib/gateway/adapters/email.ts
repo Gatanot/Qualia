@@ -10,12 +10,22 @@ export interface EmailConfig {
 	to: string;
 }
 
+function parseCode(line: string): number {
+	const slice = line.slice(0, 3);
+	const code = parseInt(slice, 10);
+	return isNaN(code) ? -1 : code;
+}
+
+function isFinalLine(line: string): boolean {
+	return line.length >= 4 && line[3] === ' ';
+}
+
 async function sendSmtp(config: EmailConfig, subject: string, body: string): Promise<SendResult> {
 	const { smtpHost, smtpPort, smtpSecure, user, password, from, to } = config;
 
 	const auth = Buffer.from(`\x00${user}\x00${password}`).toString('base64');
 
-	const socket = await new Promise<{ write: (d: string) => void; close: () => void; onData: (cb: (d: string) => void) => void; onError: (cb: (e: Error) => void) => void }>((resolve, reject) => {
+	const socket = await new Promise<{ write: (d: string) => void; close: () => void; onData: (cb: (d: string) => void) => void; onRawData: (cb: (d: Buffer) => void) => void; onError: (cb: (e: Error) => void) => void }>((resolve, reject) => {
 		const tls = smtpSecure;
 		const net = tls ? require('node:tls') : require('node:net');
 
@@ -25,6 +35,7 @@ async function sendSmtp(config: EmailConfig, subject: string, body: string): Pro
 				write: (d: string) => s.write(d),
 				close: () => s.end(),
 				onData: (cb: (d: string) => void) => { s.on('data', (data: Buffer) => { buffer += data.toString(); cb(buffer); }); },
+				onRawData: (cb: (d: Buffer) => void) => { s.on('data', cb); },
 				onError: (cb: (e: Error) => void) => { s.on('error', cb); }
 			});
 		});
@@ -34,8 +45,8 @@ async function sendSmtp(config: EmailConfig, subject: string, body: string): Pro
 	});
 
 	return new Promise<SendResult>((resolve) => {
-		let lastResponse = '';
 		let step = 0;
+		let lineBuf = '';
 
 		const commands = [
 			`EHLO qualia\r\n`,
@@ -47,34 +58,43 @@ async function sendSmtp(config: EmailConfig, subject: string, body: string): Pro
 			`QUIT\r\n`
 		];
 
-		socket.onData((data) => {
-			lastResponse = data;
-			const code = parseInt(data.slice(0, 3), 10);
+		socket.onRawData((data) => {
+			lineBuf += data.toString();
 
-			if (code >= 400) {
-				socket.close();
-				resolve({ success: false, error: `SMTP error ${code}: ${data.slice(4, 100)}` });
-				return;
-			}
+			let idx: number;
+			while ((idx = lineBuf.indexOf('\r\n')) !== -1) {
+				const line = lineBuf.slice(0, idx + 2);
+				lineBuf = lineBuf.slice(idx + 2);
 
-			if (step === 0 && code === 220) step = 1;
-			else if (step === 1 && code === 250) step = 2;
-			else if (step === 2 && (code === 235 || code === 334)) step = 3;
-			else if (step === 3 && code === 250) step = 4;
-			else if (step === 4 && code === 250) step = 5;
-			else if (step === 5 && code === 354) step = 6;
-			else if (step === 6 && code === 250) {
-				socket.close();
-				resolve({ success: true });
-				return;
-			}
+				const code = parseCode(line);
+				if (code < 0) continue;
 
-			if (step < commands.length) {
-				socket.write(commands[step]);
-				if (step === 5) step = 6;
-			} else if (step === 6 && code === 250) {
-				socket.close();
-				resolve({ success: true });
+				const isFinal = isFinalLine(line);
+
+				if (code >= 400) {
+					socket.close();
+					resolve({ success: false, error: `SMTP error ${code}: ${line.slice(4, 100)}` });
+					return;
+				}
+
+				if (!isFinal) continue;
+
+				if (step === 0 && code === 220) step = 1;
+				else if (step === 1 && code === 250) step = 2;
+				else if (step === 2 && (code === 235 || code === 334)) step = 3;
+				else if (step === 3 && code === 250) step = 4;
+				else if (step === 4 && code === 250) step = 5;
+				else if (step === 5 && code === 354) step = 6;
+				else if (step === 6 && code === 250) {
+					socket.close();
+					resolve({ success: true });
+					return;
+				}
+
+				if (step < commands.length) {
+					socket.write(commands[step]);
+					if (step === 5) step = 6;
+				}
 			}
 		});
 

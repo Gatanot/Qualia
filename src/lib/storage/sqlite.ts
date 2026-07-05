@@ -117,6 +117,7 @@ export class SQLiteStorage implements Storage {
 			deleteFromSeq: this.db.prepare(`DELETE FROM messages WHERE session_id = ? AND seq >= ?`),
 			setTitle: this.db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`),
 			updateSummary: this.db.prepare(`UPDATE sessions SET summary = ?, last_summarized_at = ? WHERE id = ?`),
+			touchSession: this.db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`),
 			getStaleSessions: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (? - updated_at > ?) AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
@@ -217,7 +218,7 @@ export class SQLiteStorage implements Storage {
 			message.audio_path || null,
 			now, seq
 		);
-		this.stmts.updateSession.run(session.title, now, session.token_count, sessionId);
+		this.stmts.touchSession.run(now, sessionId);
 		return (await this.getMessage(id))!;
 	}
 
