@@ -28,6 +28,8 @@
 	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramEnabled: false, telegramBotToken: '', telegramAllowedUsers: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
+	let importMessage = $state('');
+	let importOk = $state(false);
 
 	$effect(() => {
 		loadConfig();
@@ -124,6 +126,43 @@
 			config = await res.json();
 		}
 	}
+
+	function exportConfig() {
+		const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = 'qualia-config.json';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
+	async function importConfig(files: FileList | null) {
+		if (!files || files.length === 0) return;
+		importMessage = '';
+		importOk = false;
+		try {
+			const text = await files[0].text();
+			const imported = JSON.parse(text);
+			const res = await fetch('/api/config', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'importConfig', config: imported })
+			});
+			if (res.ok) {
+				importMessage = '配置导入成功';
+				importOk = true;
+				await loadConfig();
+			} else {
+				const err = await res.json();
+				importMessage = err.error || '导入失败';
+			}
+		} catch (e) {
+			importMessage = '文件解析失败，请确认是有效的 JSON 配置文件';
+		}
+	}
 </script>
 
 <div class="settings">
@@ -153,6 +192,20 @@
 						onsave={() => loadConfig()}
 						onreset={() => loadConfig()}
 					/>
+				</section>
+				<section class="section">
+					<h2>导入 / 导出</h2>
+					<p class="section-desc">导出当前所有设置为 JSON 文件，或从文件导入设置。导入时不会删除已有供应商，同名供应商会合并更新。</p>
+					<div class="impexp-buttons">
+						<button class="action-btn" onclick={exportConfig}>导出设置</button>
+						<label class="action-btn">
+							导入设置
+							<input type="file" accept=".json" hidden onchange={(e) => importConfig((e.target as HTMLInputElement).files)} />
+						</label>
+					</div>
+					{#if importMessage}
+						<p class="import-msg" class:ok={importOk}>{importMessage}</p>
+					{/if}
 				</section>
 			{:else if activeTab === 'provider'}
 				<ProviderManager
@@ -287,5 +340,46 @@
 		margin: 0 0 1.25rem;
 		color: var(--text-primary);
 		font-weight: 500;
+	}
+
+	.section-desc {
+		font-size: var(--text-sm);
+		color: var(--text-secondary);
+		margin: 0 0 1rem;
+		line-height: 1.6;
+	}
+
+	.impexp-buttons {
+		display: flex;
+		gap: 0.75rem;
+	}
+
+	.action-btn {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.6rem 1.25rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--bg);
+		color: var(--text-primary);
+		font-family: inherit;
+		font-size: var(--text-sm);
+		cursor: pointer;
+		transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+	}
+
+	.action-btn:hover {
+		background: var(--hover);
+		border-color: var(--border);
+	}
+
+	.import-msg {
+		margin-top: 0.75rem;
+		font-size: var(--text-sm);
+		color: var(--text-secondary);
+	}
+
+	.import-msg.ok {
+		color: var(--success, #22c55e);
 	}
 </style>

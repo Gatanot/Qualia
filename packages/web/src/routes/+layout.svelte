@@ -10,13 +10,6 @@
 	let sidebarOpen = $state(false);
 	let customIcon = $state(false);
 
-	const lightVars = Object.entries(data.tokens.light as Record<string, string>)
-		.map(([k, v]) => `${k}: ${v};`)
-		.join('\n\t\t');
-	const darkVars = Object.entries(data.tokens.dark as Record<string, string>)
-		.map(([k, v]) => `${k}: ${v};`)
-		.join('\n\t\t');
-
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
 	}
@@ -40,6 +33,25 @@
 	$effect(() => {
 		initTheme();
 		loadConfig();
+	});
+
+	$effect(() => {
+		const light = data.tokens.light as Record<string, string>;
+		const dark = data.tokens.dark as Record<string, string>;
+		let lightCSS = ':root{';
+		for (const [k, v] of Object.entries(light)) lightCSS += `${k}:${v};`;
+		lightCSS += '}';
+		let darkCSS = '[data-theme="dark"]{';
+		for (const [k, v] of Object.entries(dark)) darkCSS += `${k}:${v};`;
+		darkCSS += '}';
+
+		const el = document.createElement('style');
+		el.id = 'qualia-theme-tokens';
+		el.textContent = lightCSS + darkCSS;
+
+		const prev = document.getElementById('qualia-theme-tokens');
+		if (prev) prev.remove();
+		document.head.appendChild(el);
 	});
 </script>
 
@@ -87,8 +99,6 @@
 
 <style>
 	:global(:root) {
-		{lightVars}
-
 		--radius-xs: 4px;
 		--radius-sm: 8px;
 		--radius-md: 12px;
@@ -129,10 +139,6 @@
 		--leading-relaxed: 1.75;
 		--leading-normal: 1.6;
 		--leading-snug: 1.4;
-	}
-
-	:global([data-theme="dark"]) {
-		{darkVars}
 	}
 
 	:global(body),
