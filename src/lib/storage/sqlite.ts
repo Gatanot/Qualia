@@ -1,5 +1,5 @@
 ﻿import Database from 'better-sqlite3';
-import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types';
+import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
 import type { ToolCall, Usage } from '$lib/ai';
 import { formatSessionTitle } from './utils';
 
@@ -16,6 +16,18 @@ interface MessageRow {
 	audio_path: string | null;
 	created_at: number;
 	seq: number;
+}
+
+interface AuditLogRow {
+	id: string;
+	session_id: string;
+	tool_name: string;
+	args: string;
+	confirmed: number;
+	success: number;
+	output: string;
+	workspace: string;
+	created_at: number;
 }
 
 interface SessionRow {
@@ -80,6 +92,20 @@ export class SQLiteStorage implements Storage {
 			);
 			CREATE INDEX IF NOT EXISTS idx_messages_session_seq
 				ON messages(session_id, seq);
+			CREATE TABLE IF NOT EXISTS audit_logs (
+				id          TEXT PRIMARY KEY,
+				session_id  TEXT NOT NULL,
+				tool_name   TEXT NOT NULL,
+				args        TEXT NOT NULL DEFAULT '{}',
+				confirmed   INTEGER NOT NULL DEFAULT 0,
+				success     INTEGER NOT NULL DEFAULT 0,
+				output      TEXT NOT NULL DEFAULT '',
+				workspace   TEXT NOT NULL DEFAULT '',
+				created_at  INTEGER NOT NULL,
+				FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+			);
+			CREATE INDEX IF NOT EXISTS idx_audit_logs_session
+				ON audit_logs(session_id);
 		`);
 
 		this.migrate();
@@ -122,7 +148,9 @@ export class SQLiteStorage implements Storage {
 			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`),
-			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`)
+			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`),
+			insertAuditLog: this.db.prepare(`INSERT INTO audit_logs (id, session_id, tool_name, args, confirmed, success, output, workspace, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			listAuditLogs: this.db.prepare(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ?`),
 		};
 	}
 
@@ -321,6 +349,39 @@ export class SQLiteStorage implements Storage {
 		const endOfDay = startOfDay + 86_400_000;
 		const rows = this.stmts.getTodayUpdated.all(startOfDay, endOfDay) as SessionRow[];
 		return rows.map((row) => this.rowToSession(row));
+	}
+
+	async addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<void> {
+		this.stmts.insertAuditLog.run(
+			crypto.randomUUID(),
+			entry.session_id,
+			entry.tool_name,
+			entry.args,
+			entry.confirmed ? 1 : 0,
+			entry.success ? 1 : 0,
+			entry.output.slice(0, 500),
+			entry.workspace,
+			Date.now()
+		);
+	}
+
+	async listAuditLogs(limit?: number): Promise<AuditLogEntry[]> {
+		const rows = this.stmts.listAuditLogs.all(limit ?? 100) as AuditLogRow[];
+		return rows.map((row) => this.rowToAuditLog(row));
+	}
+
+	private rowToAuditLog(row: AuditLogRow): AuditLogEntry {
+		return {
+			id: row.id,
+			session_id: row.session_id,
+			tool_name: row.tool_name,
+			args: row.args,
+			confirmed: row.confirmed === 1,
+			success: row.success === 1,
+			output: row.output,
+			workspace: row.workspace,
+			created_at: row.created_at
+		};
 	}
 
 	private rowToSession(row: SessionRow): Session {

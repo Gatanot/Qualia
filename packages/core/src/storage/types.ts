@@ -66,6 +66,18 @@ export interface MessageSearchResult {
 	createdAt: number;
 }
 
+export interface AuditLogEntry {
+	id: string;
+	session_id: string;
+	tool_name: string;
+	args: string;
+	confirmed: boolean;
+	success: boolean;
+	output: string;
+	workspace: string;
+	created_at: number;
+}
+
 /** 消息查询选项 */
 export interface MessageQueryOptions {
 	/** 返回最近 N 条 */
@@ -137,4 +149,9 @@ export interface Storage {
 
 	/** 列出所有不重复的工作区路径 */
 	listWorkspaces(): Promise<string[]>;
+
+	/** 写入工具调用审计日志 */
+	addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<void>;
+	/** 列出审计日志（按时间倒序，可选 limit） */
+	listAuditLogs(limit?: number): Promise<AuditLogEntry[]>;
 }

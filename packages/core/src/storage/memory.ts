@@ -1,4 +1,4 @@
-import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult } from './types.js';
+import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types.js';
 import { formatSessionTitle } from './utils.js';
 
 /**
@@ -12,6 +12,7 @@ export class MemoryStorage implements Storage {
 	private messages = new Map<string, MessageRecord[]>();
 	private messageById = new Map<string, MessageRecord>();
 	private seqCounter = new Map<string, number>();
+	private auditLogs: AuditLogEntry[] = [];
 
 	async createSession(title?: string, workspace?: string): Promise<Session> {
 		const id = crypto.randomUUID();
@@ -257,5 +258,17 @@ export class MemoryStorage implements Storage {
 			}
 		}
 		return Array.from(workspaces).sort();
+	}
+
+	async addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<void> {
+		this.auditLogs.push({
+			id: crypto.randomUUID(),
+			...entry,
+			created_at: Date.now()
+		});
+	}
+
+	async listAuditLogs(_limit?: number): Promise<AuditLogEntry[]> {
+		return [...this.auditLogs].sort((a, b) => b.created_at - a.created_at);
 	}
 }

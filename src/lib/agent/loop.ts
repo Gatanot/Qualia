@@ -455,6 +455,8 @@ export class AgentLoop {
 			this.toolResultMsgs.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
 			this.messages.push({ role: 'tool', content: `工具执行异常: ${errMsg}`, tool_call_id: tc.id, name });
 
+			this.logAudit(name, this.currentArgs, false, false, errMsg);
+
 			this.state = AgentState.POST_TOOL;
 			return;
 		}
@@ -465,6 +467,8 @@ export class AgentLoop {
 		const content = result.output || result.error || '';
 		this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name });
 		this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name });
+
+		this.logAudit(name, this.currentArgs, false, result.success, content);
 
 		await this.hooks.afterToolExecution?.(name, { success: result.success, output: result.output });
 
@@ -504,17 +508,23 @@ export class AgentLoop {
 				const content = retryResult.output || retryResult.error || '';
 				this.toolResultMsgs.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
 				this.messages.push({ role: 'tool', content, tool_call_id: tc.id, name: error.toolName });
+
+				this.logAudit(error.toolName, error.args, true, retryResult.success, content);
 			} catch (retryError) {
 				const errMsg = (retryError as Error).message;
 				yield { type: 'tool_result', name: error.toolName, success: false, output: errMsg };
 				this.toolResultMsgs.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
 				this.messages.push({ role: 'tool', content: `执行失败: ${errMsg}`, tool_call_id: tc.id, name: error.toolName });
+
+				this.logAudit(error.toolName, error.args, true, false, errMsg);
 			}
 		} else {
 			const cancelMsg = '用户取消了此操作';
 			yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
 			this.toolResultMsgs.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
 			this.messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
+
+			this.logAudit(error.toolName, error.args, true, false, cancelMsg);
 		}
 
 		this.pendingConfirmation = undefined;
@@ -687,5 +697,17 @@ ${rawContent}`;
 			}
 			return null;
 		}
+	}
+
+	private logAudit(toolName: string, args: Record<string, unknown>, confirmed: boolean, success: boolean, output: string): void {
+		this.storage.addAuditLog({
+			session_id: this.effectiveSessionId,
+			tool_name: toolName,
+			args: JSON.stringify(args),
+			confirmed,
+			success,
+			output,
+			workspace: this.toolContext.root
+		}).catch(() => { /* non-fatal */ });
 	}
 }

@@ -25,16 +25,14 @@ async function sendSmtp(config: EmailConfig, subject: string, body: string): Pro
 
 	const auth = Buffer.from(`\x00${user}\x00${password}`).toString('base64');
 
-	const socket = await new Promise<{ write: (d: string) => void; close: () => void; onData: (cb: (d: string) => void) => void; onRawData: (cb: (d: Buffer) => void) => void; onError: (cb: (e: Error) => void) => void }>((resolve, reject) => {
+	const socket = await new Promise<{ write: (d: string) => void; close: () => void; onRawData: (cb: (d: Buffer) => void) => void; onError: (cb: (e: Error) => void) => void }>((resolve, reject) => {
 		const tls = smtpSecure;
 		const net = tls ? require('node:tls') : require('node:net');
 
 		const s = net.connect({ host: smtpHost, port: smtpPort, servername: smtpHost }, () => {
-			let buffer = '';
 			resolve({
 				write: (d: string) => s.write(d),
 				close: () => s.end(),
-				onData: (cb: (d: string) => void) => { s.on('data', (data: Buffer) => { buffer += data.toString(); cb(buffer); }); },
 				onRawData: (cb: (d: Buffer) => void) => { s.on('data', cb); },
 				onError: (cb: (e: Error) => void) => { s.on('error', cb); }
 			});
