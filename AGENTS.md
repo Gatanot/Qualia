@@ -110,14 +110,17 @@ Compression is a temporary context-continuation mechanism. Summary（摘要）is
 
 ## Git
 
-- Branch: `feature/<name>`, `fix/<name>`. Never commit to `main`.
-- Merge to `main` only when asked.
+- Branch: `feature/<name>`, `fix/<name>`, `release/<version>`. Never commit to `main`.
+- Feature/fix branches merged to `main` after the task is complete and stable.
+- Release branches (`release/x.y.z`) are **not** merged to `main`. They serve as immutable publishing snapshots.
 - Commit messages: `prefix: short description`.
 - Run `npm run check` before committing.
 
 ## Publishing
 
-Sync root → packages. Publish in order: core → web → cli. Test with `npm link` or `npm pack` first.
+- `npm run release <version>` — full pipeline: bump → sync → build → pack
+- Publish order: core → web → cli. Test with `npm link` or `npm pack` first.
+- Old `.tgz` files can be deleted after publish; only the current version matters.
 
 ## tsconfig
 
@@ -130,7 +133,7 @@ Root excludes `packages/`. `packages/web/` extends `.svelte-kit/tsconfig.json`. 
 - `packages/web/vite.config.ts` has `ssr.external: ['@gatanot/qualia_core', 'better-sqlite3']` — required because `better-sqlite3` is a native module that cannot be bundled, and `@gatanot/qualia_core` depends on it.
 - Root uses `@sveltejs/adapter-auto`; `packages/web/` uses `@sveltejs/adapter-node`.
 - `src/lib/index.ts` is a SvelteKit placeholder, not a barrel.
-- `~/.qualia/data/memory.md` snapshotted at session creation; changes only affect new sessions.
+- `~/.qualia/data/memory.md` read fresh each time a session is entered; no snapshot. Workspace root `AGENTS.md` (if present) auto-loaded as project context.
 - `process.cwd()` is the default workspace root for tool path safety; `session.workspace` overrides it.
 - `.svelte-kit/` is auto-generated; never edit.
 - `.npmrc`: `engine-strict=true`.
