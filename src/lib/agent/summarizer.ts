@@ -3,7 +3,7 @@ import type { Storage } from '$lib/storage';
 import { readConfig } from '$lib/config';
 import { ToolRegistry, CORE_TOOLS, ToolContext } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
-import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts';
+import { DEFAULT_SYSTEM_PROMPT } from './prompts';
 
 function parseStoredContent(content: string): string | ContentPart[] {
 	if (content.startsWith('[')) {
@@ -43,8 +43,7 @@ function getToolDefs() {
 }
 
 export function buildSystemMessage(): Message {
-	let content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
-	content += SYSTEM_CONTEXT;
+	const content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
 	return { role: 'system', content };
 }
 

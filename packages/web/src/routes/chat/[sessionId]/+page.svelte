@@ -586,7 +586,7 @@
 
 			case 'done': {
 				if (currentAssistant && event.usage) {
-					currentAssistant.usage = event.usage as import('$lib/ai').Usage;
+					currentAssistant.usage = event.usage as import('@gatanot/qualia_core/ai').Usage;
 				}
 				if (event.contextWindow) {
 					contextWindow = event.contextWindow as number;

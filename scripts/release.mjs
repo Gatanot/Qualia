@@ -71,27 +71,33 @@ function gitUnstaged() {
 // ── Import Rewriting (DFA-based, no regex) ──
 
 /**
- * DFA scanner that finds `from 'path'` or `from "path"` in TypeScript source
- * and calls `rewrite(path)` for each. Returns rewritten source.
+ * DFA scanner that finds `from 'path'`, `from "path"`, `import('path')`, `import("path")`
+ * in TypeScript source and calls `rewrite(path)` for each. Returns rewritten source.
  *
- * States: NORMAL | F | FR | FRO | FROM | FROM_WS | IN_SINGLE | IN_DOUBLE
+ * Two keyword entry points feed the same quote-collecting states:
+ *   from → whitespace → quote  (import declaration)
+ *   import → ( → quote         (dynamic type import)
  */
 function rewriteFromPaths(content, rewrite) {
   const len = content.length;
   const out = [];
   let i = 0;
 
-  const ST = { NORMAL: 0, F: 1, FR: 2, FRO: 3, FROM: 4, FROM_WS: 5, IN_SINGLE: 6, IN_DOUBLE: 7 };
+  const ST = {
+    NORMAL: 0,      // scanning for 'f' or 'i'
+    F: 1, FR: 2, FRO: 3, FROM: 4, FROM_WS: 5,  // "from" keyword
+    I: 6, IM: 7, IMP: 8, IMPO: 9, IMPOR: 10, IMPORT: 11, IMPORT_LP: 12, // "import(" keyword
+    IN_SINGLE: 13, IN_DOUBLE: 14
+  };
+
   let state = ST.NORMAL;
-  let normalStart = 0; // start of current NORMAL-content region
-  let fromStart = 0;   // position of 'f' in matched "from"
-  let pathStart = 0;   // start of the import path inside quotes
-  let fromPrefix = ''; // "from " + whitespace + opening quote, for faithful reconstruction
+  let normalStart = 0;
+  let matchStart = 0;    // position of 'f' or 'i' at keyword start
+  let pathStart = 0;
+  let matchPrefix = '';  // "from '" or 'from "' or 'import("' or "import('"
 
   function flushNormalTo(end) {
-    if (end > normalStart) {
-      out.push(content.slice(normalStart, end));
-    }
+    if (end > normalStart) { out.push(content.slice(normalStart, end)); }
     normalStart = end;
   }
 
@@ -100,83 +106,105 @@ function rewriteFromPaths(content, rewrite) {
 
     switch (state) {
       case ST.NORMAL:
-        if (ch === 'f' || ch === 'F') {
-          fromStart = i;
-          state = ST.F;
-        }
+        if (ch === 'f' || ch === 'F') { from_i_start(ST.F, i); }
+        else if (ch === 'i' || ch === 'I') { from_i_start(ST.I, i); }
         break;
 
+      // ── "from" keyword ──
       case ST.F:
         if (ch === 'r' || ch === 'R') { state = ST.FR; }
-        else if (ch === 'f' || ch === 'F') { fromStart = i; }
-        else { state = ST.NORMAL; }
+        else { reset(ch); }
         break;
-
       case ST.FR:
         if (ch === 'o' || ch === 'O') { state = ST.FRO; }
-        else if (ch === 'f' || ch === 'F') { state = ST.F; fromStart = i; }
-        else { state = ST.NORMAL; }
+        else { reset(ch); }
         break;
-
       case ST.FRO:
         if (ch === 'm' || ch === 'M') { state = ST.FROM; }
-        else if (ch === 'f' || ch === 'F') { state = ST.F; fromStart = i; }
-        else { state = ST.NORMAL; }
+        else { reset(ch); }
         break;
-
       case ST.FROM:
-        if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
-          state = ST.FROM_WS;
-        } else if (ch === 'f' || ch === 'F') {
-          state = ST.F; fromStart = i;
-        } else {
-          state = ST.NORMAL;
-        }
+        if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') { state = ST.FROM_WS; }
+        else { reset(ch); }
         break;
-
       case ST.FROM_WS:
         if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') { break; }
-        if (ch === "'") {
-          state = ST.IN_SINGLE;
-          pathStart = i + 1;
-          fromPrefix = content.slice(fromStart, i + 1);
-        }
-        else if (ch === '"') {
-          state = ST.IN_DOUBLE;
-          pathStart = i + 1;
-          fromPrefix = content.slice(fromStart, i + 1);
-        }
-        else if (ch === 'f' || ch === 'F') { state = ST.F; fromStart = i; }
-        else { state = ST.NORMAL; }
+        if (ch === "'" || ch === '"') { open_quote(ch); }
+        else { reset(ch); }
         break;
 
+      // ── "import(" keyword ──
+      case ST.I:
+        if (ch === 'm' || ch === 'M') { state = ST.IM; }
+        else { reset(ch); }
+        break;
+      case ST.IM:
+        if (ch === 'p' || ch === 'P') { state = ST.IMP; }
+        else { reset(ch); }
+        break;
+      case ST.IMP:
+        if (ch === 'o' || ch === 'O') { state = ST.IMPO; }
+        else { reset(ch); }
+        break;
+      case ST.IMPO:
+        if (ch === 'r' || ch === 'R') { state = ST.IMPOR; }
+        else { reset(ch); }
+        break;
+      case ST.IMPOR:
+        if (ch === 't' || ch === 'T') { state = ST.IMPORT; }
+        else { reset(ch); }
+        break;
+      case ST.IMPORT:
+        if (ch === '(') { state = ST.IMPORT_LP; }
+        else { reset(ch); }
+        break;
+      case ST.IMPORT_LP:
+        if (ch === "'" || ch === '"') { open_quote(ch); }
+        else { reset(ch); }
+        break;
+
+      // ── Quote content (shared) ──
       case ST.IN_SINGLE:
-        if (ch === "'") {
-          flushNormalTo(fromStart);
-          const originalPath = content.slice(pathStart, i);
-          const newPath = rewrite(originalPath);
-          out.push(fromPrefix + newPath + "'");
-          normalStart = i + 1;
-          state = ST.NORMAL;
-        } else if (ch === '\\') { i++; }
+        if (ch === "'") { close_quote("'"); }
+        else if (ch === '\\') { i++; }
         break;
-
       case ST.IN_DOUBLE:
-        if (ch === '"') {
-          flushNormalTo(fromStart);
-          const originalPath = content.slice(pathStart, i);
-          const newPath = rewrite(originalPath);
-          out.push(fromPrefix + newPath + '"');
-          normalStart = i + 1;
-          state = ST.NORMAL;
-        } else if (ch === '\\') { i++; }
+        if (ch === '"') { close_quote('"'); }
+        else if (ch === '\\') { i++; }
         break;
     }
+
     i++;
   }
 
   flushNormalTo(len);
   return out.join('');
+
+  function from_i_start(newState, pos) {
+    matchStart = pos;
+    state = newState;
+  }
+
+  function open_quote(q) {
+    state = (q === "'") ? ST.IN_SINGLE : ST.IN_DOUBLE;
+    pathStart = i + 1;
+    matchPrefix = content.slice(matchStart, i + 1);
+  }
+
+  function close_quote(q) {
+    flushNormalTo(matchStart);
+    const originalPath = content.slice(pathStart, i);
+    const newPath = rewrite(originalPath);
+    out.push(matchPrefix + newPath + q);
+    normalStart = i + 1;
+    state = ST.NORMAL;
+  }
+
+  function reset(ch) {
+    if ((ch === 'f' || ch === 'F') && state !== ST.I) { from_i_start(ST.F, i); }
+    else if ((ch === 'i' || ch === 'I') && state !== ST.F) { from_i_start(ST.I, i); }
+    else { state = ST.NORMAL; }
+  }
 }
 
 /**

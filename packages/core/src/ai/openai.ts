@@ -55,7 +55,7 @@ export class OpenAIProvider implements AIProvider {
 		return this.parseResponse(json);
 	}
 
-	async *chatStream(request: ChatRequest): AsyncGenerator<import('./types').StreamChunk> {
+	async *chatStream(request: ChatRequest): AsyncGenerator<import('./types.js').StreamChunk> {
 		const body = this.buildBody({ ...request, stream: true });
 
 		const response = await fetchWithRetry(

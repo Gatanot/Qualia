@@ -16,7 +16,7 @@ export { runSummarizeJob } from './background.js';
 export type { SummarizeResult } from './background.js';
 export type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types.js';
 export { AgentState } from './types.js';
-export { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts.js';
+export { DEFAULT_SYSTEM_PROMPT, CONTINUATION_PREFIX } from './prompts.js';
 export { sanitizeMessages } from './message-sanitizer.js';
 export { AgentLogger } from './logger.js';
 export { createSummarizeWorker } from './summarize-worker.js';

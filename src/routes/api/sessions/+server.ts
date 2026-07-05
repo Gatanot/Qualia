@@ -28,7 +28,7 @@ export async function POST({ request }: { request: Request }) {
 		switch (action) {
 			case 'create': {
 				const { workspace } = body as { workspace?: string };
-				const session = await storage.createSession(undefined, undefined, workspace || '');
+				const session = await storage.createSession(undefined, workspace || '');
 				return new Response(JSON.stringify(session), {
 					headers: { 'Content-Type': 'application/json' }
 				});
@@ -57,7 +57,7 @@ export async function POST({ request }: { request: Request }) {
 					});
 				}
 				const beforeMessages = allMessages.filter((m) => m.seq < targetMsg.seq && m.role !== 'system');
-				const newSession = await storage.createSession(`[分叉] ${parentSession.title}`, parentSession.memory_snapshot, parentSession.workspace);
+				const newSession = await storage.createSession(`[分叉] ${parentSession.title}`, parentSession.workspace);
 				for (const msg of beforeMessages) {
 					await storage.addMessage(newSession.id, {
 						session_id: newSession.id,

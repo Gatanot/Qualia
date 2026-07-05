@@ -8,6 +8,7 @@ import type { AgentEvent, BuildResult, ConfirmFn, LoopHooks } from './types';
 import { AgentState } from './types';
 import { pendingSteering } from '$lib/chat-steering';
 import { sanitizeMessages } from './message-sanitizer';
+import { CONTINUATION_PREFIX } from './prompts';
 
 function extractTextContent(content: string | ContentPart[]): string {
 	if (typeof content === 'string') return content;
@@ -585,7 +586,7 @@ export class AgentLoop {
 		const systemMsg = messages.find((m) => m.role === 'system');
 		if (!systemMsg) return undefined;
 		const content = extractTextContent(systemMsg.content);
-		const marker = '[此对话延续自';
+		const marker = CONTINUATION_PREFIX;
 		const idx = content.indexOf(marker);
 		if (idx === -1) return undefined;
 		return content.slice(idx);
@@ -648,12 +649,12 @@ ${rawContent}`;
 			if (!compression) return null;
 
 			const newTitle = `[延续] ${parentSession.title}`;
-			const newSession = await this.storage.createSession(newTitle, parentSession.memory_snapshot, parentSession.workspace);
+			const newSession = await this.storage.createSession(newTitle, parentSession.workspace);
 
 			await this.storage.addMessage(newSession.id, {
 				session_id: newSession.id,
 				role: 'system',
-				content: `[此对话延续自会话「${parentSession.title || sessionId}」，以下为上下文压缩]\n\n${compression}`
+				content: `${CONTINUATION_PREFIX}会话「${parentSession.title || sessionId}」，以下为上下文压缩]\n\n${compression}`
 			});
 
 			await this.storage.addMessage(newSession.id, {

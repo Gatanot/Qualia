@@ -1,4 +1,4 @@
-export { AgentLoop, ContextBuilder, AgentLogger, generateSummary, generateDiary, runSummarizeJob, createSummarizeWorker, DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT, sanitizeMessages } from './agent/index.js';
+export { AgentLoop, ContextBuilder, AgentLogger, generateSummary, generateDiary, runSummarizeJob, createSummarizeWorker, DEFAULT_SYSTEM_PROMPT, CONTINUATION_PREFIX, sanitizeMessages } from './agent/index.js';
 export type { AgentEvent, BuildResult, ConfirmFn, LoopHooks, SummarizeResult } from './agent/index.js';
 export { AgentState } from './agent/types.js';
 

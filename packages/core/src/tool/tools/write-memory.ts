@@ -81,7 +81,7 @@ export const writeMemoryTool: ToolDef = {
 		required: ['category', 'content']
 	},
 
-	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, _ctx: import('../env.js').ToolContext): Promise<ToolResult> {
 		const category = args.category as string;
 		const content = args.content as string;
 

@@ -22,8 +22,6 @@ export interface Session {
 	summary: string;
 	/** 上次生成摘要的时间戳（Unix 毫秒），null 表示从未生成 */
 	last_summarized_at: number | null;
-	/** 会话创建时 memory.md 的快照 */
-	memory_snapshot: string;
 	/** 工作区路径（空字符串 = process.cwd()） */
 	workspace: string;
 }
@@ -83,8 +81,8 @@ export interface MessageQueryOptions {
  * 上层代码通过工厂函数创建，无需关心底层实现。
  */
 export interface Storage {
-	/** 创建新会话（可选 memory 快照、工作区路径） */
-	createSession(title?: string, memorySnapshot?: string, workspace?: string): Promise<Session>;
+	/** 创建新会话（可选工作区路径） */
+	createSession(title?: string, workspace?: string): Promise<Session>;
 	/** 获取会话 */
 	getSession(id: string): Promise<Session | null>;
 	/** 列出所有会话（按更新时间倒序） */
@@ -127,8 +125,6 @@ export interface Storage {
 	updateSummary(sessionId: string, summary: string): Promise<void>;
 	/** 获取今天 last_summarized_at 有变化的会话 */
 	getTodayUpdatedSessions(): Promise<Session[]>;
-	/** 设置会话的 memory 快照 */
-	setMemorySnapshot(sessionId: string, snapshot: string): Promise<void>;
 
 	/** 搜索消息内容（跨会话全文模糊匹配） */
 	searchMessages(query: string, sessionId?: string, limit?: number): Promise<MessageSearchResult[]>;

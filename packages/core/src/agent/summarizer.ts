@@ -3,7 +3,7 @@ import type { Storage } from '../storage/index.js';
 import { readConfig } from '../config/index.js';
 import { ToolRegistry, CORE_TOOLS, ToolContext } from '../tool/index.js';
 import { PendingConfirmation } from '../tool/index.js';
-import { DEFAULT_SYSTEM_PROMPT, SYSTEM_CONTEXT } from './prompts.js';
+import { DEFAULT_SYSTEM_PROMPT } from './prompts.js';
 
 function parseStoredContent(content: string): string | ContentPart[] {
 	if (content.startsWith('[')) {
@@ -43,8 +43,7 @@ function getToolDefs() {
 }
 
 export function buildSystemMessage(): Message {
-	let content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
-	content += SYSTEM_CONTEXT;
+	const content = readConfig().systemPrompt || DEFAULT_SYSTEM_PROMPT;
 	return { role: 'system', content };
 }
 

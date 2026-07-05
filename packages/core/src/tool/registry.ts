@@ -56,7 +56,7 @@ export class ToolRegistry {
 	}
 
 	/** 获取 OpenAI function calling 格式的工具定义列表 */
-	getDefinitions(): import('$lib/ai').Tool[] {
+	getDefinitions(): import('../ai/index.js').Tool[] {
 		return Array.from(this.tools.values()).map((tool) => ({
 			type: 'function' as const,
 			function: {

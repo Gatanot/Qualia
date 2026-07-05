@@ -78,12 +78,12 @@ export async function POST({ request }: { request: Request }) {
 
 		let sid = sessionId;
 		if (!sid) {
-			const session = await storage.createSession(undefined, undefined, workspace);
+			const session = await storage.createSession(undefined, workspace);
 			sid = session.id;
 		} else {
 			const exists = await storage.getSession(sid);
 			if (!exists) {
-				const session = await storage.createSession(undefined, undefined, workspace);
+				const session = await storage.createSession(undefined, workspace);
 				sid = session.id;
 			}
 		}

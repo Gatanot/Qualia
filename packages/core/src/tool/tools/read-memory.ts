@@ -18,7 +18,7 @@ export const readMemoryTool: ToolDef = {
 		required: []
 	},
 
-	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, _ctx: import('../env.js').ToolContext): Promise<ToolResult> {
 		try {
 			if (!existsSync(MEMORY_PATH)) {
 				return { success: true, output: '（暂无记忆内容）' };

@@ -13,7 +13,7 @@ export class MemoryStorage implements Storage {
 	private messageById = new Map<string, MessageRecord>();
 	private seqCounter = new Map<string, number>();
 
-	async createSession(title?: string, memorySnapshot?: string, workspace?: string): Promise<Session> {
+	async createSession(title?: string, workspace?: string): Promise<Session> {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const today = new Date(now);
@@ -33,7 +33,6 @@ export class MemoryStorage implements Storage {
 			token_count: 0,
 			summary: '',
 			last_summarized_at: null,
-			memory_snapshot: memorySnapshot || '',
 			workspace: workspace || ''
 		};
 		this.sessions.set(id, session);
@@ -73,7 +72,7 @@ export class MemoryStorage implements Storage {
 		const parent = this.sessions.get(id);
 		if (!parent) throw new Error(`会话不存在: ${id}`);
 
-		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.memory_snapshot);
+		const newSession = await this.createSession(`[分叉] ${parent.title}`, parent.workspace);
 		newSession.parent_id = id;
 		newSession.token_count = parent.token_count;
 		this.sessions.set(newSession.id, newSession);
@@ -214,13 +213,6 @@ export class MemoryStorage implements Storage {
 		}
 		result.sort((a, b) => (a.last_summarized_at || 0) - (b.last_summarized_at || 0));
 		return result;
-	}
-
-	async setMemorySnapshot(sessionId: string, snapshot: string): Promise<void> {
-		const session = this.sessions.get(sessionId);
-		if (session) {
-			session.memory_snapshot = snapshot;
-		}
 	}
 
 	async searchMessages(query: string, sessionId?: string, limit = 10): Promise<MessageSearchResult[]> {
