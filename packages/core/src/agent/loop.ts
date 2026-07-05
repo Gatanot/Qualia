@@ -598,6 +598,7 @@ export class AgentLoop {
 		allMessages: Message[],
 		systemPrompt?: string
 	): Promise<string | null> {
+		let newSessionId: string | null = null;
 		try {
 			const parentSession = await this.storage.getSession(sessionId);
 			if (!parentSession) return null;
@@ -650,6 +651,7 @@ ${rawContent}`;
 
 			const newTitle = `[延续] ${parentSession.title}`;
 			const newSession = await this.storage.createSession(newTitle, parentSession.workspace);
+			newSessionId = newSession.id;
 
 			await this.storage.addMessage(newSession.id, {
 				session_id: newSession.id,
@@ -680,6 +682,9 @@ ${rawContent}`;
 
 			return newSession.id;
 		} catch {
+			if (newSessionId) {
+				try { await this.storage.deleteSession(newSessionId); } catch { /* best-effort cleanup */ }
+			}
 			return null;
 		}
 	}

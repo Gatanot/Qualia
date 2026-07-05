@@ -51,7 +51,17 @@ export class OpenAIProvider implements AIProvider {
 			this.maxRetries
 		);
 
-		const json = await response.json();
+		let json: Record<string, unknown>;
+		try {
+			json = await response.json();
+		} catch (e) {
+			const text = await response.clone().text().catch(() => '');
+			throw new ProviderError(
+				`Non-JSON response (status ${response.status}): ${text.slice(0, 500)}`,
+				response.status,
+				text
+			);
+		}
 		return this.parseResponse(json);
 	}
 

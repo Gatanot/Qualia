@@ -6,7 +6,7 @@ Qualia — local personal AI companion. SvelteKit full-stack app (Node.js + brow
 
 ## Monorepo structure
 
-Root `src/` is the source of truth. `packages/*/src/` are stale snapshots for npm publishing. Never edit them directly.
+Root `src/` is the source of truth. `packages/*/src/` are stale snapshots for npm publishing. **Never edit them directly.**
 
 | Layer | Dev (root) | Published |
 |-------|-----------|-----------|
@@ -14,10 +14,15 @@ Root `src/` is the source of truth. `packages/*/src/` are stale snapshots for np
 | Web | `src/routes/`, `src/lib/components/`... | `packages/web/src/` → `@gatanot/qualia_web` |
 | CLI | — | `packages/cli/src/` → `@gatanot/qualia` |
 
+**Sync required before dev/check.** `npm run dev` and `npm run check` both run inside `packages/web/`, which uses the snapshot. After editing root `src/`, run `npm run sync` (or `npm run sync:web` / `npm run sync:core`) to copy changes into `packages/*/src/` with import rewriting. "`svelte-kit sync`" (in `packages/web/package.json prepare`) is a different thing — it generates `.svelte-kit/` and is not our sync.
+
 ## Commands
 
 ```sh
 npm run dev            # dev server → http://localhost:5173 (delegates to packages/web)
+npm run sync           # copy root src/ → packages/*/src/ with import rewriting
+npm run sync:web       # sync only packages/web
+npm run sync:core      # sync only packages/core
 npm run check          # primary verification: svelte-kit sync + svelte-check (packages/web)
 npm run check:watch    # check in watch mode (packages/web)
 npm run check:core     # tsc --noEmit on packages/core
@@ -26,13 +31,12 @@ npx vitest run         # run tests against root src/**/*.test.ts
 npx vitest             # TDD mode (watch, root src/**/*.test.ts)
 ```
 
-Always run `npm run check` after changes. `svelte-kit sync` runs on `npm install` via `prepare` in packages/web.
-`npm run build` delegates to packages/web only (not core/cli).
+Always run `npm run check` before committing. If you edited root `src/`, run `npm run sync` first — `check` runs against the snapshot in `packages/web/`. `npm run build` delegates to packages/web only (not core/cli).
 
 ## Stack
 
 - SvelteKit 2 + Svelte 5 (runes mode forced) + TypeScript 6 + Vite 8
-- `better-sqlite3` (sync, native)
+- `better-sqlite3` (sync, native — requires node-gyp, Python, C++ build tools)
 - Imports: use `$lib/xxx` exclusively (SvelteKit built-in alias, not in tsconfig)
 - Config: `~/.qualia/config.json`, no `.env` file
 - Storage: `storageEnabled: true` by default (SQLite)
@@ -67,7 +71,7 @@ API routes under `src/routes/api/`: `chat` (SSE), `confirm`, `steer`, `config`, 
 
 - No defensive programming. Throw on unexpected state.
 - `+server.ts` exports only HTTP method names or `_`-prefixed. Any other export breaks with 500.
-- **No regex for text matching/parsing.** Use hand-written character-level DFA instead. Exceptions: route patterns in `+server.ts`, framework config files, command classification in `safeguard.ts`, and Unicode surrogate replacement in `message-sanitizer.ts`.
+- **No regex for text matching/parsing.** Use hand-written character-level DFA instead. Exceptions: route patterns in `+server.ts`, framework config files, command classification in `safeguard.ts`, and Unicode surrogate replacement in `message-sanitizer.ts`. The release sync script (`scripts/release.mjs`) likewise uses a DFA for import path rewriting — this is a deliberate convention.
 
 ## Tool confirmation & steering
 
@@ -102,7 +106,7 @@ AI schedules one-shot tasks. `schedule_task` requires reading current time via `
 
 When `contextWindow - token_count < 20000` after reply: LLM compresses conversation → new session `[延续] xxx` with compression as system message → current exchange copied in → `forked` SSE event → frontend navigates to new session. Config `compressionMode`: `auto` (uses threshold above) or `custom` (uses `compressionThreshold`, default 256000).
 
-Compression is a temporary context-continuation mechanism. Summary（摘要）is a separate background system for diary/records.
+Compression is a temporary context-continuation mechanism. Summary (摘要) is a separate background system for diary/records.
 
 ## Unified theme
 
@@ -118,7 +122,7 @@ Compression is a temporary context-continuation mechanism. Summary（摘要）is
 
 ## Publishing
 
-- `npm run release <version>` — full pipeline: bump → sync → build → pack
+- `npm run release -- <version>` — full pipeline: bump → sync → build → pack
 - Publish order: core → web → cli. Test with `npm link` or `npm pack` first.
 - Old `.tgz` files can be deleted after publish; only the current version matters.
 
@@ -130,7 +134,7 @@ Root excludes `packages/`. `packages/web/` extends `.svelte-kit/tsconfig.json`. 
 
 - `hooks.server.ts` auto-starts gateway, summarizer, and scheduler on import.
 - `svelte.config.js` forces runes for project files (not `node_modules`).
-- `packages/web/vite.config.ts` has `ssr.external: ['@gatanot/qualia_core', 'better-sqlite3']` — required because `better-sqlite3` is a native module that cannot be bundled, and `@gatanot/qualia_core` depends on it.
+- `packages/web/vite.config.ts` has `ssr.external: ['@gatanot/qualia_core', 'better-sqlite3']` — required because `better-sqlite3` is a native module that cannot be bundled, and `@gatanot/qualia_core` depends on it. Do not remove or inline these.
 - Root uses `@sveltejs/adapter-auto`; `packages/web/` uses `@sveltejs/adapter-node`.
 - `src/lib/index.ts` is a SvelteKit placeholder, not a barrel.
 - `~/.qualia/data/memory.md` read fresh each time a session is entered; no snapshot. Workspace root `AGENTS.md` (if present) auto-loaded as project context.

@@ -16,6 +16,10 @@ export class ProviderError extends Error {
 	}
 }
 
+function isTimeoutAbort(error: unknown): boolean {
+	return error instanceof DOMException && error.name === 'AbortError';
+}
+
 /**
  * 异步延时
  * @param ms - 毫秒
@@ -61,6 +65,7 @@ export async function fetchWithRetry(
 			}
 		} catch (error) {
 			if (error instanceof ProviderError) throw error;
+			if (isTimeoutAbort(error)) throw error;
 			lastError = error;
 		}
 
