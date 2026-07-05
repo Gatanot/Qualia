@@ -33,6 +33,7 @@ packages/*/build/
 
 # temp
 temp.md
+bugs.md
 /temp
 
 # opencode
