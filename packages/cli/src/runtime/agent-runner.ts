@@ -105,7 +105,7 @@ export class AgentRunner {
 
 	private async resolveSessionId(storage: Storage, options: AgentRunOptions): Promise<string> {
 		if (options.newSession) {
-			const session = await storage.createSession(undefined, undefined, options.workspace);
+			const session = await storage.createSession(undefined, options.workspace);
 			return session.id;
 		}
 		if (options.sessionId) {
@@ -114,7 +114,7 @@ export class AgentRunner {
 			throw new CliError('USAGE', `会话不存在：${options.sessionId}`);
 		}
 
-		const session = await storage.createSession(undefined, undefined, options.workspace);
+		const session = await storage.createSession(undefined, options.workspace);
 		return session.id;
 	}
 }

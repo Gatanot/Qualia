@@ -1,6 +1,6 @@
 {
   "name": "@gatanot/qualia_core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Qualia AI companion — core engine (LLM providers, agent loop, tools, storage)",
   "license": "MIT",
   "type": "module",
@@ -29,7 +29,9 @@
     "./chat-confirm": "./dist/chat-confirm.js",
     "./chat-steering": "./dist/chat-steering.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
