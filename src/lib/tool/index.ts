@@ -32,11 +32,11 @@ import { editTool } from './tools/edit';
 import { execTool } from './tools/exec';
 import { webSearchTool } from './tools/web-search';
 import { readMemoryTool } from './tools/read-memory';
-import { writeMemoryTool } from './tools/write-memory';
+import { proposeMemoryTool } from './tools/propose-memory';
 import { scheduleTaskTool } from './tools/schedule-task';
 import { readTasksTool } from './tools/read-tasks';
 
-export { readFileTool, writeFileTool, deleteFileTool, editTool, execTool, webSearchTool, readMemoryTool, writeMemoryTool, scheduleTaskTool, readTasksTool };
+export { readFileTool, writeFileTool, deleteFileTool, editTool, execTool, webSearchTool, readMemoryTool, proposeMemoryTool, scheduleTaskTool, readTasksTool };
 export { createSearchHistoryTool } from './tools/search-history';
 
 import type { ToolDef } from './types';
@@ -50,7 +50,7 @@ export const CORE_TOOLS: ToolDef[] = [
 	execTool,
 	webSearchTool,
 	readMemoryTool,
-	writeMemoryTool,
+	proposeMemoryTool,
 ];
 
 /** 调度工具集 */

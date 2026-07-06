@@ -11,14 +11,14 @@ const CORE_SRC = join(ROOT, 'packages', 'core', 'src');
 const WEB_SRC = join(ROOT, 'packages', 'web', 'src');
 
 // ── Directories in SRC_LIB that belong to core ──
-const CORE_DIRS = ['agent', 'ai', 'config', 'concurrency', 'gateway', 'storage', 'task', 'tool'];
+const CORE_DIRS = ['agent', 'ai', 'config', 'concurrency', 'gateway', 'memory', 'storage', 'task', 'tool'];
 
 // Standalone .ts files in SRC_LIB that belong to core (not in a subdirectory)
 const CORE_STANDALONE = ['chat-confirm.ts', 'chat-steering.ts', 'markdown.ts', 'paths.ts'];
 
 // Core modules whose $lib/xxx imports should become @gatanot/qualia_core/xxx in web
 const CORE_MODULES = new Set([
-  'agent', 'ai', 'config', 'concurrency', 'gateway', 'storage', 'task', 'tool',
+  'agent', 'ai', 'config', 'concurrency', 'gateway', 'memory', 'storage', 'task', 'tool',
   'chat-confirm', 'chat-steering', 'markdown', 'paths'
 ]);
 

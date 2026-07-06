@@ -1,4 +1,5 @@
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
+import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus } from '$lib/memory/types';
 import { formatSessionTitle } from './utils';
 
 /**
@@ -270,5 +271,78 @@ export class MemoryStorage implements Storage {
 
 	async listAuditLogs(_limit?: number): Promise<AuditLogEntry[]> {
 		return [...this.auditLogs].sort((a, b) => b.created_at - a.created_at);
+	}
+
+	// ── Memory stubs (in-memory fallback) ──
+
+	private _memories = new Map<string, Memory>();
+	private _candidates = new Map<string, MemoryCandidate>();
+
+	async createMemory(input: Omit<Memory, 'id' | 'created_at' | 'updated_at'>): Promise<Memory> {
+		const id = crypto.randomUUID();
+		const now = Date.now();
+		const memory: Memory = { id, ...input, created_at: now, updated_at: now };
+		this._memories.set(id, memory);
+		return memory;
+	}
+
+	async getMemory(id: string): Promise<Memory | null> {
+		return this._memories.get(id) ?? null;
+	}
+
+	async listMemories(filters?: MemoryListFilters): Promise<Memory[]> {
+		let result = Array.from(this._memories.values());
+		if (filters?.type) result = result.filter((m) => m.type === filters.type);
+		if (filters?.status) result = result.filter((m) => m.status === filters.status);
+		if (filters?.search) {
+			const q = filters.search.toLowerCase();
+			result = result.filter((m) => m.content.toLowerCase().includes(q));
+		}
+		if (filters?.offset) result = result.slice(filters.offset);
+		if (filters?.limit) result = result.slice(0, filters.limit);
+		return result;
+	}
+
+	async updateMemory(id: string, patch: Partial<Pick<Memory, 'content' | 'status' | 'priority' | 'tags'>>): Promise<Memory> {
+		const m = this._memories.get(id);
+		if (!m) throw new Error(`记忆不存在: ${id}`);
+		if (patch.content !== undefined) m.content = patch.content;
+		if (patch.status !== undefined) m.status = patch.status;
+		if (patch.priority !== undefined) m.priority = patch.priority;
+		if (patch.tags !== undefined) m.tags = patch.tags;
+		m.updated_at = Date.now();
+		return m;
+	}
+
+	async archiveMemory(id: string): Promise<void> {
+		const m = this._memories.get(id);
+		if (m) { m.status = 'archived'; m.updated_at = Date.now(); }
+	}
+
+	async deleteMemory(id: string): Promise<void> {
+		this._memories.delete(id);
+	}
+
+	async createCandidate(input: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate> {
+		const id = crypto.randomUUID();
+		const now = Date.now();
+		const candidate: MemoryCandidate = { id, ...input, created_at: now, resolved_at: null };
+		this._candidates.set(id, candidate);
+		return candidate;
+	}
+
+	async getCandidate(id: string): Promise<MemoryCandidate | null> {
+		return this._candidates.get(id) ?? null;
+	}
+
+	async listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]> {
+		const all = Array.from(this._candidates.values());
+		if (status) return all.filter((c) => c.status === status);
+		return all;
+	}
+
+	async resolveCandidate(id: string, status: CandidateStatus): Promise<void> {
+		const c = this._candidates.get(id);
+		if (c) { c.status = status; c.resolved_at = Date.now(); }
 	}
 }

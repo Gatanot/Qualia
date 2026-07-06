@@ -264,6 +264,10 @@
 	</div>
 
 	<div class="sidebar-footer">
+		<a href="/memory" class="footer-link" class:active={$page.url.pathname === '/memory'}>
+			<span class="material-symbols-rounded">psychology</span>
+			记忆
+		</a>
 		<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
 			<span class="material-symbols-rounded">settings</span>
 			设置

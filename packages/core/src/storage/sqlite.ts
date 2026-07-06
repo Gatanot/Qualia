@@ -1,5 +1,6 @@
 ﻿import Database from 'better-sqlite3';
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types.js';
+import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus, MemoryType, MemoryStatus, MemorySourceKind } from '../memory/types.js';
 import type { ToolCall, Usage } from '../ai/index.js';
 import { formatSessionTitle } from './utils.js';
 
@@ -41,6 +42,31 @@ interface SessionRow {
 	summary: string;
 	last_summarized_at: number | null;
 	workspace: string;
+}
+
+interface MemoryRow {
+	id: string;
+	type: string;
+	content: string;
+	source_session_id: string | null;
+	source_kind: string;
+	confidence: number;
+	status: string;
+	priority: number;
+	tags: string;
+	created_at: number;
+	updated_at: number;
+}
+
+interface CandidateRow {
+	id: string;
+	proposed_type: string;
+	content: string;
+	reason: string;
+	confidence: number;
+	status: string;
+	created_at: number;
+	resolved_at: number | null;
 }
 
 /**
@@ -106,6 +132,31 @@ export class SQLiteStorage implements Storage {
 			);
 			CREATE INDEX IF NOT EXISTS idx_audit_logs_session
 				ON audit_logs(session_id);
+			CREATE TABLE IF NOT EXISTS memories (
+				id                TEXT PRIMARY KEY,
+				type              TEXT NOT NULL DEFAULT 'fact',
+				content           TEXT NOT NULL DEFAULT '',
+				source_session_id TEXT,
+				source_kind       TEXT NOT NULL DEFAULT 'manual',
+				confidence        REAL NOT NULL DEFAULT 1.0,
+				status            TEXT NOT NULL DEFAULT 'active',
+				priority          INTEGER NOT NULL DEFAULT 0,
+				tags              TEXT NOT NULL DEFAULT '[]',
+				created_at        INTEGER NOT NULL,
+				updated_at        INTEGER NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS idx_memories_status
+				ON memories(status);
+			CREATE TABLE IF NOT EXISTS memory_candidates (
+				id            TEXT PRIMARY KEY,
+				proposed_type TEXT NOT NULL DEFAULT 'fact',
+				content       TEXT NOT NULL DEFAULT '',
+				reason        TEXT NOT NULL DEFAULT '',
+				confidence    REAL NOT NULL DEFAULT 1.0,
+				status        TEXT NOT NULL DEFAULT 'pending',
+				created_at    INTEGER NOT NULL,
+				resolved_at   INTEGER
+			);
 		`);
 
 		this.migrate();
@@ -151,6 +202,21 @@ export class SQLiteStorage implements Storage {
 			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`),
 			insertAuditLog: this.db.prepare(`INSERT INTO audit_logs (id, session_id, tool_name, args, confirmed, success, output, workspace, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			listAuditLogs: this.db.prepare(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ?`),
+			// Memory CRUD
+			insertMemory: this.db.prepare(`INSERT INTO memories (id, type, content, source_session_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			getMemory: this.db.prepare(`SELECT * FROM memories WHERE id = ?`),
+			listActiveMemories: this.db.prepare(`SELECT * FROM memories WHERE status = 'active' ORDER BY priority DESC, updated_at DESC`),
+			listMemoriesByType: this.db.prepare(`SELECT * FROM memories WHERE status = 'active' AND type = ? ORDER BY priority DESC, updated_at DESC`),
+			searchMemories: this.db.prepare(`SELECT * FROM memories WHERE status = 'active' AND content LIKE ? ORDER BY priority DESC, updated_at DESC`),
+			updateMemoryContent: this.db.prepare(`UPDATE memories SET content = ?, status = ?, priority = ?, tags = ?, updated_at = ? WHERE id = ?`),
+			archiveMemory: this.db.prepare(`UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ?`),
+			deleteMemoryStmt: this.db.prepare(`DELETE FROM memories WHERE id = ?`),
+			// Candidate CRUD
+			insertCandidate: this.db.prepare(`INSERT INTO memory_candidates (id, proposed_type, content, reason, confidence, status, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`),
+			getCandidate: this.db.prepare(`SELECT * FROM memory_candidates WHERE id = ?`),
+			listCandidatesByStatus: this.db.prepare(`SELECT * FROM memory_candidates WHERE status = ? ORDER BY created_at DESC`),
+			listAllCandidates: this.db.prepare(`SELECT * FROM memory_candidates ORDER BY created_at DESC`),
+			resolveCandidateStmt: this.db.prepare(`UPDATE memory_candidates SET status = ?, resolved_at = ? WHERE id = ?`),
 		};
 	}
 
@@ -413,6 +479,129 @@ export class SQLiteStorage implements Storage {
 			audio_path: row.audio_path || undefined,
 			created_at: row.created_at,
 			seq: row.seq
+		};
+	}
+
+	// ── Memory CRUD ──
+
+	async createMemory(input: Omit<Memory, 'id' | 'created_at' | 'updated_at'>): Promise<Memory> {
+		const id = crypto.randomUUID();
+		const now = Date.now();
+		this.stmts.insertMemory.run(
+			id, input.type, input.content,
+			input.source_session_id ?? null,
+			input.source_kind, input.confidence, input.status,
+			input.priority, JSON.stringify(input.tags), now, now
+		);
+		return (await this.getMemory(id))!;
+	}
+
+	async getMemory(id: string): Promise<Memory | null> {
+		const row = this.stmts.getMemory.get(id) as MemoryRow | undefined;
+		return row ? this.rowToMemory(row) : null;
+	}
+
+	async listMemories(filters?: MemoryListFilters): Promise<Memory[]> {
+		let rows: MemoryRow[];
+		if (filters?.search) {
+			rows = this.stmts.searchMemories.all(`%${filters.search}%`) as MemoryRow[];
+		} else if (filters?.type) {
+			rows = this.stmts.listMemoriesByType.all(filters.type) as MemoryRow[];
+		} else {
+			rows = this.stmts.listActiveMemories.all() as MemoryRow[];
+		}
+
+		let result = rows.map((r) => this.rowToMemory(r));
+
+		if (filters?.status) {
+			result = result.filter((m) => m.status === filters.status);
+		}
+
+		if (filters?.offset) result = result.slice(filters.offset);
+		if (filters?.limit) result = result.slice(0, filters.limit);
+
+		return result;
+	}
+
+	async updateMemory(id: string, patch: Partial<Pick<Memory, 'content' | 'status' | 'priority' | 'tags'>>): Promise<Memory> {
+		const existing = await this.getMemory(id);
+		if (!existing) throw new Error(`记忆不存在: ${id}`);
+		const now = Date.now();
+		this.stmts.updateMemoryContent.run(
+			patch.content ?? existing.content,
+			patch.status ?? existing.status,
+			patch.priority ?? existing.priority,
+			JSON.stringify(patch.tags ?? existing.tags),
+			now,
+			id
+		);
+		return (await this.getMemory(id))!;
+	}
+
+	async archiveMemory(id: string): Promise<void> {
+		this.stmts.archiveMemory.run(Date.now(), id);
+	}
+
+	async deleteMemory(id: string): Promise<void> {
+		this.stmts.deleteMemoryStmt.run(id);
+	}
+
+	// ── Candidate CRUD ──
+
+	async createCandidate(input: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate> {
+		const id = crypto.randomUUID();
+		const now = Date.now();
+		this.stmts.insertCandidate.run(
+			id, input.proposed_type, input.content,
+			input.reason, input.confidence, input.status, now
+		);
+		return (await this.getCandidate(id))!;
+	}
+
+	async getCandidate(id: string): Promise<MemoryCandidate | null> {
+		const row = this.stmts.getCandidate.get(id) as CandidateRow | undefined;
+		return row ? this.rowToCandidate(row) : null;
+	}
+
+	async listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]> {
+		const rows = status
+			? (this.stmts.listCandidatesByStatus.all(status) as CandidateRow[])
+			: (this.stmts.listAllCandidates.all() as CandidateRow[]);
+		return rows.map((r) => this.rowToCandidate(r));
+	}
+
+	async resolveCandidate(id: string, status: CandidateStatus, _resolvedMemoryId?: string): Promise<void> {
+		this.stmts.resolveCandidateStmt.run(status, Date.now(), id);
+	}
+
+	// ── Row mappers ──
+
+	private rowToMemory(row: MemoryRow): Memory {
+		return {
+			id: row.id,
+			type: row.type as MemoryType,
+			content: row.content,
+			source_session_id: row.source_session_id,
+			source_kind: row.source_kind as MemorySourceKind,
+			confidence: row.confidence,
+			status: row.status as MemoryStatus,
+			priority: row.priority,
+			tags: JSON.parse(row.tags),
+			created_at: row.created_at,
+			updated_at: row.updated_at
+		};
+	}
+
+	private rowToCandidate(row: CandidateRow): MemoryCandidate {
+		return {
+			id: row.id,
+			proposed_type: row.proposed_type as MemoryType,
+			content: row.content,
+			reason: row.reason,
+			confidence: row.confidence,
+			status: row.status as CandidateStatus,
+			created_at: row.created_at,
+			resolved_at: row.resolved_at
 		};
 	}
 }

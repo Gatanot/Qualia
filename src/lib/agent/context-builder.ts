@@ -4,25 +4,9 @@ import type { Message, ImageContent, ContentPart } from '$lib/ai';
 import type { Storage } from '$lib/storage';
 import type { BuildResult } from './types';
 import { DEFAULT_SYSTEM_PROMPT } from './prompts';
-import { getDataPath } from '$lib/paths';
+import { MemoryService } from '$lib/memory';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
-
-const MEMORY_PATH = getDataPath('memory.md');
-
-function readMemoryMd(): string {
-	try {
-		if (existsSync(MEMORY_PATH)) {
-			return readFileSync(MEMORY_PATH, 'utf-8').replace(/\r/g, '').trim();
-		}
-	} catch { /* ignore */ }
-	return '';
-}
-
-function formatMemorySection(content: string): string {
-	if (!content) return '';
-	return `\n\n## 用户信息\n\n以下是关于你和用户的已知信息，请据此调整你的行为：\n\n${content}`;
-}
 
 function readAgentsMd(workspace: string): string {
 	const root = workspace || process.cwd();
@@ -40,17 +24,41 @@ function formatAgentsSection(content: string): string {
 	return `\n\n## 项目说明\n\n以下是当前工作区的项目说明，来自 AGENTS.md：\n\n${content}`;
 }
 
+function formatMemorySection(memories: Array<{ type: string; content: string; confidence: number }>): string {
+	if (memories.length === 0) return '';
+
+	const rules = memories.filter((m) => m.type === 'rule');
+	const others = memories.filter((m) => m.type !== 'rule');
+
+	let section = '\n\n## 长期记忆\n';
+
+	if (rules.length) {
+		section += '\n### 用户长期规则\n';
+		for (const m of rules) {
+			section += `- [rule, confidence: ${m.confidence.toFixed(1)}] ${m.content}\n`;
+		}
+	}
+	if (others.length) {
+		section += '\n### 用户偏好与事实\n';
+		for (const m of others) {
+			const typeLabel = { fact: '事实', preference: '偏好', event: '事件' }[m.type] || m.type;
+			section += `- [${typeLabel}, confidence: ${m.confidence.toFixed(1)}] ${m.content}\n`;
+		}
+	}
+
+	return section;
+}
+
 /**
  * ContextBuilder — 上下文构建器
  *
  * 在每次进入会话时组装完整的消息列表：
- * 1. 系统提示词（DEFAULT_SYSTEM_PROMPT 或用户自定义 + memory.md + AGENTS.md）
+ * 1. 系统提示词（DEFAULT_SYSTEM_PROMPT 或用户自定义 + 检索到的长期记忆 + AGENTS.md）
  * 2. 会话历史消息（跳过原始 system 消息）
  * 3. 当前用户输入
  *
- * memory.md 在每次构建时重新读取，不在会话中途缓存。
+ * 长期记忆通过 MemoryService.searchContext 按需检索注入，不再全量注入。
  * workspace 根目录下的 AGENTS.md（如有）自动加载为项目说明。
- * 工具描述通过 API 的 tools 参数传递，不写入系统提示词。
  */
 export class ContextBuilder {
 	async build(
@@ -98,15 +106,26 @@ export class ContextBuilder {
 		const session = await storage.getSession(sessionId);
 		const workspace = session?.workspace || '';
 
-		let systemContent = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+		const systemContent = systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
-		const memoryContent = readMemoryMd();
-		systemContent += formatMemorySection(memoryContent);
+		let fullSystem = systemContent;
+
+		const memoryService = new MemoryService(storage);
+		const contextMemories = await memoryService.searchContext({
+			query: userMessage
+		});
+		fullSystem += formatMemorySection(
+			contextMemories.map((m) => ({
+				type: m.type,
+				content: m.content,
+				confidence: m.confidence
+			}))
+		);
 
 		const agentsContent = readAgentsMd(workspace);
-		systemContent += formatAgentsSection(agentsContent);
+		fullSystem += formatAgentsSection(agentsContent);
 
-		messages.push({ role: 'system', content: systemContent });
+		messages.push({ role: 'system', content: fullSystem });
 
 		const history = await storage.getMessages(sessionId);
 		for (const msg of history) {

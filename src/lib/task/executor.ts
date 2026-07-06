@@ -40,7 +40,7 @@ export async function executeTask(task: ScheduledTask, onComplete: (result: stri
 
 		const registry = new ToolRegistry();
 		for (const t of CORE_TOOLS) {
-			if (t.name !== 'write_memory') registry.register(t);
+			if (t.name !== 'propose_memory') registry.register(t);
 		}
 		registry.register(createSearchHistoryTool(storage));
 

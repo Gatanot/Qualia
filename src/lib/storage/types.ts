@@ -1,4 +1,5 @@
 ﻿import type { ToolCall, Usage } from '$lib/ai';
+import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus } from '$lib/memory/types';
 
 /**
  * 会话记录
@@ -154,4 +155,26 @@ export interface Storage {
 	addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<void>;
 	/** 列出审计日志（按时间倒序，可选 limit） */
 	listAuditLogs(limit?: number): Promise<AuditLogEntry[]>;
+
+	/** 创建长期记忆 */
+	createMemory(memory: Omit<Memory, 'id' | 'created_at' | 'updated_at'>): Promise<Memory>;
+	/** 获取单条记忆 */
+	getMemory(id: string): Promise<Memory | null>;
+	/** 列出用户长期记忆 */
+	listMemories(filters?: MemoryListFilters): Promise<Memory[]>;
+	/** 更新记忆 */
+	updateMemory(id: string, patch: Partial<Pick<Memory, 'content' | 'status' | 'priority' | 'tags'>>): Promise<Memory>;
+	/** 归档记忆 */
+	archiveMemory(id: string): Promise<void>;
+	/** 删除记忆 */
+	deleteMemory(id: string): Promise<void>;
+
+	/** 创建候选记忆 */
+	createCandidate(candidate: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate>;
+	/** 获取候选记忆 */
+	getCandidate(id: string): Promise<MemoryCandidate | null>;
+	/** 列出候选记忆 */
+	listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]>;
+	/** 处理候选记忆（接受/忽略） */
+	resolveCandidate(id: string, status: CandidateStatus, resolvedMemoryId?: string): Promise<void>;
 }
