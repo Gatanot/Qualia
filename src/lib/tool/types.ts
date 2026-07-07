@@ -47,8 +47,10 @@ export class PendingConfirmation extends Error {
 		public toolName: string,
 		/** 调用参数 */
 		public args: Record<string, unknown>,
-		/** 需要确认的原因 */
-		public reason: string
+		/** 需要确认的原因（confirm UI 展示；CLI 单行渲染，勿含换行） */
+		public reason: string,
+		/** 用户拒绝时回传给 LLM 的 tool 结果内容，便于 AI 协商调整（默认「用户取消了此操作」） */
+		public rejectHint?: string
 	) {
 		super(`Tool "${toolName}" requires confirmation: ${reason}`);
 		this.name = 'PendingConfirmation';

@@ -9,8 +9,6 @@
 import type { Storage } from '$lib/storage';
 import type {
 	Memory,
-	MemoryCandidate,
-	ProposeMemoryInput,
 	MemorySearchContext,
 	MemoryListFilters
 } from './types';
@@ -20,44 +18,6 @@ const DEFAULT_GENERAL_BUDGET = 40;
 
 export class MemoryService {
 	constructor(private storage: Storage) {}
-
-	async propose(input: ProposeMemoryInput): Promise<MemoryCandidate> {
-		return this.storage.createCandidate({
-			proposed_type: input.type,
-			content: input.content,
-			reason: input.reason || '',
-			confidence: input.confidence ?? 1.0,
-			status: 'pending'
-		});
-	}
-
-	async listCandidates(): Promise<MemoryCandidate[]> {
-		return this.storage.listCandidates('pending');
-	}
-
-	async resolve(id: string, action: 'accept' | 'ignore', editedContent?: string): Promise<Memory | null> {
-		const candidate = await this.storage.getCandidate(id);
-		if (!candidate) throw new Error(`候选记忆不存在: ${id}`);
-
-		if (action === 'ignore') {
-			await this.storage.resolveCandidate(id, 'ignored');
-			return null;
-		}
-
-		const memory = await this.storage.createMemory({
-			type: candidate.proposed_type,
-			content: editedContent || candidate.content,
-			source_session_id: null,
-			source_kind: 'manual',
-			confidence: candidate.confidence,
-			status: 'active',
-			priority: candidate.proposed_type === 'rule' ? 10 : 0,
-			tags: []
-		});
-
-		await this.storage.resolveCandidate(id, 'accepted');
-		return memory;
-	}
 
 	async list(filters?: MemoryListFilters): Promise<Memory[]> {
 		return this.storage.listMemories(filters);

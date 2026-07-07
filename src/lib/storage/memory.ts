@@ -1,5 +1,5 @@
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
-import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus } from '$lib/memory/types';
+import type { Memory, MemoryListFilters } from '$lib/memory/types';
 import { formatSessionTitle } from './utils';
 
 /**
@@ -276,7 +276,6 @@ export class MemoryStorage implements Storage {
 	// ── Memory stubs (in-memory fallback) ──
 
 	private _memories = new Map<string, Memory>();
-	private _candidates = new Map<string, MemoryCandidate>();
 
 	async createMemory(input: Omit<Memory, 'id' | 'created_at' | 'updated_at'>): Promise<Memory> {
 		const id = crypto.randomUUID();
@@ -321,28 +320,5 @@ export class MemoryStorage implements Storage {
 
 	async deleteMemory(id: string): Promise<void> {
 		this._memories.delete(id);
-	}
-
-	async createCandidate(input: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate> {
-		const id = crypto.randomUUID();
-		const now = Date.now();
-		const candidate: MemoryCandidate = { id, ...input, created_at: now, resolved_at: null };
-		this._candidates.set(id, candidate);
-		return candidate;
-	}
-
-	async getCandidate(id: string): Promise<MemoryCandidate | null> {
-		return this._candidates.get(id) ?? null;
-	}
-
-	async listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]> {
-		const all = Array.from(this._candidates.values());
-		if (status) return all.filter((c) => c.status === status);
-		return all;
-	}
-
-	async resolveCandidate(id: string, status: CandidateStatus): Promise<void> {
-		const c = this._candidates.get(id);
-		if (c) { c.status = status; c.resolved_at = Date.now(); }
 	}
 }

@@ -184,7 +184,7 @@ UI 不要只展示模型名，而要基于能力禁用图片、推理、工具�
 2. 会话页显示工具执行审计入口，用户能展开每次工具调用的参数、结果、确认状态。
 3. records 页升级为时间线，而不是仅仅显示摘要。
 4. 任务页增加手动运行、暂停、复制、查看历史结果。
-5. 记忆页单独成页，支持搜索、编辑、删除、接受候选记忆。
+5. 记忆页单独成页，陈列已有长期记忆，支持搜索、类型过滤、归档、删除（写入确认已移到对话流内联，无独立收件箱）。
 
 这些都直接服务于“长期使用”而不是一次性演示。
 
@@ -200,23 +200,55 @@ UI 不要只展示模型名，而要基于能力禁用图片、推理、工具�
 
 ### 0.2：可靠性版本
 
-- ~~schema migration~~ — 跳过：当前功能未稳定、无正式发布，无历史 schema 需兼容
-- ~~数据备份/恢复~~ — 跳过：同上，无存量用户数据需要保护
-- AgentLoop/API/任务关键测试 — 部分完成：新增 loop.test.ts (11) + sqlite.test.ts (8)，核心路径已覆盖（工具调用、确认、重试、MAX_TOOL_ITERATIONS、审计日志、forkSession、deleteSession）
-- Web/CLI 回归冒烟矩阵 — 未完成：无 CI/e2e 基础设施
-- CLI/TUI 稳定化：slash commands、选择器、undo、confirm、history — 已完成
-- ~~workspace 画像最小版~~ — 跳过：职责移交给用户自行创建的 AGENTS.md（workspace 根目录自动加载）
-- 权限声明与审计日志 — 已完成：safeguard.ts 已有命令分类；新增 audit_logs 表 + AgentLoop 内 logAudit() 钩子 + GET /api/audit
-- package sync/release 脚本 — 已完成：scripts/release.mjs
-- `qualia doctor` — 已完成：packages/cli/src/commands/doctor.ts
+- schema migration
+- 数据备份/恢复
+- AgentLoop/API/任务关键测试
+- Web/CLI 回归冒烟矩阵
+- CLI/TUI 稳定化：slash commands、选择器、undo、confirm、history
+- workspace 画像最小版
+- 权限声明与审计日志
+- package sync/release 脚本
+- `qualia doctor`
 
 ### 0.3：个人记忆版本
 
-- 结构化记忆表
-- 记忆收件箱
-- 记忆管理页
-- records 时间线
-- 会话摘要与记忆候选联动
+> 完整原始设计见 design.md。以下为 0.3.0 **已落地实现**；相对原设计做了几处简化（去掉 workspace/scope、候选收件箱、memory.md 迁移），原因见各条。
+
+**核心转变：确认先于写入 + 检索替代全量注入**
+
+原 memory.md 的两大问题：(1) write_memory 全量覆盖 section，信息随积累必然丢失；(2) ContextBuilder 全量注入 system prompt，记忆越多上下文质量越差。0.3.0 用「结构化记忆表 + 按需检索 + 写入前用户内联确认」解决。
+
+**已实现：**
+
+- 系统边界：
+  - `memories` 表：id / type (fact|preference|rule|event) / content / source_session_id / source_kind (chat|summary|diary|task|manual) / confidence / status (active|superseded|archived) / priority / tags / created_at / updated_at
+  - 不做 scope/workspace：记忆是全局的；工作区级的项目上下文交给用户自行维护的 `AGENTS.md`（ContextBuilder 自动加载），不进 memory。
+  - 不做 `memory_candidates` 表：交互式写入改为内联确认（见下），无需候选暂存。
+
+- MemoryService（`src/lib/memory/service.ts`）：
+  - `list(filters)` / `get` / `update` / `archive` / `delete` / `searchContext(query, budget)`
+  - ContextBuilder 不再读 memory.md，改为调 `searchContext` 按需检索注入。
+
+- 工具：
+  - `propose_memory`：未确认时抛 `PendingConfirmation`，走与 exec/write_file 相同的确认链路；用户在**对话流内**（web `ConfirmInline` / CLI `confirm-dialog`，工具调用下方）批准后**直接写入 active memory**，拒绝则把 rejectHint 回传给 AI，便于协商改措辞后重提。web 与 CLI 行为完全一致。
+  - `read_memory`：检索 active memories，支持类型过滤。
+
+- 后台不写记忆：计划任务在隔离 AgentLoop 中 auto-deny confirmation，因此 `propose_memory` 在任务里必然被拒——后台不会产生未经用户确认的记忆写入（刻意的安全边界）。
+
+- 记忆管理页：
+  - `GET /api/memory`（列表/搜索/类型过滤）/ `POST /api/memory`（create/update/archive/delete）
+  - Web `/memory` 页：陈列已有 active 记忆，支持搜索、类型过滤、归档、删除；不再有候选/收件箱 Tab。
+
+- 上下文注入：
+  - `searchContext` 基于当前消息文本匹配 active memories。
+  - 预算：rule 20 条 + 其他（fact/preference/event）40 条。
+  - 注入按 rule / 其他分组，标注类型与置信度。
+
+- 放弃 / 未做（相对原设计）：
+  - memory.md 迁移：开发阶段直接清空旧数据，不做兼容解析。
+  - 候选去重合并、来源消息跳转、Markdown/JSON 导出、`read_memory` embedding 索引、revision 历史页面。
+  - 若日后要做「摘要/后台自动沉淀记忆」，因后台无法同步确认，届时需另设一条候选审阅路径（收件箱）再引入，不影响当前交互式路径。
+
 
 ### 0.4：主动伙伴版本
 
@@ -245,3 +277,18 @@ UI 不要只展示模型名，而要基于能力禁用图片、推理、工具�
 
 Qualia 下一阶段最该做的是“可信赖的长期本地伙伴”：把数据、权限、审计、记忆和任务做扎实。等这些稳定后，再扩展插件和发布生态，项目的定位会比普通聊天客户端清晰得多。
 
+为什么这次进的都是些慢节奏的片子,我们需要更多刺激的影片才对吧
+
+哥,我发现正常兄妹日常会做的事了,听好
+
+第一,每天都要和妹妹拥抱
+
+第二,每次拥抱至少要抱足十秒
+
+第三,妹妹的味道也要好好地闻一闻
+
+第四,拥抱时间沒足就要分开重新抱
+
+第五,要充满爱意的去拥抱
+
+欸,你躲什么

@@ -23,6 +23,7 @@ const RETRY_BASE_DELAY = 1000;
 const CONTEXT_WINDOW_DEFAULT = 1_048_576;
 const CONTINUE_THRESHOLD = 20_000;
 const MAX_TOOL_ITERATIONS = 50;
+const TOOL_EXECUTION_TIMEOUT_MS = 5 * 60 * 1000;
 const COMPRESSION_THRESHOLD_DEFAULT = 256_000;
 
 function buildSummaryContent(messages: Message[], initialSystem: string | undefined): string {
@@ -438,7 +439,22 @@ export class AgentLoop {
 					]);
 					if (aborted) continue;
 				} else {
-					await new Promise<void>((resolve) => { wakeUp = resolve; });
+					const result = await Promise.race([
+						new Promise<'done'>(async (resolve) => { wakeUp = () => resolve('done'); }),
+						new Promise<'timeout'>(async (resolve) => {
+							await sleep(TOOL_EXECUTION_TIMEOUT_MS);
+							resolve('timeout');
+						})
+					]);
+					if (result === 'timeout') {
+						this.toolContext.onUpdate = undefined;
+						yield {
+							type: 'error',
+							message: `工具 "${name}" 执行超时（${TOOL_EXECUTION_TIMEOUT_MS / 1000}s），已取消`
+						};
+						this.state = AgentState.ERROR;
+						return;
+					}
 				}
 			}
 		}
@@ -519,7 +535,7 @@ export class AgentLoop {
 				this.logAudit(error.toolName, error.args, true, false, errMsg);
 			}
 		} else {
-			const cancelMsg = '用户取消了此操作';
+			const cancelMsg = error.rejectHint || '用户取消了此操作';
 			yield { type: 'tool_result', name: error.toolName, success: false, output: cancelMsg };
 			this.toolResultMsgs.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });
 			this.messages.push({ role: 'tool', content: cancelMsg, tool_call_id: tc.id, name: error.toolName });

@@ -62,7 +62,8 @@ src/lib/
 ├── config/      # AppConfig + ProviderConfig
 ├── concurrency/ # SessionLock, FileMutex, BackgroundWorker
 ├── gateway/     # GatewayDispatcher + email/telegram adapters
-├── storage/     # MemoryStorage + SQLiteStorage (storageEnabled: true by default)
+├── memory/      # MemoryService — structured long-term memory (candidate → accept/ignore)
+├── storage/     # MemoryStorage (in-RAM) + SQLiteStorage (storageEnabled: true by default)
 ├── task/        # Scheduled task system
 ├── tool/        # ToolRegistry + 11 tools + safeguard.ts
 ├── chat-confirm.ts / chat-steering.ts  # Shared maps for confirm/steer
@@ -110,6 +111,13 @@ When `contextWindow - token_count < 20000` after reply: LLM compresses conversat
 
 Worker starts in `hooks.server.ts`. Config: `autoSummarize`, `summaryMode` (`idle`/`scheduled`), `summaryIdleHours` (8), `summaryScheduleHour` (2), `summaryIntervalMin` (30). Requires `storageEnabled`.
 
+## Memory (structured, `src/lib/memory/`)
+
+- `MemoryService` over SQLite `memories` table. `ContextBuilder.searchContext` retrieves active memories on demand and injects them (budget: 20 rules / 40 other), grouped by rule vs other with confidence. Requires `storageEnabled`.
+- Write path = **inline confirm, not candidates**: `propose_memory` throws `PendingConfirmation` (same chain as exec/write_file); user approves inline in the chat stream (web `ConfirmInline` / CLI `confirm-dialog`) → tool re-runs with `__confirmed` and writes an active memory directly. Reject feeds `PendingConfirmation.rejectHint` back to the LLM so it can renegotiate. `read_memory` searches active memories.
+- No candidate/inbox table, no `memory.md`, no workspace/scope on memories — all removed. Background/scheduled tasks auto-deny confirm, so they never write memory (intentional).
+- Naming trap: `storage/MemoryStorage` is the in-RAM storage backend, **not** the memory feature.
+
 ## Gateway
 
 `GatewayDispatcher` + adapters: `EmailAdapter` (SMTP, notify-only), `TelegramAdapter` (long-polling, receive+notify). Config: email SMTP settings, `telegramBotToken`, `telegramAllowedUsers`.
@@ -126,7 +134,7 @@ AI schedules one-shot tasks. `schedule_task` requires reading current time via `
 
 - `hooks.server.ts` auto-starts gateway, summarizer, and scheduler on import.
 - `.svelte-kit/` is auto-generated; never edit.
-- `~/.qualia/data/memory.md` is read fresh each time a session is entered (no snapshot). Workspace root `AGENTS.md` (if present) is auto-loaded as project context.
+- `~/.qualia/data/memory.md` is no longer used (structured memory replaced it). Workspace root `AGENTS.md` (if present) is auto-loaded as project context by `ContextBuilder`.
 - `data/`, `docs/`, `opencode.json` are gitignored.
 - The existing "rollback to here" feature (double-click undo button) deletes the message and subsequent content, placing the original text in the input box. Do not implement a separate "message editing" feature.
 

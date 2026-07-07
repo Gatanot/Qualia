@@ -5,7 +5,7 @@ import { createStorage } from '../../storage/index.js';
 
 export const readMemoryTool: ToolDef = {
 	name: 'read_memory',
-	description: 'Read long-term memories. Optionally pass a query for keyword search — returns matching memories with their type and status. Use when you need to recall previously stored information about users, preferences, rules, or important events. Searches active memories only; pending candidates are not included.',
+	description: 'Read long-term memories. Optionally pass a query for keyword search — returns matching active memories with their type and confidence. Use when you need to recall previously stored information about users, preferences, rules, or important events.',
 	parameters: {
 		type: 'object',
 		properties: {

@@ -1,6 +1,6 @@
 ﻿import Database from 'better-sqlite3';
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
-import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus, MemoryType, MemoryStatus, MemorySourceKind } from '$lib/memory/types';
+import type { Memory, MemoryListFilters, MemoryType, MemoryStatus, MemorySourceKind } from '$lib/memory/types';
 import type { ToolCall, Usage } from '$lib/ai';
 import { formatSessionTitle } from './utils';
 
@@ -56,17 +56,6 @@ interface MemoryRow {
 	tags: string;
 	created_at: number;
 	updated_at: number;
-}
-
-interface CandidateRow {
-	id: string;
-	proposed_type: string;
-	content: string;
-	reason: string;
-	confidence: number;
-	status: string;
-	created_at: number;
-	resolved_at: number | null;
 }
 
 /**
@@ -147,16 +136,6 @@ export class SQLiteStorage implements Storage {
 			);
 			CREATE INDEX IF NOT EXISTS idx_memories_status
 				ON memories(status);
-			CREATE TABLE IF NOT EXISTS memory_candidates (
-				id            TEXT PRIMARY KEY,
-				proposed_type TEXT NOT NULL DEFAULT 'fact',
-				content       TEXT NOT NULL DEFAULT '',
-				reason        TEXT NOT NULL DEFAULT '',
-				confidence    REAL NOT NULL DEFAULT 1.0,
-				status        TEXT NOT NULL DEFAULT 'pending',
-				created_at    INTEGER NOT NULL,
-				resolved_at   INTEGER
-			);
 		`);
 
 		this.migrate();
@@ -211,12 +190,6 @@ export class SQLiteStorage implements Storage {
 			updateMemoryContent: this.db.prepare(`UPDATE memories SET content = ?, status = ?, priority = ?, tags = ?, updated_at = ? WHERE id = ?`),
 			archiveMemory: this.db.prepare(`UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ?`),
 			deleteMemoryStmt: this.db.prepare(`DELETE FROM memories WHERE id = ?`),
-			// Candidate CRUD
-			insertCandidate: this.db.prepare(`INSERT INTO memory_candidates (id, proposed_type, content, reason, confidence, status, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`),
-			getCandidate: this.db.prepare(`SELECT * FROM memory_candidates WHERE id = ?`),
-			listCandidatesByStatus: this.db.prepare(`SELECT * FROM memory_candidates WHERE status = ? ORDER BY created_at DESC`),
-			listAllCandidates: this.db.prepare(`SELECT * FROM memory_candidates ORDER BY created_at DESC`),
-			resolveCandidateStmt: this.db.prepare(`UPDATE memory_candidates SET status = ?, resolved_at = ? WHERE id = ?`),
 		};
 	}
 
@@ -546,34 +519,6 @@ export class SQLiteStorage implements Storage {
 		this.stmts.deleteMemoryStmt.run(id);
 	}
 
-	// ── Candidate CRUD ──
-
-	async createCandidate(input: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate> {
-		const id = crypto.randomUUID();
-		const now = Date.now();
-		this.stmts.insertCandidate.run(
-			id, input.proposed_type, input.content,
-			input.reason, input.confidence, input.status, now
-		);
-		return (await this.getCandidate(id))!;
-	}
-
-	async getCandidate(id: string): Promise<MemoryCandidate | null> {
-		const row = this.stmts.getCandidate.get(id) as CandidateRow | undefined;
-		return row ? this.rowToCandidate(row) : null;
-	}
-
-	async listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]> {
-		const rows = status
-			? (this.stmts.listCandidatesByStatus.all(status) as CandidateRow[])
-			: (this.stmts.listAllCandidates.all() as CandidateRow[]);
-		return rows.map((r) => this.rowToCandidate(r));
-	}
-
-	async resolveCandidate(id: string, status: CandidateStatus, _resolvedMemoryId?: string): Promise<void> {
-		this.stmts.resolveCandidateStmt.run(status, Date.now(), id);
-	}
-
 	// ── Row mappers ──
 
 	private rowToMemory(row: MemoryRow): Memory {
@@ -589,19 +534,6 @@ export class SQLiteStorage implements Storage {
 			tags: JSON.parse(row.tags),
 			created_at: row.created_at,
 			updated_at: row.updated_at
-		};
-	}
-
-	private rowToCandidate(row: CandidateRow): MemoryCandidate {
-		return {
-			id: row.id,
-			proposed_type: row.proposed_type as MemoryType,
-			content: row.content,
-			reason: row.reason,
-			confidence: row.confidence,
-			status: row.status as CandidateStatus,
-			created_at: row.created_at,
-			resolved_at: row.resolved_at
 		};
 	}
 }

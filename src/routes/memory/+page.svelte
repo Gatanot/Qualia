@@ -1,9 +1,7 @@
 <script lang="ts">
-	import type { Memory, MemoryCandidate } from '$lib/memory/types';
+	import type { Memory } from '$lib/memory/types';
 
 	let memories = $state<Memory[]>([]);
-	let candidates = $state<MemoryCandidate[]>([]);
-	let activeTab = $state<'memories' | 'candidates'>('memories');
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let typeFilter = $state('');
@@ -16,45 +14,18 @@
 	};
 
 	$effect(() => {
-		loadAll();
+		loadMemories();
 	});
 
-	async function loadAll() {
-		loading = true;
-		await Promise.all([loadMemories(), loadCandidates()]);
-		loading = false;
-	}
-
 	async function loadMemories() {
+		loading = true;
 		const params = new URLSearchParams();
 		if (searchQuery) params.set('search', searchQuery);
 		if (typeFilter) params.set('type', typeFilter);
 		const url = '/api/memory' + (params.toString() ? '?' + params.toString() : '');
 		const res = await fetch(url);
 		if (res.ok) memories = await res.json();
-	}
-
-	async function loadCandidates() {
-		const res = await fetch('/api/memory/candidates');
-		if (res.ok) candidates = await res.json();
-	}
-
-	async function acceptCandidate(id: string) {
-		const res = await fetch('/api/memory/candidates', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'accept', id })
-		});
-		if (res.ok) await loadAll();
-	}
-
-	async function ignoreCandidate(id: string) {
-		const res = await fetch('/api/memory/candidates', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'ignore', id })
-		});
-		if (res.ok) await loadAll();
+		loading = false;
 	}
 
 	async function archiveMemory(id: string) {
@@ -88,108 +59,64 @@
 
 <div class="memory-page">
 	<div class="page-header">
-		<h1>记忆管理</h1>
-		<div class="tab-bar">
-			<button class="tab" class:active={activeTab === 'memories'} onclick={() => activeTab = 'memories'}>
-				长期记忆 ({memories.length})
-			</button>
-			<button class="tab" class:active={activeTab === 'candidates'} onclick={() => activeTab = 'candidates'}>
-				收件箱
-				{#if candidates.length > 0}
-					<span class="badge">{candidates.length}</span>
-				{/if}
-			</button>
-		</div>
+		<h1>长期记忆</h1>
+		<span class="count">{memories.length} 条</span>
+	</div>
+
+	<div class="memory-toolbar">
+		<input
+			type="text"
+			class="search-input"
+			placeholder="搜索记忆..."
+			value={searchQuery}
+			oninput={onSearchInput}
+		/>
+		<select class="filter-select" bind:value={typeFilter} onchange={() => loadMemories()}>
+			<option value="">全部类型</option>
+			<option value="fact">事实</option>
+			<option value="preference">偏好</option>
+			<option value="rule">规则</option>
+			<option value="event">事件</option>
+		</select>
 	</div>
 
 	{#if loading}
 		<div class="empty">加载中...</div>
-	{:else if activeTab === 'memories'}
-		<div class="memory-toolbar">
-			<input
-				type="text"
-				class="search-input"
-				placeholder="搜索记忆..."
-				value={searchQuery}
-				oninput={onSearchInput}
-			/>
-			<select class="filter-select" bind:value={typeFilter} onchange={() => loadMemories()}>
-				<option value="">全部类型</option>
-				<option value="fact">事实</option>
-				<option value="preference">偏好</option>
-				<option value="rule">规则</option>
-				<option value="event">事件</option>
-			</select>
+	{:else if memories.length === 0}
+		<div class="empty">
+			{#if searchQuery || typeFilter}
+				没有找到匹配的记忆
+			{:else}
+				暂无长期记忆<br/>
+				<span class="hint">当你在对话中确认 AI 的记忆提议后，记忆会显示在这里</span>
+			{/if}
 		</div>
-
-		{#if memories.length === 0}
-			<div class="empty">
-				{#if searchQuery || typeFilter}
-					没有找到匹配的记忆
-				{:else}
-					暂无长期记忆<br/>
-					<span class="hint">AI 使用 propose_memory 工具创建的记忆候选将在这里显示</span>
-				{/if}
-			</div>
-		{:else}
-			<div class="memory-list">
-				{#each memories as m (m.id)}
-					<div class="memory-card">
-						<div class="card-header">
-							<span class="type-badge type-{m.type}">{TYPE_LABELS[m.type] || m.type}</span>
-							<span class="confidence">置信度: {m.confidence.toFixed(1)}</span>
-							<div class="card-actions">
-								<button onclick={() => archiveMemory(m.id)} title="归档">
-									<span class="material-symbols-rounded">archive</span>
-								</button>
-								<button onclick={() => deleteMemory(m.id)} title="删除">
-									<span class="material-symbols-rounded">delete</span>
-								</button>
-							</div>
-						</div>
-						<div class="card-content">{m.content}</div>
-						<div class="card-meta">
-							<span>创建: {new Date(m.created_at).toLocaleDateString('zh-CN')}</span>
-							{#if m.source_kind !== 'manual'}
-								<span>来源: {m.source_kind}</span>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
 	{:else}
-		{#if candidates.length === 0}
-			<div class="empty">
-				收件箱为空<br/>
-				<span class="hint">当 AI 使用 propose_memory 建议记住某些内容时，候选将在这里显示</span>
-			</div>
-		{:else}
-			<div class="candidate-list">
-				{#each candidates as c (c.id)}
-					<div class="candidate-card">
-						<div class="card-header">
-							<span class="type-badge type-{c.proposed_type}">{TYPE_LABELS[c.proposed_type] || c.proposed_type}</span>
-							<span class="confidence">置信度: {c.confidence.toFixed(1)}</span>
-						</div>
-						<div class="card-content">{c.content}</div>
-						{#if c.reason}
-							<div class="candidate-reason">建议理由: {c.reason}</div>
-						{/if}
-						<div class="candidate-actions">
-							<button class="btn-accept" onclick={() => acceptCandidate(c.id)}>
-								<span class="material-symbols-rounded">check</span>
-								接受
+		<div class="memory-list">
+			{#each memories as m (m.id)}
+				<div class="memory-card">
+					<div class="card-header">
+						<span class="type-badge type-{m.type}">{TYPE_LABELS[m.type] || m.type}</span>
+						<span class="confidence">置信度: {m.confidence.toFixed(1)}</span>
+						<div class="card-actions">
+							<button onclick={() => archiveMemory(m.id)} title="归档">
+								<span class="material-symbols-rounded">archive</span>
 							</button>
-							<button class="btn-ignore" onclick={() => ignoreCandidate(c.id)}>
-								<span class="material-symbols-rounded">close</span>
-								忽略
+							<button onclick={() => deleteMemory(m.id)} title="删除">
+								<span class="material-symbols-rounded">delete</span>
 							</button>
 						</div>
 					</div>
-				{/each}
-			</div>
-		{/if}
+					<div class="card-content">{m.content}</div>
+					<div class="card-meta">
+						<span>创建: {new Date(m.created_at).toLocaleDateString('zh-CN')}</span>
+						{#if m.source_kind !== 'manual'}
+							<span>来源: {m.source_kind}</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
 	{/if}
 </div>
 
@@ -203,7 +130,7 @@
 	.page-header {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: baseline;
 		margin-bottom: var(--space-xl);
 	}
 
@@ -213,46 +140,9 @@
 		margin: 0;
 	}
 
-	.tab-bar {
-		display: flex;
-		gap: 0;
-		background: var(--bg-surface);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	.tab {
-		position: relative;
-		padding: var(--space-sm) var(--space-lg);
-		border: none;
-		background: transparent;
-		color: var(--text-mid);
-		cursor: pointer;
+	.count {
 		font-size: var(--text-sm);
-		font-weight: 500;
-		transition: color 0.2s, background 0.2s;
-	}
-
-	.tab:hover { color: var(--text-primary); }
-
-	.tab.active {
-		color: var(--accent);
-		background: var(--bg-surface-hover);
-	}
-
-	.badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 18px;
-		height: 18px;
-		padding: 0 5px;
-		border-radius: var(--radius-pill);
-		background: var(--accent);
-		color: var(--text-on-accent);
-		font-size: var(--text-xs);
-		font-weight: 700;
-		margin-left: 4px;
+		color: var(--text-mid);
 	}
 
 	.memory-toolbar {
@@ -299,15 +189,13 @@
 		color: var(--text-placeholder);
 	}
 
-	.memory-list,
-	.candidate-list {
+	.memory-list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
 	}
 
-	.memory-card,
-	.candidate-card {
+	.memory-card {
 		background: var(--bg-surface);
 		border-radius: var(--radius-md);
 		padding: var(--space-lg);
@@ -382,45 +270,4 @@
 		display: flex;
 		gap: var(--space-lg);
 	}
-
-	.candidate-reason {
-		margin-top: var(--space-sm);
-		font-size: var(--text-sm);
-		color: var(--text-mid);
-		font-style: italic;
-	}
-
-	.candidate-actions {
-		margin-top: var(--space-md);
-		display: flex;
-		gap: var(--space-sm);
-	}
-
-	.btn-accept,
-	.btn-ignore {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		padding: var(--space-xs) var(--space-lg);
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: var(--text-sm);
-		font-weight: 500;
-		transition: background 0.2s, opacity 0.2s;
-	}
-
-	.btn-accept {
-		background: var(--accent);
-		color: var(--text-on-accent);
-	}
-
-	.btn-accept:hover { opacity: 0.9; }
-
-	.btn-ignore {
-		background: var(--bg-surface-hover);
-		color: var(--text-mid);
-	}
-
-	.btn-ignore:hover { color: var(--text-primary); }
 </style>

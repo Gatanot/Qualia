@@ -1,5 +1,5 @@
 ﻿import type { ToolCall, Usage } from '../ai/index.js';
-import type { Memory, MemoryCandidate, MemoryListFilters, CandidateStatus } from '../memory/types.js';
+import type { Memory, MemoryListFilters } from '../memory/types.js';
 
 /**
  * 会话记录
@@ -168,13 +168,4 @@ export interface Storage {
 	archiveMemory(id: string): Promise<void>;
 	/** 删除记忆 */
 	deleteMemory(id: string): Promise<void>;
-
-	/** 创建候选记忆 */
-	createCandidate(candidate: Omit<MemoryCandidate, 'id' | 'created_at' | 'resolved_at'>): Promise<MemoryCandidate>;
-	/** 获取候选记忆 */
-	getCandidate(id: string): Promise<MemoryCandidate | null>;
-	/** 列出候选记忆 */
-	listCandidates(status?: CandidateStatus): Promise<MemoryCandidate[]>;
-	/** 处理候选记忆（接受/忽略） */
-	resolveCandidate(id: string, status: CandidateStatus, resolvedMemoryId?: string): Promise<void>;
 }
