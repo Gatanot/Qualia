@@ -1,7 +1,7 @@
 import process from 'node:process';
 import type { AgentEvent } from '@gatanot/qualia_core/agent';
 import { createStorage, type MessageRecord } from '@gatanot/qualia_core/storage';
-import { AgentRunner } from '../runtime/agent-runner.js';
+import { HttpAgentRunner } from '../runtime/http-runner.js';
 import { loadRuntimeConfig } from '../runtime/config-loader.js';
 import { type CliIO, VERSION } from '../commands/index.js';
 import { CliError } from '../errors.js';
@@ -31,12 +31,12 @@ const editorTheme: EditorTheme = {
 };
 
 export interface TuiAppOptions {
-	io: CliIO; workspace: string;
-	sessionId?: string; newSession?: boolean; modelId?: string; storageEnabled?: boolean;
+	io: CliIO; workspace: string; baseURL: string;
+	sessionId?: string; newSession?: boolean; modelId?: string;
 }
 
 export class TuiApp {
-	private readonly runner = new AgentRunner();
+	private readonly runner: HttpAgentRunner;
 	private sessionId?: string;
 	private abortController: AbortController | null = null;
 	private ui: TUI;
@@ -65,6 +65,7 @@ export class TuiApp {
 
 	constructor(private readonly o: TuiAppOptions) {
 		this.sessionId = o.newSession ? undefined : o.sessionId;
+		this.runner = new HttpAgentRunner(o.baseURL);
 		const t = new ProcessTerminal();
 		this.ui = new TUI(t);
 		this.editor = new Editor(this.ui, editorTheme, { paddingX: 1 });
@@ -76,7 +77,7 @@ export class TuiApp {
 			throw new CliError('USAGE', 'interactive TUI requires a TTY');
 		}
 		try {
-			const rt = loadRuntimeConfig({ modelId: this.o.modelId, storageEnabled: this.o.storageEnabled });
+			const rt = loadRuntimeConfig({ modelId: this.o.modelId });
 			this.modelId = rt.activeModelId;
 			this.contextWindow = rt.contextWindow;
 			this.providerName = rt.provider.name;
@@ -354,9 +355,8 @@ export class TuiApp {
 		try {
 			const r = await this.runner.run({
 				workspace: this.o.workspace, message: msg,
-				sessionId: this.sessionId, newSession: this.o.newSession,
+				sessionId: this.sessionId,
 				modelId: this.o.modelId,
-				storageEnabled: this.o.storageEnabled,
 				signal: this.abortController.signal,
 				onConfirm: async () => {
 				return new Promise<boolean>((resolve) => {

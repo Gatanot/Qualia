@@ -122,7 +122,15 @@ All state (SQLite, memory, config, diary) lives in the global `~/.qualia`, share
 - `serve.ts`: fails to start (CliError) if another live backend holds the lock, printing its address.
 - `hooks.server.ts`: only calls `startup()` (gateway/summarizer/scheduler) if it wins the lock; otherwise serves HTTP only with a warning. Applies to `npm run dev` and adapter-node too.
 - Stale lock (dead pid, verified via `process.kill(pid, 0)`) is auto-reclaimed. `exit` handler cleans up.
-- `readServerInfo()` / `getRunningServer()` expose the running backend (for a future step where the TUI auto-connects instead of running the agent in-process).
+- `readServerInfo()` / `getRunningServer()` expose the running backend.
+
+### CLI connects to the shared backend
+
+`qualia chat` / `qualia -p` do **not** run the AgentLoop in-process anymore. `runtime/backend.ts` `ensureBackend()` reuses a live backend (via `getRunningServer()`) or spawns `qualia serve` **detached** (`child.unref()`, stays alive after the CLI exits so other clients reuse it), polling `/api/models` until ready. `runtime/http-runner.ts` `HttpAgentRunner` (drop-in shape of the old `AgentRunner`) POSTs `/api/chat`, parses the SSE stream, and on `confirm_required` calls `onConfirm` then POSTs `/api/confirm` — same confirm protocol as the web frontend. So TUI, `-p`, and Web all share one backend/agent/session store.
+
+- Only agent runs go through HTTP. Session lists / history / model picker in the TUI still read the shared SQLite/config directly (they're already cross-process safe).
+- `/api/chat` accepts an optional `model` to honor `--model` single-run override; `--storage` override was dropped (backend uses its own config).
+- The old in-process `runtime/agent-runner.ts` was removed.
 
 
 ## Memory (structured, `src/lib/memory/`)

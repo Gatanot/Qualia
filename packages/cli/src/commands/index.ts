@@ -30,18 +30,19 @@ const HELP = `Qualia CLI
   qualia chat                    进入交互式 TUI
   qualia -p "提示词"             非交互单次任务
   qualia prompt "提示词"         非交互单次任务
-  qualia serve [--port 5173]     启动 Web 服务
+  qualia serve [--port 5173]     启动共享后端（Web + 后台服务）
   qualia doctor                  检查本地环境
   qualia model list|use          查看或选择模型
   qualia config get|set|path     查看或修改低风险配置
   qualia session list|show|open  管理会话
+
+说明：chat/prompt 会连到共享后端；若无运行中的后端则自动在后台拉起一个（退出后常驻，供其他客户端复用）。
 
 通用选项：
   --workspace <path>             指定工具工作区
   --model <modelId>              仅本次运行覆盖 activeModel
   --session <id>                 使用已有会话
   --new-session                  强制创建新会话
-  --storage on|off               仅本次运行覆盖 storageEnabled
   --json                         输出 JSON/JSONL
   --no-color                     禁用颜色
   -h, --help                     显示帮助

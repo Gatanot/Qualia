@@ -1,6 +1,6 @@
 import type { AgentEvent, ConfirmFn } from '@gatanot/qualia_core/agent';
-import { AgentRunner } from '../runtime/agent-runner.js';
-import { parseStorageOverride } from '../runtime/config-loader.js';
+import { ensureBackend } from '../runtime/backend.js';
+import { HttpAgentRunner } from '../runtime/http-runner.js';
 import { resolveWorkspace } from '../runtime/workspace.js';
 import { CliError } from '../errors.js';
 import { boolFlag, flag, readStdin, type CliIO, type ParsedArgs } from './index.js';
@@ -28,7 +28,8 @@ export async function runPrompt(args: ParsedArgs, io: CliIO): Promise<void> {
 		return false;
 	};
 
-	const runner = new AgentRunner();
+	const backend = await ensureBackend();
+	const runner = new HttpAgentRunner(backend.baseURL);
 	const events: AgentEvent[] = [];
 	const result = await runner.run({
 		workspace,
@@ -36,7 +37,6 @@ export async function runPrompt(args: ParsedArgs, io: CliIO): Promise<void> {
 		sessionId: flag(args, '--session'),
 		newSession: boolFlag(args, '--new-session'),
 		modelId: flag(args, '--model'),
-		storageEnabled: parseStorageOverride(flag(args, '--storage')),
 		signal: controller.signal,
 		onConfirm,
 		onEvent(event) {

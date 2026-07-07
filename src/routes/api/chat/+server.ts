@@ -1,4 +1,4 @@
-﻿import { readConfig, getProviderForModel, getContextWindow, getActiveModel } from '$lib/config';
+﻿import { readConfig, getProviderForModel, getActiveModel, getAllAvailableModels } from '$lib/config';
 import { createProvider } from '$lib/ai';
 import type { ImageContent } from '$lib/ai';
 import { createStorage } from '$lib/storage';
@@ -12,12 +12,13 @@ import { sessionLock } from '$lib/concurrency';
 export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
-		let { sessionId, message, images, clientMessageId, workspace } = body as {
+		let { sessionId, message, images, clientMessageId, workspace, model: requestedModel } = body as {
 			sessionId?: string;
 			message: string;
 			images?: { url: string; detail?: 'low' | 'high' | 'auto' }[];
 			clientMessageId?: string;
 			workspace?: string;
+			model?: string;
 		};
 
 		if (!message?.trim()) {
@@ -28,24 +29,27 @@ export async function POST({ request }: { request: Request }) {
 		}
 
 		const config = readConfig();
-		if (!config.activeModel) {
+
+		// 可选 model 覆盖：优先用请求指定的模型（供 CLI --model 单次覆盖），否则用 activeModel
+		let model = getActiveModel();
+		let providerConfig = config.activeModel ? getProviderForModel(config.activeModel) : undefined;
+
+		if (requestedModel && requestedModel !== config.activeModel) {
+			const found = getAllAvailableModels().find((m) => m.model.id === requestedModel);
+			const reqProvider = getProviderForModel(requestedModel);
+			if (found && reqProvider) {
+				model = found.model;
+				providerConfig = reqProvider;
+			} else {
+				return new Response(JSON.stringify({ error: `未找到模型或其供应商配置：${requestedModel}` }), {
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+		}
+
+		if (!model || !providerConfig) {
 			return new Response(JSON.stringify({ error: '未选择模型，请先在设置中配置供应商' }), {
-				status: 400,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		const providerConfig = getProviderForModel(config.activeModel);
-		if (!providerConfig) {
-			return new Response(JSON.stringify({ error: '未找到对应模型的供应商配置' }), {
-				status: 400,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		const model = getActiveModel();
-		if (!model) {
-			return new Response(JSON.stringify({ error: '未选择模型' }), {
 				status: 400,
 				headers: { 'Content-Type': 'application/json' }
 			});
@@ -55,7 +59,7 @@ export async function POST({ request }: { request: Request }) {
 		const provider = createProvider(runtimeConfig);
 		const storage = createStorage({ enabled: config.storageEnabled });
 
-		const contextWindow = getContextWindow();
+		const contextWindow = model.contextWindow;
 
 		const registry = new ToolRegistry();
 		for (const t of CORE_TOOLS) registry.register(t);
