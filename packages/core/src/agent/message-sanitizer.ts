@@ -8,8 +8,19 @@ function extractTextContent(content: string | ContentPart[]): string {
 		.join('\n');
 }
 
-function mergeContent(a: string | ContentPart[], b: string | ContentPart[]): string {
-	return extractTextContent(a) + '\n\n' + extractTextContent(b);
+function mergeContent(a: string | ContentPart[], b: string | ContentPart[]): string | ContentPart[] {
+	if (typeof a === 'string' && typeof b === 'string') {
+		return a + '\n\n' + b;
+	}
+
+	const partsA = typeof a === 'string' ? [{ type: 'text' as const, text: a }] : a;
+	const partsB = typeof b === 'string' ? [{ type: 'text' as const, text: b }] : b;
+
+	return [
+		...partsA,
+		{ type: 'text' as const, text: '\n\n' },
+		...partsB
+	];
 }
 
 const SURROGATE_RE = /[\uD800-\uDFFF]/g;
