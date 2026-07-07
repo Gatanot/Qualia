@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from '
 import type { AppConfig, ProviderConfig } from './types';
 import type { ModelDef } from '../ai/models';
 import { getDefaultModels } from '../ai/models';
-import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent';
+import { DEFAULT_SYSTEM_PROMPT } from '$lib/agent/prompts';
 import { getConfigPath, getDataDir } from '$lib/paths';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
