@@ -10,11 +10,13 @@ import type { CommandClassification } from './types';
  */
 export class ToolContext {
 	readonly root: string;
+	readonly sessionId?: string;
 
 	onUpdate?: (chunk: string) => void;
 
-	constructor(root: string) {
+	constructor(root: string, sessionId?: string) {
 		this.root = root;
+		this.sessionId = sessionId;
 	}
 
 	/** 解析用户输入的路径，同时做安全检查 */

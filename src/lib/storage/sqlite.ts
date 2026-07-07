@@ -1,6 +1,6 @@
 ﻿import Database from 'better-sqlite3';
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
-import type { Memory, MemoryListFilters, MemoryType, MemoryStatus, MemorySourceKind } from '$lib/memory/types';
+import type { Memory, MemoryListFilters, MemoryRevision, MemoryType, MemoryStatus, MemorySourceKind } from '$lib/memory/types';
 import type { ToolCall, Usage } from '$lib/ai';
 import { formatSessionTitle } from './utils';
 
@@ -56,6 +56,17 @@ interface MemoryRow {
 	tags: string;
 	created_at: number;
 	updated_at: number;
+}
+
+interface RevisionRow {
+	id: string;
+	memory_id: string;
+	content: string;
+	confidence: number;
+	status: string;
+	priority: number;
+	tags: string;
+	created_at: number;
 }
 
 /**
@@ -136,6 +147,18 @@ export class SQLiteStorage implements Storage {
 			);
 			CREATE INDEX IF NOT EXISTS idx_memories_status
 				ON memories(status);
+			CREATE TABLE IF NOT EXISTS memory_revisions (
+				id          TEXT PRIMARY KEY,
+				memory_id   TEXT NOT NULL,
+				content     TEXT NOT NULL DEFAULT '',
+				confidence  REAL NOT NULL DEFAULT 1.0,
+				status      TEXT NOT NULL DEFAULT 'active',
+				priority    INTEGER NOT NULL DEFAULT 0,
+				tags        TEXT NOT NULL DEFAULT '[]',
+				created_at  INTEGER NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS idx_memory_revisions_memory
+				ON memory_revisions(memory_id);
 		`);
 
 		this.migrate();
@@ -190,6 +213,13 @@ export class SQLiteStorage implements Storage {
 			updateMemoryContent: this.db.prepare(`UPDATE memories SET content = ?, status = ?, priority = ?, tags = ?, updated_at = ? WHERE id = ?`),
 			archiveMemory: this.db.prepare(`UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ?`),
 			deleteMemoryStmt: this.db.prepare(`DELETE FROM memories WHERE id = ?`),
+			listAllMemories: this.db.prepare(`SELECT * FROM memories ORDER BY priority DESC, updated_at DESC`),
+			upsertMemory: this.db.prepare(`INSERT OR REPLACE INTO memories (id, type, content, source_session_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			// Memory revisions
+			insertRevision: this.db.prepare(`INSERT INTO memory_revisions (id, memory_id, content, confidence, status, priority, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
+			getRevision: this.db.prepare(`SELECT * FROM memory_revisions WHERE id = ?`),
+			listRevisionsByMemory: this.db.prepare(`SELECT * FROM memory_revisions WHERE memory_id = ? ORDER BY created_at DESC, rowid DESC`),
+			deleteRevisionsByMemory: this.db.prepare(`DELETE FROM memory_revisions WHERE memory_id = ?`),
 		};
 	}
 
@@ -499,6 +529,7 @@ export class SQLiteStorage implements Storage {
 	async updateMemory(id: string, patch: Partial<Pick<Memory, 'content' | 'status' | 'priority' | 'tags'>>): Promise<Memory> {
 		const existing = await this.getMemory(id);
 		if (!existing) throw new Error(`记忆不存在: ${id}`);
+		this.snapshotRevision(existing);
 		const now = Date.now();
 		this.stmts.updateMemoryContent.run(
 			patch.content ?? existing.content,
@@ -512,14 +543,82 @@ export class SQLiteStorage implements Storage {
 	}
 
 	async archiveMemory(id: string): Promise<void> {
+		const existing = await this.getMemory(id);
+		if (!existing) return;
+		this.snapshotRevision(existing);
 		this.stmts.archiveMemory.run(Date.now(), id);
 	}
 
 	async deleteMemory(id: string): Promise<void> {
+		this.stmts.deleteRevisionsByMemory.run(id);
 		this.stmts.deleteMemoryStmt.run(id);
 	}
 
+	async listAllMemories(): Promise<Memory[]> {
+		const rows = this.stmts.listAllMemories.all() as MemoryRow[];
+		return rows.map((r) => this.rowToMemory(r));
+	}
+
+	async importMemories(memories: Memory[]): Promise<number> {
+		let count = 0;
+		const now = Date.now();
+		for (const m of memories) {
+			this.stmts.upsertMemory.run(
+				m.id, m.type, m.content,
+				m.source_session_id ?? null,
+				m.source_kind, m.confidence, m.status,
+				m.priority, JSON.stringify(m.tags ?? []),
+				m.created_at || now, m.updated_at || now
+			);
+			count++;
+		}
+		return count;
+	}
+
+	async listMemoryRevisions(memoryId: string): Promise<MemoryRevision[]> {
+		const rows = this.stmts.listRevisionsByMemory.all(memoryId) as RevisionRow[];
+		return rows.map((r) => this.rowToRevision(r));
+	}
+
+	async rollbackMemory(memoryId: string, revisionId: string): Promise<Memory> {
+		const existing = await this.getMemory(memoryId);
+		if (!existing) throw new Error(`记忆不存在: ${memoryId}`);
+		const rev = this.stmts.getRevision.get(revisionId) as RevisionRow | undefined;
+		if (!rev || rev.memory_id !== memoryId) throw new Error(`修订不存在: ${revisionId}`);
+		this.snapshotRevision(existing);
+		this.stmts.updateMemoryContent.run(
+			rev.content,
+			rev.status,
+			rev.priority,
+			rev.tags,
+			Date.now(),
+			memoryId
+		);
+		return (await this.getMemory(memoryId))!;
+	}
+
+	private snapshotRevision(m: Memory): void {
+		this.stmts.insertRevision.run(
+			crypto.randomUUID(), m.id, m.content,
+			m.confidence, m.status, m.priority,
+			JSON.stringify(m.tags), Date.now()
+		);
+	}
+
 	// ── Row mappers ──
+
+	private rowToRevision(row: RevisionRow): MemoryRevision {
+		return {
+			id: row.id,
+			memory_id: row.memory_id,
+			content: row.content,
+			confidence: row.confidence,
+			status: row.status as MemoryStatus,
+			priority: row.priority,
+			tags: JSON.parse(row.tags),
+			created_at: row.created_at
+		};
+	}
 
 	private rowToMemory(row: MemoryRow): Memory {
 		return {

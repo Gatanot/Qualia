@@ -1,5 +1,5 @@
 import type { Storage, Session, MessageRecord, MessageQueryOptions, MessageSearchResult, AuditLogEntry } from './types';
-import type { Memory, MemoryListFilters } from '$lib/memory/types';
+import type { Memory, MemoryListFilters, MemoryRevision } from '$lib/memory/types';
 import { formatSessionTitle } from './utils';
 
 /**
@@ -276,6 +276,7 @@ export class MemoryStorage implements Storage {
 	// ── Memory stubs (in-memory fallback) ──
 
 	private _memories = new Map<string, Memory>();
+	private _revisions = new Map<string, MemoryRevision>();
 
 	async createMemory(input: Omit<Memory, 'id' | 'created_at' | 'updated_at'>): Promise<Memory> {
 		const id = crypto.randomUUID();
@@ -305,6 +306,7 @@ export class MemoryStorage implements Storage {
 	async updateMemory(id: string, patch: Partial<Pick<Memory, 'content' | 'status' | 'priority' | 'tags'>>): Promise<Memory> {
 		const m = this._memories.get(id);
 		if (!m) throw new Error(`记忆不存在: ${id}`);
+		this._snapshot(m);
 		if (patch.content !== undefined) m.content = patch.content;
 		if (patch.status !== undefined) m.status = patch.status;
 		if (patch.priority !== undefined) m.priority = patch.priority;
@@ -315,10 +317,62 @@ export class MemoryStorage implements Storage {
 
 	async archiveMemory(id: string): Promise<void> {
 		const m = this._memories.get(id);
-		if (m) { m.status = 'archived'; m.updated_at = Date.now(); }
+		if (m) { this._snapshot(m); m.status = 'archived'; m.updated_at = Date.now(); }
 	}
 
 	async deleteMemory(id: string): Promise<void> {
 		this._memories.delete(id);
+		for (const [rid, r] of this._revisions) {
+			if (r.memory_id === id) this._revisions.delete(rid);
+		}
+	}
+
+	async listAllMemories(): Promise<Memory[]> {
+		return Array.from(this._memories.values());
+	}
+
+	async importMemories(memories: Memory[]): Promise<number> {
+		let count = 0;
+		for (const m of memories) {
+			this._memories.set(m.id, { ...m });
+			count++;
+		}
+		return count;
+	}
+
+	async listMemoryRevisions(memoryId: string): Promise<MemoryRevision[]> {
+		return Array.from(this._revisions.values())
+			.filter((r) => r.memory_id === memoryId)
+			.reverse()
+			.sort((a, b) => b.created_at - a.created_at);
+	}
+
+	async rollbackMemory(memoryId: string, revisionId: string): Promise<Memory> {
+		const m = this._memories.get(memoryId);
+		if (!m) throw new Error(`记忆不存在: ${memoryId}`);
+		const rev = this._revisions.get(revisionId);
+		if (!rev || rev.memory_id !== memoryId) throw new Error(`修订不存在: ${revisionId}`);
+		this._snapshot(m);
+		m.content = rev.content;
+		m.confidence = rev.confidence;
+		m.status = rev.status;
+		m.priority = rev.priority;
+		m.tags = [...rev.tags];
+		m.updated_at = Date.now();
+		return m;
+	}
+
+	private _snapshot(m: Memory): void {
+		const id = crypto.randomUUID();
+		this._revisions.set(id, {
+			id,
+			memory_id: m.id,
+			content: m.content,
+			confidence: m.confidence,
+			status: m.status,
+			priority: m.priority,
+			tags: [...m.tags],
+			created_at: Date.now()
+		});
 	}
 }

@@ -1,5 +1,5 @@
 ﻿import type { ToolCall, Usage } from '$lib/ai';
-import type { Memory, MemoryListFilters } from '$lib/memory/types';
+import type { Memory, MemoryListFilters, MemoryRevision } from '$lib/memory/types';
 
 /**
  * 会话记录
@@ -168,4 +168,12 @@ export interface Storage {
 	archiveMemory(id: string): Promise<void>;
 	/** 删除记忆 */
 	deleteMemory(id: string): Promise<void>;
+	/** 列出所有记忆（含 archived/superseded），用于导出 */
+	listAllMemories(): Promise<Memory[]>;
+	/** 批量导入记忆（按 id upsert），返回导入条数 */
+	importMemories(memories: Memory[]): Promise<number>;
+	/** 列出某条记忆的修订历史（按时间倒序） */
+	listMemoryRevisions(memoryId: string): Promise<MemoryRevision[]>;
+	/** 回滚记忆到指定修订，回滚前先快照当前状态 */
+	rollbackMemory(memoryId: string, revisionId: string): Promise<Memory>;
 }

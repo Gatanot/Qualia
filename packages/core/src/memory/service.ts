@@ -9,6 +9,7 @@
 import type { Storage } from '../storage/index.js';
 import type {
 	Memory,
+	MemoryRevision,
 	MemorySearchContext,
 	MemoryListFilters
 } from './types.js';
@@ -37,6 +38,22 @@ export class MemoryService {
 
 	async delete(id: string): Promise<void> {
 		await this.storage.deleteMemory(id);
+	}
+
+	async exportAll(): Promise<Memory[]> {
+		return this.storage.listAllMemories();
+	}
+
+	async import(memories: Memory[]): Promise<number> {
+		return this.storage.importMemories(memories);
+	}
+
+	async listRevisions(memoryId: string): Promise<MemoryRevision[]> {
+		return this.storage.listMemoryRevisions(memoryId);
+	}
+
+	async rollback(memoryId: string, revisionId: string): Promise<Memory> {
+		return this.storage.rollbackMemory(memoryId, revisionId);
 	}
 
 	/**

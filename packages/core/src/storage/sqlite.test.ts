@@ -137,4 +137,75 @@ describe('SQLiteStorage', () => {
 		const logs = await storage.listAuditLogs(100);
 		expect(logs.filter((l) => l.session_id === session.id)).toHaveLength(0);
 	});
+
+	// ── Memory revisions / rollback ──
+
+	it('updateMemory snapshots prior state into revisions', async () => {
+		const m = await storage.createMemory({
+			type: 'fact', content: 'v1', source_session_id: null, source_kind: 'chat',
+			confidence: 1, status: 'active', priority: 0, tags: []
+		});
+
+		await storage.updateMemory(m.id, { content: 'v2' });
+		await storage.updateMemory(m.id, { content: 'v3' });
+
+		const revs = await storage.listMemoryRevisions(m.id);
+		expect(revs).toHaveLength(2);
+		expect(revs[0].content).toBe('v2');
+		expect(revs[1].content).toBe('v1');
+	});
+
+	it('rollbackMemory restores a prior revision and snapshots current', async () => {
+		const m = await storage.createMemory({
+			type: 'fact', content: 'orig', source_session_id: null, source_kind: 'chat',
+			confidence: 1, status: 'active', priority: 0, tags: []
+		});
+		await storage.updateMemory(m.id, { content: 'edited' });
+
+		const revs = await storage.listMemoryRevisions(m.id);
+		const origRev = revs.find((r) => r.content === 'orig')!;
+		const rolled = await storage.rollbackMemory(m.id, origRev.id);
+
+		expect(rolled.content).toBe('orig');
+		const after = await storage.listMemoryRevisions(m.id);
+		expect(after.some((r) => r.content === 'edited')).toBe(true);
+	});
+
+	it('deleteMemory cascades its revisions', async () => {
+		const m = await storage.createMemory({
+			type: 'fact', content: 'a', source_session_id: null, source_kind: 'chat',
+			confidence: 1, status: 'active', priority: 0, tags: []
+		});
+		await storage.updateMemory(m.id, { content: 'b' });
+		await storage.deleteMemory(m.id);
+		expect(await storage.listMemoryRevisions(m.id)).toHaveLength(0);
+	});
+
+	// ── Memory export / import ──
+
+	it('listAllMemories includes archived; import round-trips by id', async () => {
+		const active = await storage.createMemory({
+			type: 'preference', content: 'keep', source_session_id: null, source_kind: 'chat',
+			confidence: 0.9, status: 'active', priority: 0, tags: ['x']
+		});
+		const archived = await storage.createMemory({
+			type: 'event', content: 'old', source_session_id: null, source_kind: 'chat',
+			confidence: 1, status: 'active', priority: 0, tags: []
+		});
+		await storage.archiveMemory(archived.id);
+
+		const all = await storage.listAllMemories();
+		expect(all.find((x) => x.id === active.id)).toBeTruthy();
+		expect(all.find((x) => x.id === archived.id)?.status).toBe('archived');
+
+		const exported = all.filter((x) => x.id === active.id || x.id === archived.id);
+		await storage.deleteMemory(active.id);
+		await storage.deleteMemory(archived.id);
+
+		const count = await storage.importMemories(exported);
+		expect(count).toBe(2);
+		const reactive = await storage.getMemory(active.id);
+		expect(reactive?.content).toBe('keep');
+		expect(reactive?.tags).toEqual(['x']);
+	});
 });

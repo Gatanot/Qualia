@@ -131,9 +131,7 @@ export class AgentLoop {
 		this.state = AgentState.INIT;
 
 		const session = await this.storage.getSession(sessionId);
-		if (session?.workspace) {
-			this.toolContext = new ToolContext(session.workspace);
-		}
+		this.toolContext = new ToolContext(session?.workspace || process.cwd(), sessionId);
 
 		pendingSteering.delete(sessionId);
 

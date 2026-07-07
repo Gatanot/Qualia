@@ -56,7 +56,7 @@ export const proposeMemoryTool: ToolDef = {
 		required: ['type', 'content']
 	},
 
-	async execute(args: Record<string, unknown>, _ctx: import('../env.js').ToolContext): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: import('../env.js').ToolContext): Promise<ToolResult> {
 		const type = args.type as string;
 		const content = (args.content as string) || '';
 		const confidence = (args.confidence as number) ?? 1.0;
@@ -88,7 +88,7 @@ export const proposeMemoryTool: ToolDef = {
 			await storage.createMemory({
 				type: type as 'fact' | 'preference' | 'rule' | 'event',
 				content: trimmed,
-				source_session_id: null,
+				source_session_id: ctx.sessionId ?? null,
 				source_kind: 'chat',
 				confidence,
 				status: 'active',

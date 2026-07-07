@@ -2,5 +2,5 @@ export { MemoryService } from './service';
 export type {
 	Memory, MemoryType,
 	MemorySourceKind, MemoryStatus,
-	MemorySearchContext, MemoryListFilters
+	MemoryRevision, MemorySearchContext, MemoryListFilters
 } from './types';
