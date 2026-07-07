@@ -8,6 +8,30 @@ const VALID_TYPES = ['fact', 'preference', 'rule', 'event'];
 const VALID_STATUS = ['active', 'superseded', 'archived'];
 const VALID_SOURCE = ['chat', 'summary', 'diary', 'task', 'manual'];
 
+const MD_TYPE_LABELS: Record<string, string> = { rule: '规则', fact: '事实', preference: '偏好', event: '事件' };
+const MD_TYPE_ORDER = ['rule', 'fact', 'preference', 'event'];
+
+function toMarkdown(memories: Memory[]): string {
+	const lines: string[] = [
+		'# Qualia 长期记忆',
+		'',
+		`导出时间：${new Date().toLocaleString('zh-CN')}　共 ${memories.length} 条`,
+		''
+	];
+	for (const type of MD_TYPE_ORDER) {
+		const group = memories.filter((m) => m.type === type);
+		if (group.length === 0) continue;
+		lines.push(`## ${MD_TYPE_LABELS[type]}（${group.length}）`, '');
+		for (const m of group) {
+			const meta = [`置信度 ${m.confidence.toFixed(1)}`, new Date(m.created_at).toLocaleDateString('zh-CN')];
+			if (m.status !== 'active') meta.push(m.status === 'archived' ? '已归档' : m.status);
+			lines.push(`- ${m.content}  \n  _(${meta.join(' · ')})_`);
+		}
+		lines.push('');
+	}
+	return lines.join('\n');
+}
+
 function sanitizeImport(raw: unknown): Memory | null {
 	if (!raw || typeof raw !== 'object') return null;
 	const r = raw as Record<string, unknown>;
@@ -43,7 +67,13 @@ export async function GET({ url }: { url: URL }) {
 		}
 
 		if (url.searchParams.get('export')) {
-			return json(await memoryService.exportAll());
+			const all = await memoryService.exportAll();
+			if (url.searchParams.get('format') === 'md') {
+				return new Response(toMarkdown(all), {
+					headers: { 'Content-Type': 'text/markdown; charset=utf-8' }
+				});
+			}
+			return json(all);
 		}
 
 		const search = url.searchParams.get('search') || undefined;

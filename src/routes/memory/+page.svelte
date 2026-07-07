@@ -73,19 +73,22 @@
 		if (res.ok) { await loadMemories(); await loadRevisions(id); }
 	}
 
-	function exportMemories() {
-		fetch('/api/memory?export=1')
-			.then((r) => r.json())
+	function exportMemories(format: 'json' | 'md') {
+		const url = '/api/memory?export=1' + (format === 'md' ? '&format=md' : '');
+		fetch(url)
+			.then((r) => (format === 'md' ? r.text() : r.json()))
 			.then((data) => {
-				const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-				const url = URL.createObjectURL(blob);
+				const text = format === 'md' ? (data as string) : JSON.stringify(data, null, 2);
+				const mime = format === 'md' ? 'text/markdown' : 'application/json';
+				const blob = new Blob([text], { type: mime });
+				const objUrl = URL.createObjectURL(blob);
 				const a = document.createElement('a');
-				a.href = url;
-				a.download = 'qualia-memories.json';
+				a.href = objUrl;
+				a.download = format === 'md' ? 'qualia-memories.md' : 'qualia-memories.json';
 				document.body.appendChild(a);
 				a.click();
 				document.body.removeChild(a);
-				URL.revokeObjectURL(url);
+				URL.revokeObjectURL(objUrl);
 			});
 	}
 
@@ -135,7 +138,8 @@
 		<h1>长期记忆</h1>
 		<div class="header-actions">
 			<span class="count">{memories.length} 条</span>
-			<button class="action-btn" onclick={exportMemories}>导出</button>
+			<button class="action-btn" onclick={() => exportMemories('json')}>导出 JSON</button>
+			<button class="action-btn" onclick={() => exportMemories('md')}>导出 MD</button>
 			<label class="action-btn">
 				导入
 				<input type="file" accept=".json" hidden onchange={(e) => importMemories((e.target as HTMLInputElement).files)} />
