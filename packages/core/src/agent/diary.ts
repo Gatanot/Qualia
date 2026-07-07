@@ -1,9 +1,11 @@
 ﻿import { existsSync, readFileSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AIProvider, Message } from '../ai/index.js';
 import type { Storage } from '../storage/index.js';
 import { buildSystemMessage, completeWithToolLoop } from './summarizer.js';
-import { getDataPath } from '../paths.js';
+import { getDataDir, getDataPath } from '../paths.js';
+import { ToolContext } from '../tool/index.js';
 
 const DIARY_DIR = join(getDataPath('diary'));
 const MAX_RECENT_DAYS = 7;
@@ -80,5 +82,25 @@ export async function generateDiary(
 		{ role: 'user', content: userContent }
 	];
 
-	await completeWithToolLoop(provider, messages, 2000, 0.5);
+	const before = readDiaryContent(filePath);
+	const toolContext = new ToolContext(getDataDir());
+	const { content } = await completeWithToolLoop(provider, messages, 2000, 0.5, toolContext);
+
+	const after = readDiaryContent(filePath);
+	if (after !== null && after !== before) return;
+
+	const fallback = (content || '').trim();
+	if (!fallback) {
+		throw new Error('日记生成失败：模型未写入文件且未返回内容');
+	}
+	await mkdir(DIARY_DIR, { recursive: true });
+	await writeFile(filePath, fallback, 'utf-8');
+}
+
+function readDiaryContent(filePath: string): string | null {
+	try {
+		return existsSync(filePath) ? readFileSync(filePath, 'utf-8').trim() : null;
+	} catch {
+		return null;
+	}
 }

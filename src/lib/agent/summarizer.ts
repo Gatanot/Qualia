@@ -53,9 +53,11 @@ export async function completeWithToolLoop(
 	provider: AIProvider,
 	messages: Message[],
 	maxTokens: number,
-	temperature: number
+	temperature: number,
+	toolContext?: ToolContext
 ): Promise<{ content: string; usage?: Usage }> {
 	const tools = getToolDefs();
+	const ctx = toolContext ?? getToolContext();
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const response = await provider.chat({
@@ -80,7 +82,7 @@ export async function completeWithToolLoop(
 			try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
 
 			try {
-				const result = await getRegistry().execute(tc.function.name, args, getToolContext());
+				const result = await getRegistry().execute(tc.function.name, args, ctx);
 				messages.push({
 					role: 'tool',
 					content: result.output || result.error || '',

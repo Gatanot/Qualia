@@ -9,7 +9,9 @@ Qualia 的定位不是“带历史记录的聊天壳”，而是本地个人 AI 
 3. 用得对：进入模型上下文的是当前任务真正相关的记忆，而不是把所有内容粗暴塞进 system prompt。
 4. 用户可控：本地优先、可查看、可编辑、可删除、可导出，模型不能无声污染长期记忆。
 
-当前 `memory.md` 的价值是透明和简单，适合作为早期 MVP；但它不适合作为未来的主记忆层。它缺少结构、来源、置信度、候选流程、去重、检索和遗忘机制。未来应保留 Markdown 作为用户可见层和迁移兼容层，把真实能力迁到 SQLite 的结构化记忆系统。
+> **实施状态（0.3.x）**：本文档以“候选收件箱”为目标状态撰写，但 0.3.0 落地时做了关键偏离——**放弃候选层，改为对话流内联确认**。各节均已标注实际实现与偏差，最权威的现状见文末「0.3.0 实施的取舍」。
+
+早期的 `memory.md` 已废弃，能力全部迁到 SQLite 的结构化记忆系统（`memories` 表 + MemoryService）。Markdown 仅作导出格式，不再是 source of truth。
 
 ## 设计原则
 
@@ -17,9 +19,11 @@ Qualia 的定位不是“带历史记录的聊天壳”，而是本地个人 AI 
 
 记忆默认存在 `~/.qualia` 下的 SQLite 数据库和可导出的 Markdown/JSON 文件中。所有写入、删除、合并和状态变化都应在本地完成。后续即使引入插件、MCP 或远程同步，也不能改变“用户拥有原始数据”的前提。
 
-### 候选先于写入
+### 确认先于写入
 
-模型不应默认直接写长期记忆。对话、摘要、任务结果、日记都可以产生“记忆候选”，候选进入收件箱，由用户接受、编辑、忽略或合并。低风险用户可以开启自动接受策略，但自动接受也必须留下审计记录，并允许回滚。
+模型不应默认直接写长期记忆。`propose_memory` 抛出 `PendingConfirmation`（与 exec/write_file 同一确认链），在写入前先让用户在对话流内联确认：批准后立即写为 active memory，拒绝则什么都不写，并把 `rejectHint` 回喂给模型重新协商。
+
+> 历史设计曾采用“候选收件箱”（模型提出 → 候选表 → 用户异步接受/忽略/合并）。0.3.0 落地时改为对话流内联确认，移除候选/收件箱表，原因见「0.3.0 实施的取舍」。摘要、任务结果、日记因此不再自动产生候选（后台任务 auto-deny confirm，本就无法内联确认）。
 
 ### 事实和上下文分层
 
@@ -35,94 +39,55 @@ Qualia 的定位不是“带历史记录的聊天壳”，而是本地个人 AI 
 
 ## 目标架构
 
-记忆系统分为五层：
+记忆系统分为四层：
 
 1. 原始记录层：messages、sessions、audit_logs、tasks、diary、summaries。
-2. 候选层：模型或规则从原始记录中提取的 memory_candidates。
-3. 长期记忆层：用户批准或策略自动接受后的 memories。
-4. 检索层：按工作区、类型、标签、时间、文本和后续向量索引召回相关记忆。
-5. 展示层：记忆管理页、Markdown 导出、`read_memory` 工具、上下文注入。
+2. 长期记忆层：用户内联确认后写入的 memories（`propose_memory` → `PendingConfirmation` → 确认 → active）。
+3. 检索层：按类型、标签、时间、文本和后续向量索引召回相关记忆。
+4. 展示层：记忆管理页、Markdown 导出、`read_memory` 工具、上下文注入。
 
-现有 `memory.md` 应降级为兼容和导出格式：仍可手动编辑，但不再是唯一真相。迁移后，SQLite 是 source of truth，Markdown 是 projection。
+> 目标状态原为五层（含候选层）。0.3.0 移除候选层，改为写入前内联确认，详见「确认先于写入」与「0.3.0 实施的取舍」。
+
+现有 `memory.md` 已废弃（`~/.qualia/data/memory.md` 不再使用）。SQLite 是 source of truth，Markdown 仅作导出格式。
 
 ## 数据模型
 
 ### memories
 
-长期记忆主表。
-
-字段建议：
+长期记忆主表。实际字段（`storage/sqlite.ts`，`memory/types.ts`）：
 
 - `id`: TEXT PRIMARY KEY
-- `type`: `fact | preference | event | relationship | rule | project | task_result`
-- `scope`: `global | workspace | session`
-- `workspace`: TEXT，空字符串表示全局
+- `type`: `fact | preference | rule | event`
 - `content`: TEXT，给模型和用户看的自然语言内容
-- `normalized_key`: TEXT，用于同类记忆去重和合并，例如 `user.name`、`project.qualia.command.check`
-- `source_session_id`: TEXT
-- `source_message_id`: TEXT
-- `source_kind`: `chat | summary | diary | task | manual | import`
+- `source_session_id`: TEXT，可空
+- `source_kind`: `chat | summary | diary | task | manual`
 - `confidence`: REAL，0 到 1
-- `status`: `active | superseded | archived | rejected`
-- `priority`: INTEGER，用于上下文预算排序
+- `status`: `active | superseded | archived`
+- `priority`: INTEGER，用于上下文预算排序（rule 默认 10）
 - `tags`: TEXT，JSON 数组
-- `created_at`: INTEGER
-- `updated_at`: INTEGER
-- `last_used_at`: INTEGER
-- `expires_at`: INTEGER，可空
-- `approved_by`: `user | policy | migration`
-- `metadata`: TEXT，JSON 对象
+- `created_at` / `updated_at`: INTEGER
 
-### memory_candidates
-
-候选记忆收件箱。
-
-字段建议：
-
-- `id`: TEXT PRIMARY KEY
-- `proposed_type`: TEXT
-- `proposed_scope`: TEXT
-- `workspace`: TEXT
-- `content`: TEXT
-- `reason`: TEXT，为什么建议记住
-- `evidence`: TEXT，JSON 数组，包含 session/message/task/diary 引用
-- `confidence`: REAL
-- `status`: `pending | accepted | edited | ignored | merged | rejected`
-- `duplicate_of`: TEXT，可空，指向可能重复的 memory id
-- `created_at`: INTEGER
-- `resolved_at`: INTEGER
-- `resolved_memory_id`: TEXT
+> 目标设计曾含 `scope`/`workspace`/`normalized_key`/`expires_at`/`approved_by`/`metadata` 等字段，0.3.0 未采用——记忆不分作用域，去重/合并/关系图谱推迟。
 
 ### memory_revisions
 
-记录记忆变更历史，用于回滚和审计。
+修订快照，回滚/审计依赖它。字段：`id`、`memory_id`、`content`、`confidence`、`status`、`priority`、`tags`、`created_at`。每次编辑/归档/回滚前保存旧状态。
 
-字段建议：
+### memory_candidates（已移除）
 
-- `id`: TEXT PRIMARY KEY
-- `memory_id`: TEXT
-- `action`: `create | update | merge | archive | delete | restore`
-- `before`: TEXT，JSON 快照
-- `after`: TEXT，JSON 快照
-- `actor`: `user | assistant | policy | migration`
-- `reason`: TEXT
-- `created_at`: INTEGER
+候选收件箱在 0.3.0 被替换为内联确认，此表未实现，不再保留。原设计字段（proposed_type/content/reason/evidence/status/duplicate_of…）仅作历史参考。
 
-### memory_links
+### memory_revisions（实际 schema 见上）
 
-表达记忆之间的关系。
+上文「memory_revisions」已列出落地字段。原目标设计的 `action`/`before`/`after`/`actor`/`reason` 字段未采用——修订表只存旧状态快照，动作与理由由 audit log 承载。
 
-字段建议：
+### memory_links（未实现）
 
-- `id`: TEXT PRIMARY KEY
-- `from_memory_id`: TEXT
-- `to_memory_id`: TEXT
-- `relation`: `supports | contradicts | supersedes | related | derived_from`
-- `created_at`: INTEGER
-
-第一版可以先不做复杂图谱，但表结构预留关系比后续硬迁移更稳。
+记忆关系图谱（supports/contradicts/supersedes…）在记忆量达到数百条前无实际价值，未建表。
 
 ## 记忆类型
+
+实际实现 4 种（`MemoryType`）：
 
 ### fact
 
@@ -130,253 +95,206 @@ Qualia 的定位不是“带历史记录的聊天壳”，而是本地个人 AI 
 
 ### preference
 
-交互偏好和技术偏好。例如回答风格、语言、框架选择、测试习惯。preference 可以从重复行为中产生候选，但最好让用户确认。
+交互偏好和技术偏好。例如回答风格、语言、框架选择、测试习惯。preference 可从重复行为中推断，但仍需用户内联确认。
 
 ### event
 
-有时间属性的重要事件。例如“2026-07-06 决定把 Qualia 的记忆系统升级为结构化设计”。event 适合进入 records 时间线，也可作为长期记忆。
-
-### relationship
-
-人物、组织、项目之间的关系。第一版可以只做普通文本和标签，不必急着做完整实体系统。
+有时间属性的重要事件。例如“2026-07-06 决定把 Qualia 的记忆系统升级为结构化设计”。
 
 ### rule
 
-用户明确要求长期遵守的规则。例如“不要直接编辑 packages/*/src”。rule 优先级最高，进入上下文时应标注为用户长期规则。
+用户明确要求长期遵守的规则。例如“不要直接编辑 packages/*/src”。rule 优先级最高（priority 默认 10），注入上下文时标注为用户长期规则。
 
-### project
-
-工作区画像。例如项目命令、架构约束、发布流程、常见坑。它和 AGENTS.md 互补：AGENTS.md 是项目提供的静态规则，project memory 是长期使用中形成的经验。
-
-### task_result
-
-后台任务结果和主动跟进结果。默认进 records，可由用户选择沉淀为长期记忆。
+> 目标设计的 `relationship` / `project` / `task_result` 类型未采用。项目经验目前靠 workspace `AGENTS.md` 自动加载（见「AGENTS.md」），不进 memories 表。
 
 ## 写入流程
 
 ### 对话中显式记住
 
-当用户说“记住”“以后都”“我的偏好是”这类明确意图时，助手应创建候选记忆，并在当前回复中简短说明已放入记忆收件箱。若用户配置允许自动接受明确规则，可直接写入 `memories`，但仍记录 revision 和 audit log。
+当用户说“记住”“以后都”“我的偏好是”这类明确意图时，助手调用 `propose_memory`，在当前回复中内联弹出确认（web `ConfirmInline` / CLI `confirm-dialog`）；用户批准后写为 active memory，拒绝则不写并把 `rejectHint` 回喂模型重新协商。
 
-### 摘要后自动提取
+### 摘要与日记不产记忆
 
-自动摘要完成后，额外运行一个轻量提取步骤，从新增消息和更新后的 summary 中提出候选记忆。提取结果不要直接写入长期记忆。
+自动摘要、日记、后台任务都在无人值守的后台运行（auto-deny confirm），无法完成内联确认，因此不写长期记忆。summary 供 records 页展示、日记供叙事连贯；若某条信息值得长期保留，应由用户在正常对话中让助手 `propose_memory`。
 
-候选提取 prompt 应要求输出结构化 JSON，字段包括 `type`、`scope`、`content`、`reason`、`confidence`、`evidence`、`tags`。低置信度候选直接丢弃或只进入 debug 日志。
-
-### 日记和 records 转记忆
-
-日记更适合记录“发生了什么”，不等同于长期记忆。records 页面应允许用户把某条日记片段或任务结果转换成候选记忆。这样可以避免每天的流水账污染长期记忆。
+> 历史设计曾规划“摘要后自动提取候选”“日记/records 转候选”。候选层移除后这些路径不再适用；未来若需摘要/日记沉淀记忆，需另设“待用户 UI 确认的建议”机制，与内联确认链解耦。
 
 ### 工具写入
 
-现有 `write_memory` 应改造成候选创建工具，而不是直接覆盖 `memory.md`。
+写入类工具只有 `propose_memory`（内联确认后写 active memory）。不存在直接覆盖式写入。
 
-建议工具拆分：
+工具分工：
 
-- `propose_memory`: 创建候选记忆。
-- `read_memory`: 检索长期记忆。
-- `manage_memory`: 仅内部或用户确认后使用，执行接受、编辑、归档、合并。
-
-`manage_memory` 属于 `memory.write` 权限，默认需要确认或来自用户在 UI 上的显式动作。
+- `propose_memory`: 内联确认后写入长期记忆。
+- `read_memory`: 检索 active memories。
+- 管理操作（编辑、归档、删除、回滚）通过记忆管理页 UI + `/api/memory` 完成，不暴露为模型工具。
 
 ## 检索与上下文注入
 
-### ContextBuilder 的新职责
+### ContextBuilder 的职责
 
-ContextBuilder 不再读取完整 `memory.md`。它应调用 MemoryService，基于以下信号召回记忆：
+ContextBuilder 调用 `MemoryService.searchContext({ query })`，只用当前 user message 做文本匹配召回 active memories，按 `type`（rule 强加权）、`confidence`、`priority` 打分排序（`service.ts:_score`）。
 
-- 当前 user message
-- 当前 session id
-- 当前 workspace
-- 最近 session summary
-- 最近若干条消息
-- 工具调用意图，例如文件操作、任务调度、写作、规划
-
-召回结果按规则、工作区相关性、文本匹配、最近使用、优先级和置信度排序。
+> 目标设计曾规划用 session id / workspace / 最近 summary / 工具意图等多信号召回，0.3.0 只实现了 query 文本匹配。summary、最近消息未参与召回。
 
 ### 上下文格式
 
-注入给模型的记忆应分组，并明确权重：
+注入的记忆按 rule vs 其他分组，标注类型和置信度（`context-builder.ts:formatMemorySection`）：
 
 ```text
 ## 长期记忆
 
 ### 用户长期规则
-- [rule, high confidence] ...
+- [rule, confidence: 1.0] ...
 
-### 当前工作区相关记忆
-- [project, source: session title/date] ...
-
-### 可能相关的用户偏好
-- [preference, medium confidence] ...
+### 用户偏好与事实
+- [偏好, confidence: 0.8] ...
+- [事实, confidence: 1.0] ...
 ```
 
-不要把低置信度候选注入为事实。pending candidates 只在用户正在管理记忆时展示，不进入普通对话上下文。
+不要把低置信度记忆注入为高置信事实。预算 rule 20 条 / 其他 40 条。
 
 ### 预算控制
 
-第一版可用简单文本召回和固定预算：
+固定预算（`service.ts`）：
 
-- rule: 最多 20 条，高优先级
-- workspace/project: 最多 20 条
-- preference/fact: 最多 20 条
-- event/task_result: 默认不注入，除非 query 命中
+- rule: 最多 20 条，`_score` 中 +50 强加权
+- 其他（fact/preference/event）: 最多 40 条
+- 只召回 `_score > 0`（query 词命中）的记忆
 
-后续再增加 embedding。不要在第一版为了向量库引入复杂外部依赖；可以先预留 `memory_embeddings` 表。
+后续可增加 embedding 与可配置预算（推迟）。
 
 ## UI 设计
 
-### 记忆收件箱
+### 内联确认（替代收件箱）
 
-收件箱是 0.3 的关键体验。每条候选显示：
+0.3.0 移除了异步收件箱，改为对话流内联确认（web `ConfirmInline` / CLI `confirm-dialog`）。助手 `propose_memory` 时，当前回复处直接弹出一张确认卡片：
 
 - 建议记住的内容
-- 类型和作用域
-- 为什么建议记住
-- 来源会话/消息/任务
-- 可能重复的已有记忆
-- 接受、编辑后接受、忽略、合并
+- 类型（fact/preference/rule/event）
+- 批准 / 拒绝
 
-默认不做大段解释。重点是让用户快速扫过和处理。
+批准即写入 active memory；拒绝把 `rejectHint` 回喂模型。不再有 pending 列表、编辑后接受、合并等异步动作——这些改由记忆管理页处理已写入的记忆。
 
 ### 记忆管理页
 
-管理页支持：
+管理页支持（`/api/memory`）：
 
-- 按类型、工作区、标签、状态过滤
-- 搜索 active memories
+- 按类型、状态过滤，搜索 active memories
 - 编辑内容
 - 归档或删除
-- 查看来源和修订历史
-- 合并重复记忆
-- 导出 Markdown/JSON
+- 查看来源和修订历史、回滚
+- 导入 / 导出 Markdown/JSON
 
-这页应是运维型界面，不是营销页面。信息密度可以高一些。
+> 目标设计的“按 workspace 过滤”“合并重复记忆”未实现。
 
-### 对话内轻提示
+这页应是运维型界面，信息密度可以高一些。
 
-当助手提出候选记忆时，对话里只显示短提示，例如“我把 2 条可能值得长期保留的信息放进记忆收件箱”。不要每次都打断主任务。
+### 对话内确认卡片
+
+助手提出记忆时，对话流内直接渲染确认卡片，用户当场批准或拒绝，不留异步待办。同一时刻应避免堆叠多张卡片，逐条确认。
 
 ## API 与服务边界
 
-建议新增 MemoryService，封装所有记忆操作。路由、工具、摘要 worker、任务 executor 都不直接操作表。
+MemoryService 封装所有记忆操作，路由、工具、摘要 worker、任务 executor 都通过它，不直接操作表。
 
-核心方法：
+实际方法（`memory/service.ts`）：
 
-- `proposeMemory(input)`
-- `listCandidates(filters)`
-- `resolveCandidate(id, action, editedContent?)`
-- `createMemory(input)`
-- `updateMemory(id, patch)`
-- `archiveMemory(id)`
-- `mergeMemories(sourceIds, targetPatch)`
-- `searchMemories(query, context)`
-- `getContextMemories(context, budget)`
-- `exportMemory(format)`
+- `list(filters)` / `get(id)` / `exportAll()` / `import(memories)`
+- `update(id, patch)` / `archive(id)` / `delete(id)`
+- `listRevisions(memoryId)` / `rollback(memoryId, revisionId)`
+- `searchContext(ctx)` — 检索注入用（rule 20 / 其他 40 预算）
 
-API 路由建议：
+写入不走 MemoryService 的 create——由 `propose_memory` 工具经内联确认后调 `storage.createMemory`，或管理页 POST `action: 'create'`。无 candidate 相关方法。
 
-- `GET /api/memory`
-- `POST /api/memory`
-- `PATCH /api/memory/:id`
-- `DELETE /api/memory/:id`
-- `GET /api/memory/candidates`
-- `POST /api/memory/candidates/:id/accept`
-- `POST /api/memory/candidates/:id/ignore`
-- `POST /api/memory/candidates/:id/merge`
-- `GET /api/memory/export`
+API 路由（`/api/memory/+server.ts`，单文件 GET/POST）：
 
-SvelteKit `+server.ts` 仍需只导出 HTTP method names 或 `_` 前缀辅助。
+- `GET /api/memory` — 列表（`?search`/`?type` 过滤 active）
+- `GET /api/memory?export=1&format=md|json` — 导出
+- `GET /api/memory?revisions=<id>` — 修订历史
+- `POST /api/memory` — body `action`: `create | update | archive | delete | rollback | import`
+
+无 `/api/memory/candidates` 端点。SvelteKit `+server.ts` 仍需只导出 HTTP method names 或 `_` 前缀辅助。
 
 ## 权限与审计
 
-记忆写入应纳入工具权限模型：
+记忆写入纳入工具确认模型：
 
-- `memory.read`: 默认安全。
-- `memory.propose`: 默认安全，但需要记录来源。
-- `memory.write`: 接受、编辑、合并、归档、删除，默认需要用户确认或 UI 显式动作。
+- `read_memory`: 默认安全。
+- `propose_memory`: 写入前抛 `PendingConfirmation`，需用户内联确认；后台/定时任务 auto-deny，故永不写记忆。
+- 管理操作（编辑、归档、删除、回滚）仅经记忆管理页 UI + `/api/memory`，不暴露为模型工具。
 
-每次状态变化都写入 `memory_revisions`。如果已有 audit log 能表达工具调用，也应记录工具名、参数摘要、确认状态和结果。用户应能从记忆详情看到“谁在什么时候为什么改了这条记忆”。
+记忆变更写入 `memory_revisions`（回滚依赖它），工具调用另有 audit log 记录工具名、参数摘要、确认状态和结果。
 
 ## 与现有系统的关系
 
 ### summary
 
-summary 是会话压缩和 records 的输入，不是长期记忆本身。它可以产生候选，但不直接替代 memories。
+summary 是每会话的结构化压缩（`summarizer.ts`），存入 `sessions.summary`，供 records 页展示，并作为日记的输入。它不注入对话上下文，也不产生记忆。若某条摘要信息值得长期保留，应由用户在对话中让助手 `propose_memory`。
 
 ### diary
 
-diary 是时间线叙事，适合“今天发生了什么”。只有被用户标记或被提取器高置信识别的内容才进入候选。
+diary 是时间线叙事（`diary.ts`），由当天各会话摘要 + 近 7 天日记合成，用 `write_file` 写入 `~/.qualia/data/diary/YYYY-MM-DD.md`。
+
+**健壮性（已修复）**：日记路径在 chat 工作区之外，后台任务 auto-deny confirm 曾导致 `write_file` 抛 `PendingConfirmation` 被静默吞掉、日记从不落盘。现 `completeWithToolLoop` 接受可选 `ToolContext`，`generateDiary` 传入根为 `getDataDir()` 的上下文，使写入判为 `safe`；循环结束后校验文件是否真的变更，未变更则用模型返回内容直接兜底写入。
+
+**检索（已落地）**：`read_diary` 工具支持按日期读、跨全部日记关键词搜、列出可用日期。它与 `search_history`（聊天记录）、`read_memory`（长期记忆）区分。
+
+**仍未做**：日记浏览 UI、注入对话上下文。日记本身不自动转记忆——沉淀仍走用户对话内 `propose_memory`。
 
 ### AGENTS.md
 
 AGENTS.md 是当前工作区的外部项目指令，优先级高于普通 project memory。project memory 负责记录长期使用中形成的经验，例如常用命令、项目坑点、用户选择。
 
-### memory.md
+### memory.md（已废弃）
 
-迁移后，`memory.md` 作为导出和兼容层：
-
-- 启动时如发现旧 `memory.md` 且 SQLite 无结构化记忆，执行一次迁移。
-- 迁移产生 `approved_by = migration` 的 memories。
-- 保留原文件备份，不自动删除。
-- 后续可从 SQLite 生成 `memory.md`，但不再让它作为唯一 source of truth。
+`~/.qualia/data/memory.md` 不再使用。SQLite 是唯一 source of truth，记忆通过 `/api/memory/export` 导出为 Markdown/JSON。原“启动时迁移旧 memory.md”方案未保留。
 
 ## 迁移策略
 
-第一步增加 schema migrations，再增加记忆相关表。迁移必须可重复执行，失败不删除源文件。
-
-旧 `memory.md` 迁移规则：
-
-- “关于用户”迁移为 `fact` 或 `preference` 候选，默认 pending，除非内容明显是稳定事实。
-- “重要事件”迁移为 `event`。
-- “关于我自己”迁移为 `rule` 或 `fact`，但需要谨慎，避免把旧默认模板当作真实记忆。
-
-迁移结束后生成报告：导入多少条、跳过多少条、哪些需要用户确认。
+> `memory.md` 已废弃，原“启动迁移旧 memory.md 为候选”方案未落地，此节仅作历史参考。当前 schema 变更走 SQLite migrations（`storage/sqlite.ts`），必须可重复执行。
 
 ## 分阶段落地
 
-### 0.3.1 最小可用结构化记忆
+### 0.3.0 结构化记忆（已落地）
 
-- 新增 `memories`、`memory_candidates`、`memory_revisions` 表。
-- 新增 MemoryService。
-- `write_memory` 改为 `propose_memory` 或创建 pending candidate。
-- ContextBuilder 使用 MemoryService 检索 active memories。
-- 新增简单记忆管理页和收件箱。
-- `memory.md` 迁移为候选。
+- `memories` 表 + MemoryService + `memory_revisions`（回滚/审计），无 `memory_candidates` 候选表。
+- `propose_memory` 内联确认写入 active memory；`read_memory` 检索。
+- ContextBuilder 用 `searchContext` 按需检索注入（rule 20 / 其他 40 预算）。
+- 记忆管理页 + `/api/memory`：编辑、归档、删除、修订历史、回滚、导入导出 Markdown。
+- 4 种类型：fact / preference / rule / event。
 
-### 0.3.2 质量治理
+### 0.3.x 后续（可选）
 
-- 候选去重和合并。
-- 来源消息跳转。
-- 修订历史和回滚。
-- 按 workspace 过滤。
-- 摘要后自动候选提取。
-- 导出 Markdown/JSON。
-
-### 0.3.3 检索增强
-
-- 增加更好的文本打分。
+- 更好的文本打分。
 - 预留或实现 embedding 索引。
 - 上下文预算可配置。
-- `read_memory` 支持类型、工作区、时间范围过滤。
+- `read_memory` 支持类型、时间范围过滤。
+
+### 摘要与日记改进（本轮）
+
+方向：**让日记可见可检索 + 提质摘要/日记健壮性**（不打通到记忆，见「摘要与日记不产记忆」）。
+
+- ✅ 日记检索/读回：`read_diary` 工具（按日期读 / 关键词搜 / 列日期），加入 CORE_TOOLS。
+- ✅ 日记写入健壮性：`completeWithToolLoop` 支持传入 `ToolContext`，日记以 `getDataDir()` 为根使写入判为 `safe`；写入后校验 + 兜底直接写。
+- ⬜ 日记浏览 UI：列出 `~/.qualia/data/diary/*.md`，按日期查看渲染后的叙事。
+- ⬜ 摘要/日记 prompt 进一步提质。
 
 ### 0.4 主动伙伴联动
 
-- 任务结果进入 records，并可转候选记忆。
+- 任务结果进入 records。
 - recurring tasks 使用相关记忆构建上下文。
-- workspace profile 与 project memories 合流。
-- 通知里可附带“是否记住这个结果”的轻操作。
+- 通知里可附带“是否记住这个结果”的轻操作（需与内联确认链解耦的 UI 建议机制）。
 
 ## 不建议做的事
 
-不要一开始做复杂知识图谱。关系表可以预留，但第一版重点是来源、候选、管理和检索。
+不要一开始做复杂知识图谱。关系表可以预留，但第一版重点是来源、确认、管理和检索。
 
 不要把所有历史消息向量化后称为记忆。历史搜索和长期记忆是两件事：历史是证据库，长期记忆是经过筛选的稳定知识。
 
-不要让模型无确认直接覆盖长期记忆。当前 `write_memory` 的覆盖式设计应尽快收敛。
+不要让模型无确认直接写长期记忆。写入必须经 `propose_memory` 的内联确认。
 
-不要把 `memory.md` 继续扩展成复杂 Markdown 协议。越复杂越难稳定解析，也违背项目里避免脆弱文本解析的习惯。
+不要复活 `memory.md` 或把它扩展成复杂 Markdown 协议。SQLite 是唯一 source of truth，Markdown 仅作导出。
 
 不要把低置信度情绪判断永久保存。情绪上下文适合 summary/diary，不适合长期贴标签。
 
@@ -386,34 +304,33 @@ AGENTS.md 是当前工作区的外部项目指令，优先级高于普通 projec
 
 - 用户能清楚看到 Qualia 记住了什么。
 - 每条记忆都能追溯来源。
-- 错误记忆能被删除、修正、合并和回滚。
+- 错误记忆能被删除、修正和回滚。
 - 普通聊天不会被无关旧记忆干扰。
-- 工作区相关记忆能在对应项目中自然生效。
-- 摘要、日记、任务结果能产生候选，但不会自动污染长期记忆。
+- 摘要、日记不会自动污染长期记忆；沉淀由用户在对话中内联确认。
 - 数据可导出、可迁移，用户不被锁死。
 
-如果只能优先做一件事，先做“候选记忆收件箱 + 结构化 memories 表”。它直接解决当前系统最大的问题
+如果只能优先做一件事，先做“结构化 memories 表 + 写入前确认”。它直接解决当前系统最大的问题。
 
 ## 0.3.0 实施的取舍
 
-以上设计是目标状态的完整描述。0.3.0 作为第一个结构化记忆版本，做了以下简化（原因见 temp.md 0.3 节）：
+以上设计原为“候选收件箱”目标状态的完整描述。0.3.0 落地时做了关键偏离——**放弃候选层，改为对话流内联确认**：
 
-**保留：**
-- 五层架构的核心骨架（候选层 + 长期记忆层 + 检索层）
-- memories + memory_candidates 两张核心表
-- 4 种记忆类型：fact / preference / rule / event（project 用 scope=workspace 区分）
-- 候选先于写入的流程
+**实际落地：**
+- 长期记忆层 + 检索层（无候选层）
+- 仅 `memories` 一张主表 + `memory_revisions`（回滚/审计），无 `memory_candidates`
+- 4 种记忆类型：fact / preference / rule / event（无 scope/workspace 字段）
+- **确认先于写入**：`propose_memory` → `PendingConfirmation` → 内联确认 → 直接写 active
 - 检索替代全量注入的 ContextBuilder 策略
-- 上下文预算控制
-- memory.md → memories 的一次性迁移
+- 上下文预算控制（rule 20 / 其他 40）
+- 记忆管理页：编辑、归档、删除、修订历史、回滚、导入导出 Markdown
 
-**推迟到 0.3.2/0.3.3：**
-- memory_revisions 表 → 审计日志已能覆盖谁在何时做了什么，暂不需独立修订表
-- memory_links 关系表 → 记忆量达到数百条前，supports/contradicts 关系无实际价值
-- embedding / 向量检索 → 文本匹配 + 分类过滤在第一版足够
-- 9 种类型 → 收敛到 4 种，降低 LLM 分类负担和 UI 复杂度
+**未实现 / 已放弃：**
+- `memory_candidates` 收件箱 → 被内联确认取代
+- `memory_links` 关系表 → 记忆量达到数百条前无实际价值
+- embedding / 向量检索 → 文本匹配 + 分类过滤够用
+- scope/workspace 维度 → 记忆不分作用域
+- memory.md 迁移 → `memory.md` 直接废弃，无迁移
 
-**推迟到 0.4：**
-- 摘要后自动候选提取
-- 任务结果自动转候选记忆
-- workspace profile 与 project memory 合流
+**推迟 / 不适用：**
+- 摘要/日记/任务自动产生记忆 → 候选层移除后此路径不适用（见「摘要与日记不产记忆」）
+- 摘要与日记改进（可见可检索）→ 本轮聚焦，见「分阶段落地」

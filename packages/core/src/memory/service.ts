@@ -1,9 +1,9 @@
 /**
  * MemoryService — 记忆系统核心服务
  *
- * 封装所有记忆操作：候选创建、候选处理、记忆检索、上下文注入。
- * 路由、工具、摘要 worker、任务 executor 都通过此服务操作记忆，
- * 不直接访问 SQLite 表。
+ * 封装记忆的读取、更新、归档、删除、修订/回滚、检索注入、导入导出。
+ * 写入走 propose_memory 工具的内联确认（storage.createMemory），不在此。
+ * 路由、工具、任务 executor 都通过此服务操作记忆，不直接访问 SQLite 表。
  */
 
 import type { Storage } from '../storage/index.js';

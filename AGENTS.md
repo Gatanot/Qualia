@@ -62,10 +62,10 @@ src/lib/
 ├── config/      # AppConfig + ProviderConfig
 ├── concurrency/ # SessionLock, FileMutex, BackgroundWorker
 ├── gateway/     # GatewayDispatcher + email/telegram adapters
-├── memory/      # MemoryService — structured long-term memory (candidate → accept/ignore)
+├── memory/      # MemoryService — structured long-term memory (inline-confirm write, no candidates)
 ├── storage/     # MemoryStorage (in-RAM) + SQLiteStorage (storageEnabled: true by default)
 ├── task/        # Scheduled task system
-├── tool/        # ToolRegistry + 11 tools + safeguard.ts
+├── tool/        # ToolRegistry + 12 tools + safeguard.ts
 ├── chat-confirm.ts / chat-steering.ts  # Shared maps for confirm/steer
 ├── markdown.ts  # marked + highlight.js + KaTeX
 ├── paths.ts     # ~/.qualia path resolution
@@ -110,6 +110,8 @@ When `contextWindow - token_count < 20000` after reply: LLM compresses conversat
 ## Auto-summarize
 
 Worker starts in `hooks.server.ts`. Config: `autoSummarize`, `summaryMode` (`idle`/`scheduled`), `summaryIdleHours` (8), `summaryScheduleHour` (2), `summaryIntervalMin` (30). Requires `storageEnabled`.
+
+Diary (`diary.ts`) is written by the model via `write_file` into `~/.qualia/data/diary/YYYY-MM-DD.md`. Because that path is outside the chat workspace, `completeWithToolLoop` roots its `ToolContext` at `getDataDir()` so the write classifies `safe` (otherwise background `auto-deny confirm` silently drops it). After the loop, `generateDiary` verifies the file changed and falls back to a direct write of the returned content. Read/search diary via the `read_diary` tool.
 
 ## Memory (structured, `src/lib/memory/`)
 
