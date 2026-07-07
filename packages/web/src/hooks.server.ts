@@ -4,6 +4,7 @@ import { GatewayDispatcher } from '@gatanot/qualia_core/gateway';
 import { getAllChatIds } from '@gatanot/qualia_core/gateway';
 import { startScheduler, stopScheduler, setTaskNotificationHandler } from '@gatanot/qualia_core/task';
 import type { GatewayNotification } from '@gatanot/qualia_core/gateway';
+import { acquireServerLock } from '@gatanot/qualia_core/server';
 
 let gateway: GatewayDispatcher | null = null;
 const summarize = createSummarizeWorker(notifyAll);
@@ -38,10 +39,21 @@ function shutdown() {
 	}
 }
 
-startup();
+// 后台服务（summarizer/scheduler/gateway）只在持有后端单例锁的进程里启动，
+// 避免多个 serve/dev 进程各自扫描同一份 ~/.qualia 数据、重复跑定时任务与 telegram 轮询。
+// 此处 host/port 仅为记录用途；serve.ts 会先以真实端口获取锁，同进程可重入。
+const lock = acquireServerLock({ host: '127.0.0.1', port: 0 });
+if (lock.acquired) {
+	startup();
 
-if (import.meta.hot) {
-	import.meta.hot.dispose(() => {
-		shutdown();
-	});
+	if (import.meta.hot) {
+		import.meta.hot.dispose(() => {
+			shutdown();
+			lock.release();
+		});
+	}
+} else {
+	const e = lock.existing;
+	const where = e ? `http://${e.host}:${e.port} (pid ${e.pid})` : '(unknown)';
+	console.warn(`[qualia] 已有后端在运行 ${where}，本进程仅提供 HTTP，不启动后台服务（摘要/调度/网关）。`);
 }

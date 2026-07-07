@@ -63,6 +63,7 @@ src/lib/
 ├── concurrency/ # SessionLock, FileMutex, BackgroundWorker
 ├── gateway/     # GatewayDispatcher + email/telegram adapters
 ├── memory/      # MemoryService — structured long-term memory (inline-confirm write, no candidates)
+├── server/      # acquireServerLock — cross-process backend singleton lock
 ├── storage/     # MemoryStorage (in-RAM) + SQLiteStorage (storageEnabled: true by default)
 ├── task/        # Scheduled task system
 ├── tool/        # ToolRegistry + 12 tools + safeguard.ts
@@ -113,6 +114,17 @@ Worker starts in `hooks.server.ts`. Config: `autoSummarize`, `summaryMode` (`idl
 
 Diary (`diary.ts`) is written by the model via `write_file` into `~/.qualia/data/diary/YYYY-MM-DD.md`. Because that path is outside the chat workspace, `completeWithToolLoop` roots its `ToolContext` at `getDataDir()` so the write classifies `safe` (otherwise background `auto-deny confirm` silently drops it). After the loop, `generateDiary` verifies the file changed and falls back to a direct write of the returned content. Read/search diary via the `read_diary` tool.
 
+## Backend singleton (`src/lib/server/`)
+
+All state (SQLite, memory, config, diary) lives in the global `~/.qualia`, shared across working dirs. `SessionLock`/`FileMutex`/`BackgroundWorker` in `concurrency/` are **in-process only** (in-RAM Maps), NOT cross-process. To stop multiple backends from each running summarizer/scheduler/gateway against the same data, `acquireServerLock({host, port})` provides a cross-process singleton via `~/.qualia/server.lock` (O_EXCL create) + `~/.qualia/server.json` (pid/host/port/startedAt).
+
+- **Re-entrant + idempotent within a process**: serve.ts acquires first with the real port, then `hooks.server.ts` re-acquires (same process → cached same `release`). So one `qualia serve` process both serves HTTP and runs background services.
+- `serve.ts`: fails to start (CliError) if another live backend holds the lock, printing its address.
+- `hooks.server.ts`: only calls `startup()` (gateway/summarizer/scheduler) if it wins the lock; otherwise serves HTTP only with a warning. Applies to `npm run dev` and adapter-node too.
+- Stale lock (dead pid, verified via `process.kill(pid, 0)`) is auto-reclaimed. `exit` handler cleans up.
+- `readServerInfo()` / `getRunningServer()` expose the running backend (for a future step where the TUI auto-connects instead of running the agent in-process).
+
+
 ## Memory (structured, `src/lib/memory/`)
 
 - `MemoryService` over SQLite `memories` table. `ContextBuilder.searchContext` retrieves active memories on demand and injects them (budget: 20 rules / 40 other), grouped by rule vs other with confidence. Requires `storageEnabled`.
@@ -134,7 +146,7 @@ AI schedules one-shot tasks. `schedule_task` requires reading current time via `
 
 ## Additional quirks
 
-- `hooks.server.ts` auto-starts gateway, summarizer, and scheduler on import.
+- `hooks.server.ts` auto-starts gateway, summarizer, and scheduler on import — but only if this process wins the backend singleton lock (see below).
 - `.svelte-kit/` is auto-generated; never edit.
 - `~/.qualia/data/memory.md` is no longer used (structured memory replaced it). Workspace root `AGENTS.md` (if present) is auto-loaded as project context by `ContextBuilder`.
 - `data/`, `docs/`, `opencode.json` are gitignored.

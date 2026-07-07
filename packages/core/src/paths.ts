@@ -19,3 +19,11 @@ export function getDataPath(...segments: string[]): string {
 export function getConfigPath(): string {
 	return join(QUALIA_HOME, 'config.json');
 }
+
+export function getServerLockPath(): string {
+	return join(QUALIA_HOME, 'server.lock');
+}
+
+export function getServerInfoPath(): string {
+	return join(QUALIA_HOME, 'server.json');
+}

@@ -20,6 +20,8 @@
 		"./gateway/*": "./dist/gateway/*.js",
 		"./memory": "./dist/memory/index.js",
 		"./memory/*": "./dist/memory/*.js",
+		"./server": "./dist/server/index.js",
+		"./server/*": "./dist/server/*.js",
 		"./storage": "./dist/storage/index.js",
     "./storage/*": "./dist/storage/*.js",
     "./task": "./dist/task/index.js",

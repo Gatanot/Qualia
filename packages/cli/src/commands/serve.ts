@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { acquireServerLock } from '@gatanot/qualia_core/server';
 import { CliError } from '../errors.js';
 import { flag, type CliIO, type ParsedArgs } from './index.js';
 
@@ -10,11 +11,19 @@ export async function runServe(args: ParsedArgs, io: CliIO): Promise<void> {
 		throw new CliError('USAGE', `端口无效：${portText}`);
 	}
 
+	const lock = acquireServerLock({ host, port });
+	if (!lock.acquired) {
+		const e = lock.existing;
+		const where = e ? `http://${e.host}:${e.port}（pid ${e.pid}）` : '未知地址';
+		throw new CliError('IO', `已有 Qualia 后端在运行：${where}。同一时刻只允许一个后端实例，请复用它或先停止它。`);
+	}
+
 	let handler: (request: unknown, response: unknown) => void;
 	try {
 		const mod = await import('@gatanot/qualia_web/handler');
 		handler = mod.handler as typeof handler;
 	} catch (error) {
+		lock.release();
 		throw new CliError('IO', '无法加载 @gatanot/qualia_web/handler。请确认 Web 包已构建并正确安装。', { cause: error });
 	}
 
@@ -23,6 +32,7 @@ export async function runServe(args: ParsedArgs, io: CliIO): Promise<void> {
 		server.once('error', reject);
 		server.listen(port, host, () => resolve());
 	}).catch((error) => {
+		lock.release();
 		throw new CliError('IO', `启动 Web 服务失败：${(error as Error).message}`, { cause: error });
 	});
 
@@ -36,4 +46,6 @@ export async function runServe(args: ParsedArgs, io: CliIO): Promise<void> {
 		process.once('SIGINT', shutdown);
 		process.once('SIGTERM', shutdown);
 	});
+
+	lock.release();
 }
