@@ -194,6 +194,10 @@
 
 	<div class="section-label">
 		<span>对话</span>
+		<a href="/memory" class="memory-link" class:active={$page.url.pathname === '/memory'}>
+			<span class="material-symbols-rounded">book_4</span>
+			<span class="memory-text">记忆</span>
+		</a>
 		<button class="new-btn" onclick={handleNew}>
 			<span class="material-symbols-rounded">add</span>
 		</button>
@@ -264,10 +268,6 @@
 	</div>
 
 	<div class="sidebar-footer">
-		<a href="/memory" class="footer-link" class:active={$page.url.pathname === '/memory'}>
-			<span class="material-symbols-rounded">psychology</span>
-			记忆
-		</a>
 		<a href="/settings" class="footer-link" class:active={$page.url.pathname === '/settings'}>
 			<span class="material-symbols-rounded">settings</span>
 			设置
@@ -512,13 +512,46 @@
 	.section-label {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 1rem 0.25rem 1.15rem;
+		gap: 0.35rem;
+		padding: 0.5rem 1rem 0.25rem;
 		font-size: 0.72rem;
 		font-weight: 600;
 		color: var(--text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
+	}
+
+	.section-label > span:first-child {
+		margin-right: auto;
+	}
+
+	.memory-link {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		text-decoration: none;
+		color: var(--text-muted);
+		font-size: 0.72rem;
+		font-weight: 500;
+		padding: 0.15rem 0.4rem;
+		border-radius: var(--radius-sm);
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+		text-transform: none;
+		letter-spacing: 0.02em;
+	}
+
+	.memory-link:hover, .memory-link.active {
+		background: var(--bg-surface-active);
+		color: var(--text-primary);
+	}
+
+	.memory-link.active {
+		background: var(--bg-surface-press);
+		color: var(--accent);
+	}
+
+	.memory-link .material-symbols-rounded {
+		font-size: 16px;
 	}
 
 	.new-btn {
@@ -736,20 +769,22 @@
 
 	.sidebar-footer {
 		display: flex;
-		gap: 0.25rem;
-		padding: 0.75rem;
+		gap: 0.5rem;
+		padding: 0.75rem 0.75rem 0.85rem;
 		border-top: 1px solid var(--border-subtle);
 	}
 
 	.footer-link {
+		flex: 1;
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.5rem;
-		padding: 0.5rem 0.75rem;
+		padding: 0.55rem 0;
 		border-radius: var(--radius-md);
 		color: var(--text-secondary);
 		text-decoration: none;
-		font-size: 0.9rem;
+		font-size: 0.88rem;
 		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
 	}
 
