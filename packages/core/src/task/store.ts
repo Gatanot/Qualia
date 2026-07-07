@@ -78,10 +78,10 @@ export async function updateTaskStatus(id: string, status: TaskStatus, extra?: {
 		if (!task) return false;
 
 		const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
-			pending: ['running', 'paused'],
-			running: ['completed', 'failed'],
-			completed: [],
-			failed: [],
+			pending: [],
+			running: ['pending'],
+			completed: ['running'],
+			failed: ['running'],
 			paused: ['pending']
 		};
 
