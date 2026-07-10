@@ -61,7 +61,7 @@ If an operation requires confirmation, skip it and explain why.`;
 			};
 
 			const agent = new AgentLoop(provider, storage, registry, async () => false, abortController.signal, new AgentLogger(`task-${task.id.slice(0, 8)}`), config.compressionMode, config.compressionThreshold);
-			const session = await storage.createSession(undefined, process.cwd());
+			const session = await storage.createSession(undefined, task.workspace || process.cwd());
 			const sid = session.id;
 
 			for await (const event of agent.run(sid, task.prompt, buildResult)) {

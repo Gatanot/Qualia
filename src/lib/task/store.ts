@@ -41,7 +41,7 @@ function writeAll(tasks: ScheduledTask[]): void {
 
 const TASKS_MUTEX_KEY = 'tasks.json';
 
-export async function createTask(name: string, prompt: string, scheduledAt: number): Promise<ScheduledTask> {
+export async function createTask(name: string, prompt: string, scheduledAt: number, workspace?: string): Promise<ScheduledTask> {
 	return fileMutex.run(TASKS_MUTEX_KEY, async () => {
 		const task: ScheduledTask = {
 			id: crypto.randomUUID(),
@@ -49,7 +49,8 @@ export async function createTask(name: string, prompt: string, scheduledAt: numb
 			prompt,
 			createdAt: Date.now(),
 			scheduledAt,
-			status: 'pending'
+			status: 'pending',
+			workspace
 		};
 
 		const all = readAll();

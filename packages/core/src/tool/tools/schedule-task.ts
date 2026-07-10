@@ -1,4 +1,5 @@
 import type { ToolDef, ToolResult } from '../types.js';
+import type { ToolContext } from '../env.js';
 import { createTask } from '../../task/index.js';
 
 export const scheduleTaskTool: ToolDef = {
@@ -22,7 +23,7 @@ export const scheduleTaskTool: ToolDef = {
 		},
 		required: ['name', 'prompt', 'scheduledAt']
 	},
-	execute: async (args): Promise<ToolResult> => {
+	execute: async (args, ctx: ToolContext): Promise<ToolResult> => {
 		const name = args.name as string;
 		const prompt = args.prompt as string;
 		const scheduledAtStr = args.scheduledAt as string;
@@ -46,7 +47,7 @@ export const scheduleTaskTool: ToolDef = {
 			return { success: false, output: '', error: `计划执行时间不能超过 30 天后` };
 		}
 
-		const task = await createTask(name.trim(), prompt.trim(), scheduledAt);
+		const task = await createTask(name.trim(), prompt.trim(), scheduledAt, ctx.root);
 		const formatted = new Date(scheduledAt).toISOString().replace('T', ' ').slice(0, 19);
 
 		return {

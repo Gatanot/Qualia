@@ -10,4 +10,5 @@ export interface ScheduledTask {
 	result?: string;
 	completedAt?: number;
 	error?: string;
+	workspace?: string;
 }

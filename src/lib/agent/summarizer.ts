@@ -32,7 +32,8 @@ function getRegistry(): ToolRegistry {
 
 function getToolContext(): ToolContext {
 	if (!_toolContext) {
-		_toolContext = new ToolContext(process.cwd());
+		const config = readConfig();
+		_toolContext = new ToolContext(config.defaultWorkspace || process.cwd());
 	}
 	return _toolContext;
 }

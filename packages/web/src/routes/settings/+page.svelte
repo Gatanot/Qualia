@@ -25,7 +25,7 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
-	let config: AppConfig = $state({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramEnabled: false, telegramBotToken: '', telegramAllowedUsers: '' });
+	let config = $state<AppConfig & { defaultWorkspace?: string }>({ providers: [], activeModel: '', storageEnabled: false, systemPrompt: '', customBrandIcon: false, autoSummarize: true, summaryMode: 'idle', summaryIdleHours: 8, summaryScheduleHour: 2, summaryIntervalMin: 30, compressionMode: 'auto', compressionThreshold: 256000, searchEnabled: false, searchProvider: 'searxng', searxngURL: 'http://localhost:8080', tavilyApiKey: '', emailNotifications: false, emailSmtpHost: '', emailSmtpPort: 465, emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '', emailFrom: '', emailTo: '', telegramEnabled: false, telegramBotToken: '', telegramAllowedUsers: '', defaultWorkspace: '' });
 	let loading = $state(true);
 	let activeTab: TabId = $state('general');
 	let importMessage = $state('');
@@ -60,6 +60,17 @@
 	}
 
 	async function saveSystemPrompt() {
+		const res = await fetch('/api/config', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'writeConfig', config })
+		});
+		if (res.ok) {
+			config = await res.json();
+		}
+	}
+
+	async function saveConfig() {
 		const res = await fetch('/api/config', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -206,6 +217,17 @@
 					{#if importMessage}
 						<p class="import-msg" class:ok={importOk}>{importMessage}</p>
 					{/if}
+				</section>
+			<section class="section">
+					<h2>默认工作区</h2>
+					<p class="section-desc">后台任务（摘要等）使用的工作区路径。留空则使用启动时的当前目录。注意：日记固定使用 ~/.qualia/data/ 路径，不受此设置影响。</p>
+					<input
+						type="text"
+						class="workspace-input"
+						bind:value={config.defaultWorkspace}
+						placeholder="例如 /home/user/project（留空 = 当前目录）"
+						onchange={() => saveConfig()}
+					/>
 				</section>
 			{:else if activeTab === 'provider'}
 				<ProviderManager
@@ -380,6 +402,18 @@
 	}
 
 	.import-msg.ok {
-		color: var(--success, #22c55e);
+		color: var(--success);
+	}
+
+	.workspace-input {
+		width: 100%;
+		max-width: 480px;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--bg);
+		color: var(--text-primary);
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
 	}
 </style>

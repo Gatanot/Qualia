@@ -41,4 +41,6 @@ export interface AppConfig {
 	telegramEnabled: boolean;
 	telegramBotToken: string;
 	telegramAllowedUsers: string;
+	/** 后台任务（摘要、日记等）使用的默认工作区路径，空字符串 = process.cwd() */
+	defaultWorkspace: string;
 }

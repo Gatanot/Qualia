@@ -39,7 +39,8 @@ const defaultConfig: AppConfig = {
 	emailTo: '',
 	telegramEnabled: false,
 	telegramBotToken: '',
-	telegramAllowedUsers: ''
+	telegramAllowedUsers: '',
+	defaultWorkspace: ''
 };
 
 function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): ProviderConfig {
@@ -96,7 +97,8 @@ export function readConfig(): AppConfig {
 			emailTo: typeof parsed.emailTo === 'string' ? parsed.emailTo : '',
 			telegramEnabled: parsed.telegramEnabled === true,
 			telegramBotToken: typeof parsed.telegramBotToken === 'string' ? parsed.telegramBotToken : '',
-			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : ''
+			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : '',
+			defaultWorkspace: typeof parsed.defaultWorkspace === 'string' ? parsed.defaultWorkspace : ''
 		};
 	} catch (e) {
 		console.warn('配置文件损坏，使用默认配置:', (e as Error).message);
