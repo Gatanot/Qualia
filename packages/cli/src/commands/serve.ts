@@ -14,8 +14,9 @@ export async function runServe(args: ParsedArgs, io: CliIO): Promise<void> {
 	const lock = acquireServerLock({ host, port });
 	if (!lock.acquired) {
 		const e = lock.existing;
-		const where = e ? `http://${e.host}:${e.port}（pid ${e.pid}）` : '未知地址';
-		throw new CliError('IO', `已有 Qualia 后端在运行：${where}。同一时刻只允许一个后端实例，请复用它或先停止它。`);
+		const where = e ? `http://${e.host}:${e.port}` : 'http://127.0.0.1:5173';
+		io.stdout.write(`Qualia 已在运行：${where}\n`);
+		return;
 	}
 
 	let handler: (request: unknown, response: unknown) => void;

@@ -131,7 +131,8 @@ export const execTool: ToolDef = {
 			if (IS_WINDOWS) {
 				child = spawn('powershell.exe', ['-NoProfile', '-Command', command], {
 					cwd: ctx.root,
-					stdio: ['ignore', 'pipe', 'pipe']
+					stdio: ['ignore', 'pipe', 'pipe'],
+					windowsHide: true
 				});
 			} else {
 				child = spawn(command, [], {
