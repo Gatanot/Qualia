@@ -298,6 +298,8 @@ export class MemoryStorage implements Storage {
 			const q = filters.search.toLowerCase();
 			result = result.filter((m) => m.content.toLowerCase().includes(q));
 		}
+		if (filters?.created_after) result = result.filter((m) => m.created_at >= filters.created_after!);
+		if (filters?.created_before) result = result.filter((m) => m.created_at <= filters.created_before!);
 		if (filters?.offset) result = result.slice(filters.offset);
 		if (filters?.limit) result = result.slice(0, filters.limit);
 		return result;

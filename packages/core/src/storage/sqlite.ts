@@ -49,6 +49,7 @@ interface MemoryRow {
 	type: string;
 	content: string;
 	source_session_id: string | null;
+	source_message_id: string | null;
 	source_kind: string;
 	confidence: number;
 	status: string;
@@ -137,6 +138,7 @@ export class SQLiteStorage implements Storage {
 				type              TEXT NOT NULL DEFAULT 'fact',
 				content           TEXT NOT NULL DEFAULT '',
 				source_session_id TEXT,
+				source_message_id TEXT,
 				source_kind       TEXT NOT NULL DEFAULT 'manual',
 				confidence        REAL NOT NULL DEFAULT 1.0,
 				status            TEXT NOT NULL DEFAULT 'active',
@@ -165,16 +167,22 @@ export class SQLiteStorage implements Storage {
 	}
 
 	private migrate(): void {
-		const cols = this.db.pragma('table_info(sessions)') as Array<{ name: string }>;
-		const columnNames = new Set(cols.map((c) => c.name));
-		if (!columnNames.has('summary')) {
+		const sessionCols = this.db.pragma('table_info(sessions)') as Array<{ name: string }>;
+		const sessionNames = new Set(sessionCols.map((c) => c.name));
+		if (!sessionNames.has('summary')) {
 			this.db.exec(`ALTER TABLE sessions ADD COLUMN summary TEXT NOT NULL DEFAULT ''`);
 		}
-		if (!columnNames.has('last_summarized_at')) {
+		if (!sessionNames.has('last_summarized_at')) {
 			this.db.exec(`ALTER TABLE sessions ADD COLUMN last_summarized_at INTEGER`);
 		}
-		if (!columnNames.has('workspace')) {
+		if (!sessionNames.has('workspace')) {
 			this.db.exec(`ALTER TABLE sessions ADD COLUMN workspace TEXT NOT NULL DEFAULT ''`);
+		}
+
+		const memCols = this.db.pragma('table_info(memories)') as Array<{ name: string }>;
+		const memNames = new Set(memCols.map((c) => c.name));
+		if (!memNames.has('source_message_id')) {
+			this.db.exec(`ALTER TABLE memories ADD COLUMN source_message_id TEXT`);
 		}
 	}
 
@@ -205,7 +213,7 @@ export class SQLiteStorage implements Storage {
 			insertAuditLog: this.db.prepare(`INSERT INTO audit_logs (id, session_id, tool_name, args, confirmed, success, output, workspace, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			listAuditLogs: this.db.prepare(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ?`),
 			// Memory CRUD
-			insertMemory: this.db.prepare(`INSERT INTO memories (id, type, content, source_session_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			insertMemory: this.db.prepare(`INSERT INTO memories (id, type, content, source_session_id, source_message_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			getMemory: this.db.prepare(`SELECT * FROM memories WHERE id = ?`),
 			listActiveMemories: this.db.prepare(`SELECT * FROM memories WHERE status = 'active' ORDER BY priority DESC, updated_at DESC`),
 			listMemoriesByType: this.db.prepare(`SELECT * FROM memories WHERE status = 'active' AND type = ? ORDER BY priority DESC, updated_at DESC`),
@@ -214,7 +222,7 @@ export class SQLiteStorage implements Storage {
 			archiveMemory: this.db.prepare(`UPDATE memories SET status = 'archived', updated_at = ? WHERE id = ?`),
 			deleteMemoryStmt: this.db.prepare(`DELETE FROM memories WHERE id = ?`),
 			listAllMemories: this.db.prepare(`SELECT * FROM memories ORDER BY priority DESC, updated_at DESC`),
-			upsertMemory: this.db.prepare(`INSERT OR REPLACE INTO memories (id, type, content, source_session_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+			upsertMemory: this.db.prepare(`INSERT OR REPLACE INTO memories (id, type, content, source_session_id, source_message_id, source_kind, confidence, status, priority, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			// Memory revisions
 			insertRevision: this.db.prepare(`INSERT INTO memory_revisions (id, memory_id, content, confidence, status, priority, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
 			getRevision: this.db.prepare(`SELECT * FROM memory_revisions WHERE id = ?`),
@@ -501,6 +509,7 @@ export class SQLiteStorage implements Storage {
 		this.stmts.insertMemory.run(
 			id, input.type, input.content,
 			input.source_session_id ?? null,
+			input.source_message_id ?? null,
 			input.source_kind, input.confidence, input.status,
 			input.priority, JSON.stringify(input.tags), now, now
 		);
@@ -526,6 +535,12 @@ export class SQLiteStorage implements Storage {
 
 		if (filters?.status) {
 			result = result.filter((m) => m.status === filters.status);
+		}
+		if (filters?.created_after) {
+			result = result.filter((m) => m.created_at >= filters.created_after!);
+		}
+		if (filters?.created_before) {
+			result = result.filter((m) => m.created_at <= filters.created_before!);
 		}
 
 		if (filters?.offset) result = result.slice(filters.offset);
@@ -574,6 +589,7 @@ export class SQLiteStorage implements Storage {
 			this.stmts.upsertMemory.run(
 				m.id, m.type, m.content,
 				m.source_session_id ?? null,
+				m.source_message_id ?? null,
 				m.source_kind, m.confidence, m.status,
 				m.priority, JSON.stringify(m.tags ?? []),
 				m.created_at || now, m.updated_at || now
@@ -634,6 +650,7 @@ export class SQLiteStorage implements Storage {
 			type: row.type as MemoryType,
 			content: row.content,
 			source_session_id: row.source_session_id,
+			source_message_id: row.source_message_id,
 			source_kind: row.source_kind as MemorySourceKind,
 			confidence: row.confidence,
 			status: row.status as MemoryStatus,

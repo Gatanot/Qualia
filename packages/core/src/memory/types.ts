@@ -9,6 +9,7 @@ export interface Memory {
 	type: MemoryType;
 	content: string;
 	source_session_id: string | null;
+	source_message_id: string | null;
 	source_kind: MemorySourceKind;
 	confidence: number;
 	status: MemoryStatus;
@@ -39,6 +40,8 @@ export interface MemoryListFilters {
 	type?: MemoryType;
 	status?: MemoryStatus;
 	search?: string;
+	created_after?: number;
+	created_before?: number;
 	limit?: number;
 	offset?: number;
 }

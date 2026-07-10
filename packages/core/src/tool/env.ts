@@ -11,12 +11,14 @@ import type { CommandClassification } from './types.js';
 export class ToolContext {
 	readonly root: string;
 	readonly sessionId?: string;
+	public messageId?: string;
 
 	onUpdate?: (chunk: string) => void;
 
-	constructor(root: string, sessionId?: string) {
+	constructor(root: string, sessionId?: string, messageId?: string) {
 		this.root = root;
 		this.sessionId = sessionId;
+		this.messageId = messageId;
 	}
 
 	/** 解析用户输入的路径，同时做安全检查 */

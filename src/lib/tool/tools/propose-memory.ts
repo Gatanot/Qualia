@@ -89,6 +89,7 @@ export const proposeMemoryTool: ToolDef = {
 				type: type as 'fact' | 'preference' | 'rule' | 'event',
 				content: trimmed,
 				source_session_id: ctx.sessionId ?? null,
+				source_message_id: ctx.messageId ?? null,
 				source_kind: 'chat',
 				confidence,
 				status: 'active',

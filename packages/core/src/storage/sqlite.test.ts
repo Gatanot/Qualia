@@ -142,7 +142,7 @@ describe('SQLiteStorage', () => {
 
 	it('updateMemory snapshots prior state into revisions', async () => {
 		const m = await storage.createMemory({
-			type: 'fact', content: 'v1', source_session_id: null, source_kind: 'chat',
+			type: 'fact', content: 'v1', source_session_id: null, source_message_id: null, source_kind: 'chat',
 			confidence: 1, status: 'active', priority: 0, tags: []
 		});
 
@@ -157,7 +157,7 @@ describe('SQLiteStorage', () => {
 
 	it('rollbackMemory restores a prior revision and snapshots current', async () => {
 		const m = await storage.createMemory({
-			type: 'fact', content: 'orig', source_session_id: null, source_kind: 'chat',
+			type: 'fact', content: 'orig', source_session_id: null, source_message_id: null, source_kind: 'chat',
 			confidence: 1, status: 'active', priority: 0, tags: []
 		});
 		await storage.updateMemory(m.id, { content: 'edited' });
@@ -173,7 +173,7 @@ describe('SQLiteStorage', () => {
 
 	it('deleteMemory cascades its revisions', async () => {
 		const m = await storage.createMemory({
-			type: 'fact', content: 'a', source_session_id: null, source_kind: 'chat',
+			type: 'fact', content: 'a', source_session_id: null, source_message_id: null, source_kind: 'chat',
 			confidence: 1, status: 'active', priority: 0, tags: []
 		});
 		await storage.updateMemory(m.id, { content: 'b' });
@@ -185,11 +185,11 @@ describe('SQLiteStorage', () => {
 
 	it('listAllMemories includes archived; import round-trips by id', async () => {
 		const active = await storage.createMemory({
-			type: 'preference', content: 'keep', source_session_id: null, source_kind: 'chat',
+			type: 'preference', content: 'keep', source_session_id: null, source_message_id: null, source_kind: 'chat',
 			confidence: 0.9, status: 'active', priority: 0, tags: ['x']
 		});
 		const archived = await storage.createMemory({
-			type: 'event', content: 'old', source_session_id: null, source_kind: 'chat',
+			type: 'event', content: 'old', source_session_id: null, source_message_id: null, source_kind: 'chat',
 			confidence: 1, status: 'active', priority: 0, tags: []
 		});
 		await storage.archiveMemory(archived.id);

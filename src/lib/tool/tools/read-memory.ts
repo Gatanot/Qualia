@@ -5,7 +5,7 @@ import { createStorage } from '$lib/storage';
 
 export const readMemoryTool: ToolDef = {
 	name: 'read_memory',
-	description: 'Read long-term memories. Optionally pass a query for keyword search — returns matching active memories with their type and confidence. Use when you need to recall previously stored information about users, preferences, rules, or important events.',
+	description: 'Read long-term memories. Optionally pass a query for keyword search, a memory type, or a time range — returns matching active memories with their type and confidence. Use when you need to recall previously stored information about users, preferences, rules, or important events.',
 	parameters: {
 		type: 'object',
 		properties: {
@@ -17,6 +17,14 @@ export const readMemoryTool: ToolDef = {
 				type: 'string',
 				description: 'Optional. Filter by memory type: fact, preference, rule, event',
 				enum: ['fact', 'preference', 'rule', 'event']
+			},
+			created_after: {
+				type: 'number',
+				description: 'Optional. Unix timestamp in milliseconds. Only return memories created after this time.'
+			},
+			created_before: {
+				type: 'number',
+				description: 'Optional. Unix timestamp in milliseconds. Only return memories created before this time.'
 			}
 		},
 		required: []
@@ -30,11 +38,15 @@ export const readMemoryTool: ToolDef = {
 
 			const query = (args.query as string)?.trim();
 			const typeFilter = args.type as string | undefined;
+			const created_after = args.created_after as number | undefined;
+			const created_before = args.created_before as number | undefined;
 
 			const memories = await memoryService.list({
 				status: 'active',
 				search: query || undefined,
-				type: typeFilter as 'fact' | 'preference' | 'rule' | 'event' | undefined
+				type: typeFilter as 'fact' | 'preference' | 'rule' | 'event' | undefined,
+				created_after,
+				created_before
 			});
 
 			if (memories.length === 0) {

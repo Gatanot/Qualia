@@ -325,6 +325,10 @@ export class AgentLoop {
 
 		this.resolvedToolCalls = Array.from(this.collectedToolCalls.values());
 
+		if (this.resolvedToolCalls.length > 0) {
+			this.toolContext.messageId = crypto.randomUUID();
+		}
+
 		if (this.resolvedToolCalls.length === 0) {
 			await this.storage.addMessage(this.effectiveSessionId, {
 				session_id: this.effectiveSessionId,
