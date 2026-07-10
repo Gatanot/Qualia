@@ -134,7 +134,7 @@ export async function* parseSSEStream(
 function extractToolCalls(raw: unknown): ToolCallDelta[] {
 	if (!Array.isArray(raw)) return [];
 	return raw.map((tc: Record<string, unknown>) => ({
-		index: (tc.index as number) ?? 0,
+		index: Number(tc.index) || 0,
 		id: tc.id as string | undefined,
 		type: tc.type as 'function' | undefined,
 		function: tc.function

@@ -127,15 +127,19 @@ export const execTool: ToolDef = {
 				}
 			}, timeoutMs);
 
-			const child = spawn(
-				command,
-				[],
-				{
+			let child: ReturnType<typeof spawn>;
+			if (IS_WINDOWS) {
+				child = spawn('powershell.exe', ['-NoProfile', '-Command', command], {
 					cwd: ctx.root,
-					shell: IS_WINDOWS ? 'powershell.exe' : '/bin/bash',
 					stdio: ['ignore', 'pipe', 'pipe']
-				}
-			);
+				});
+			} else {
+				child = spawn(command, [], {
+					shell: '/bin/bash',
+					cwd: ctx.root,
+					stdio: ['ignore', 'pipe', 'pipe']
+				});
+			}
 
 			child.stdout?.on('data', (data: Buffer) => {
 				stdoutChunks.push(data);

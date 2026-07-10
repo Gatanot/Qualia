@@ -201,7 +201,7 @@ export class SQLiteStorage implements Storage {
 			getAllUnsummarized: this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND (last_summarized_at IS NULL OR last_summarized_at < updated_at) AND id IN (SELECT DISTINCT session_id FROM messages) ORDER BY updated_at ASC`),
 			getTodayUpdated: this.db.prepare(`SELECT * FROM sessions WHERE summary != '' AND last_summarized_at >= ? AND last_summarized_at < ? ORDER BY last_summarized_at ASC`),
 			countToday: this.db.prepare(`SELECT COUNT(*) as cnt FROM sessions WHERE created_at >= ? AND created_at < ?`),
-			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`),
+			searchMessages: this.db.prepare(`SELECT m.id as messageId, m.session_id as sessionId, m.role, m.content, m.created_at as createdAt, s.title as sessionTitle FROM messages m JOIN sessions s ON m.session_id = s.id WHERE m.content LIKE ? ESCAPE '\\' AND (? IS NULL OR m.session_id = ?) ORDER BY m.created_at DESC LIMIT ?`),
 			insertAuditLog: this.db.prepare(`INSERT INTO audit_logs (id, session_id, tool_name, args, confirmed, success, output, workspace, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 			listAuditLogs: this.db.prepare(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ?`),
 			// Memory CRUD
@@ -324,9 +324,16 @@ export class SQLiteStorage implements Storage {
 		options?: MessageQueryOptions
 	): Promise<MessageRecord[]> {
 		const before = options?.before ?? null;
+		const limit = options?.limit;
+		if (limit !== undefined && before === null) {
+			const countRow = this.db.prepare('SELECT COUNT(*) as cnt FROM messages WHERE session_id = ?').get(sessionId) as { cnt: number };
+			const offset = Math.max(0, countRow.cnt - limit);
+			const rows = this.db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?').all(sessionId, limit, offset) as MessageRow[];
+			return rows.map((row) => this.rowToMessage(row));
+		}
 		const rows = this.stmts.getMessages.all(sessionId, before, before) as MessageRow[];
 		let result = rows.map((row) => this.rowToMessage(row));
-		if (options?.limit !== undefined) result = result.slice(-options.limit);
+		if (limit !== undefined) result = result.slice(-limit);
 		return result;
 	}
 
@@ -360,7 +367,8 @@ export class SQLiteStorage implements Storage {
 	}
 
 	async searchMessages(query: string, sessionId?: string, limit = 10): Promise<MessageSearchResult[]> {
-		const pattern = `%${query}%`;
+		const escaped = query.replace(/_/g, '\\_').replace(/%/g, '\\%');
+		const pattern = `%${escaped}%`;
 		const rows = this.stmts.searchMessages.all(pattern, sessionId || null, sessionId || null, limit) as Array<{
 			messageId: string; sessionId: string; role: string; content: string;
 			createdAt: number; sessionTitle: string;

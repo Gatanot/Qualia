@@ -2,6 +2,39 @@ import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
 
+interface MathToken {
+	type: 'mathBlock' | 'mathInline';
+	raw: string;
+	text: string;
+}
+
+function renderMathBlock(token: MathToken): string {
+	const text = token.text;
+	try {
+		const html = katex.renderToString(text, {
+			displayMode: true,
+			throwOnError: false,
+			strict: false
+		});
+		return `<div class="math-block">${html}</div>`;
+	} catch {
+		return `<pre>${token.raw}</pre>`;
+	}
+}
+
+function renderMathInline(token: MathToken): string {
+	const text = token.text;
+	try {
+		return katex.renderToString(text, {
+			displayMode: false,
+			throwOnError: false,
+			strict: false
+		});
+	} catch {
+		return token.raw;
+	}
+}
+
 marked.setOptions({
 	renderer: new marked.Renderer(),
 	gfm: true,
@@ -42,18 +75,8 @@ marked.use({
 				text: match[1].trim()
 			};
 		},
-		renderer(token: Record<string, unknown>) {
-			const text = token.text as string;
-			try {
-				const html = katex.renderToString(text, {
-					displayMode: true,
-					throwOnError: false,
-					strict: false
-				});
-				return `<div class="math-block">${html}</div>`;
-			} catch {
-				return `<pre>${token.raw}</pre>`;
-			}
+		renderer(token) {
+			return renderMathBlock(token as MathToken);
 		}
 	}, {
 		name: 'mathInline',
@@ -71,17 +94,8 @@ marked.use({
 				text: match[1].trim()
 			};
 		},
-		renderer(token: Record<string, unknown>) {
-			const text = token.text as string;
-			try {
-				return katex.renderToString(text, {
-					displayMode: false,
-					throwOnError: false,
-					strict: false
-				});
-			} catch {
-				return token.raw as string;
-			}
+		renderer(token) {
+			return renderMathInline(token as MathToken);
 		}
 	}]
 });

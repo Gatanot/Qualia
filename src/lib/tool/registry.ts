@@ -7,6 +7,7 @@
  */
 
 import type { ToolDef, ToolResult } from './types';
+import type { Tool } from '$lib/ai';
 import { ToolContext } from './env';
 
 export class ToolRegistry {
@@ -56,7 +57,7 @@ export class ToolRegistry {
 	}
 
 	/** 获取 OpenAI function calling 格式的工具定义列表 */
-	getDefinitions(): import('$lib/ai').Tool[] {
+	getDefinitions(): Tool[] {
 		return Array.from(this.tools.values()).map((tool) => ({
 			type: 'function' as const,
 			function: {

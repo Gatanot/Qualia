@@ -1,3 +1,5 @@
+import * as nodeTls from 'node:tls';
+import * as nodeNet from 'node:net';
 import type { GatewayAdapter, AdapterCapabilities, InboundMessage, SendResult } from '../types';
 
 export interface EmailConfig {
@@ -26,17 +28,18 @@ async function sendSmtp(config: EmailConfig, subject: string, body: string): Pro
 	const auth = Buffer.from(`\x00${user}\x00${password}`).toString('base64');
 
 	const socket = await new Promise<{ write: (d: string) => void; close: () => void; onRawData: (cb: (d: Buffer) => void) => void; onError: (cb: (e: Error) => void) => void }>((resolve, reject) => {
-		const tls = smtpSecure;
-		const net = tls ? require('node:tls') : require('node:net');
-
-		const s = net.connect({ host: smtpHost, port: smtpPort, servername: smtpHost }, () => {
+		const onConnect = () => {
 			resolve({
 				write: (d: string) => s.write(d),
 				close: () => s.end(),
 				onRawData: (cb: (d: Buffer) => void) => { s.on('data', cb); },
 				onError: (cb: (e: Error) => void) => { s.on('error', cb); }
 			});
-		});
+		};
+
+		const s = smtpSecure
+			? nodeTls.connect({ host: smtpHost, port: smtpPort, servername: smtpHost }, onConnect)
+			: nodeNet.connect({ host: smtpHost, port: smtpPort }, onConnect);
 
 		s.once('error', reject);
 		setTimeout(() => reject(new Error('SMTP connect timeout')), 15000);

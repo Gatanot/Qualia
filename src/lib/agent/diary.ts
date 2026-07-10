@@ -1,5 +1,4 @@
-﻿import { existsSync, readFileSync } from 'node:fs';
-import { writeFile, mkdir } from 'node:fs/promises';
+﻿import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AIProvider, Message } from '$lib/ai';
 import type { Storage } from '$lib/storage';
@@ -31,7 +30,7 @@ function getTodayFile(): string {
 	return formatDatePath(y, m, d);
 }
 
-function readRecentDiaries(targetDate: Date): string {
+async function readRecentDiaries(targetDate: Date): Promise<string> {
 	const parts: string[] = [];
 	const cursor = new Date(targetDate);
 
@@ -41,10 +40,10 @@ function readRecentDiaries(targetDate: Date): string {
 		const m = String(cursor.getMonth() + 1).padStart(2, '0');
 		const d = String(cursor.getDate()).padStart(2, '0');
 		const filePath = join(DIARY_DIR, `${y}-${m}-${d}.md`);
-		if (existsSync(filePath)) {
-			const content = readFileSync(filePath, 'utf-8').trim();
-			parts.push(`### ${y}-${m}-${d}\n${content.slice(0, 2000)}`);
-		}
+		try {
+			const content = await readFile(filePath, 'utf-8');
+			parts.push(`### ${y}-${m}-${d}\n${content.trim().slice(0, 2000)}`);
+		} catch { /* skip missing/unreadable */ }
 	}
 
 	return parts.join('\n\n');
@@ -67,7 +66,7 @@ export async function generateDiary(
 
 	const { date } = getTodayDate();
 	const filePath = getTodayFile();
-	const recentDiaries = readRecentDiaries(date);
+	const recentDiaries = await readRecentDiaries(date);
 
 	let userContent = `以下是今天各会话的摘要，请据此撰写一篇日记，记录当天和我一起完成了什么、有哪些重要交流。\n\n${summaries.join('\n\n')}`;
 
@@ -82,11 +81,11 @@ export async function generateDiary(
 		{ role: 'user', content: userContent }
 	];
 
-	const before = readDiaryContent(filePath);
+	const before = await readDiaryContent(filePath);
 	const toolContext = new ToolContext(getDataDir());
 	const { content } = await completeWithToolLoop(provider, messages, 2000, 0.5, toolContext);
 
-	const after = readDiaryContent(filePath);
+	const after = await readDiaryContent(filePath);
 	if (after !== null && after !== before) return;
 
 	const fallback = (content || '').trim();
@@ -97,9 +96,9 @@ export async function generateDiary(
 	await writeFile(filePath, fallback, 'utf-8');
 }
 
-function readDiaryContent(filePath: string): string | null {
+async function readDiaryContent(filePath: string): Promise<string | null> {
 	try {
-		return existsSync(filePath) ? readFileSync(filePath, 'utf-8').trim() : null;
+		return (await readFile(filePath, 'utf-8')).trim();
 	} catch {
 		return null;
 	}

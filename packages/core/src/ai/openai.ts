@@ -38,6 +38,7 @@ export class OpenAIProvider implements AIProvider {
 	constructor(config: OpenAIConfig) {
 		this.apiKey = config.apiKey;
 		this.baseURL = config.baseURL.replace(/\/$/, '');
+		if (!this.baseURL) throw new Error('OpenAI baseURL 不能为空');
 		this.model = config.model;
 		this.timeout = config.timeout ?? 60_000;
 		this.maxRetries = config.maxRetries ?? 2;

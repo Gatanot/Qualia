@@ -11,12 +11,12 @@ const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 function readAgentsMd(workspace: string): string {
 	const root = workspace || process.cwd();
 	const agentsPath = join(root, 'AGENTS.md');
+	if (!existsSync(agentsPath)) return '';
 	try {
-		if (existsSync(agentsPath)) {
-			return readFileSync(agentsPath, 'utf-8').trim();
-		}
-	} catch { /* ignore */ }
-	return '';
+		return readFileSync(agentsPath, 'utf-8').trim();
+	} catch {
+		return '';
+	}
 }
 
 function formatAgentsSection(content: string): string {
@@ -79,7 +79,9 @@ export class ContextBuilder {
 	private parseStoredContent(content: string): string | ContentPart[] {
 		if (content.startsWith('[')) {
 			try {
-				return JSON.parse(content) as ContentPart[];
+				const parsed = JSON.parse(content);
+				if (!Array.isArray(parsed)) return content;
+				return parsed as ContentPart[];
 			} catch { /* return as string */ }
 		}
 		return content;

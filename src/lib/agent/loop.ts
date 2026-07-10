@@ -13,7 +13,7 @@ import { CONTINUATION_PREFIX } from './prompts';
 function extractTextContent(content: string | ContentPart[]): string {
 	if (typeof content === 'string') return content;
 	return content
-		.filter((p) => p.type === 'text' && 'text' in p)
+		.filter((p) => p.type === 'text')
 		.map((p) => (p as { type: 'text'; text: string }).text)
 		.join('\n');
 }
@@ -137,9 +137,9 @@ export class AgentLoop {
 
 		try {
 			while (true) {
-				if ((this.state as AgentState) === AgentState.DONE || (this.state as AgentState) === AgentState.ERROR) break;
+			if ((this.state as AgentState) === AgentState.DONE || (this.state as AgentState) === AgentState.ERROR) break;
 
-				switch (this.state as AgentState) {
+			switch (this.state as AgentState) {
 					case AgentState.INIT:
 						yield* this.doInit(userMessage, userMessageId);
 						break;
@@ -373,8 +373,18 @@ export class AgentLoop {
 
 		this.currentToolCall = this.resolvedToolCalls[this.toolIndex];
 
-		this.currentArgs = {};
-		try { this.currentArgs = JSON.parse(this.currentToolCall.function.arguments); } catch { /* empty */ }
+		try {
+			this.currentArgs = JSON.parse(this.currentToolCall.function.arguments);
+		} catch (e) {
+			const errMsg = `工具参数解析失败: ${(e as Error).message}`;
+			yield { type: 'tool_call', name: this.currentToolCall.function.name, args: {} };
+			yield { type: 'tool_result', name: this.currentToolCall.function.name, success: false, output: errMsg };
+			this.toolResultMsgs.push({ role: 'tool', content: errMsg, tool_call_id: this.currentToolCall.id, name: this.currentToolCall.function.name });
+			this.messages.push({ role: 'tool', content: errMsg, tool_call_id: this.currentToolCall.id, name: this.currentToolCall.function.name });
+			this.logAudit(this.currentToolCall.function.name, this.currentArgs, false, false, errMsg);
+			this.state = AgentState.POST_TOOL;
+			return;
+		}
 
 		const modifiedArgs = await this.hooks.beforeToolExecution?.(this.currentToolCall.function.name, this.currentArgs);
 		if (modifiedArgs) this.currentArgs = modifiedArgs;
@@ -722,6 +732,6 @@ ${rawContent}`;
 			success,
 			output,
 			workspace: this.toolContext.root
-		}).catch(() => { /* non-fatal */ });
+		});
 	}
 }

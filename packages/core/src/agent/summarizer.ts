@@ -79,7 +79,12 @@ export async function completeWithToolLoop(
 
 		for (const tc of response.tool_calls) {
 			let args: Record<string, unknown> = {};
-			try { args = JSON.parse(tc.function.arguments); } catch { /* empty */ }
+			try {
+				args = JSON.parse(tc.function.arguments);
+			} catch (e) {
+				messages.push({ role: 'tool', content: `工具参数解析失败: ${(e as Error).message}`, tool_call_id: tc.id, name: tc.function.name });
+				continue;
+			}
 
 			try {
 				const result = await getRegistry().execute(tc.function.name, args, ctx);

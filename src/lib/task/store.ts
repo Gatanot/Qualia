@@ -60,7 +60,10 @@ export async function createTask(name: string, prompt: string, scheduledAt: numb
 }
 
 export function getAllTasks(): ScheduledTask[] {
-	return readAll().sort((a, b) => b.createdAt - a.createdAt);
+	const now = Date.now();
+	return readAll()
+		.filter((t) => t.status === 'pending' || t.status === 'running' || t.status === 'paused' || (now - t.createdAt < MAX_AGE_MS))
+		.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function getPendingTasks(): ScheduledTask[] {

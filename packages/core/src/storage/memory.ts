@@ -245,10 +245,10 @@ export class MemoryStorage implements Storage {
 	}
 
 	async getMostRecentSession(): Promise<Session | null> {
-		for (const s of this.sessions.values()) {
-			if (s.status === 'active') return s;
-		}
-		return null;
+		const active = Array.from(this.sessions.values())
+			.filter((s) => s.status === 'active')
+			.sort((a, b) => b.updated_at - a.updated_at);
+		return active[0] ?? null;
 	}
 
 	async listWorkspaces(): Promise<string[]> {
@@ -343,7 +343,6 @@ export class MemoryStorage implements Storage {
 	async listMemoryRevisions(memoryId: string): Promise<MemoryRevision[]> {
 		return Array.from(this._revisions.values())
 			.filter((r) => r.memory_id === memoryId)
-			.reverse()
 			.sort((a, b) => b.created_at - a.created_at);
 	}
 

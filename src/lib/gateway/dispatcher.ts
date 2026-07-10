@@ -59,7 +59,9 @@ export class GatewayDispatcher {
 		for (const [, adapter] of this.adapters) {
 			try {
 				await adapter.disconnect();
-			} catch { /* ignore */ }
+			} catch (e) {
+				console.warn('适配器断开失败:', (e as Error).message);
+			}
 		}
 	}
 

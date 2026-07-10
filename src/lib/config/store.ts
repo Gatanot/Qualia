@@ -51,7 +51,9 @@ function normalizeProvider(p: Partial<ProviderConfig> & { type?: string }): Prov
 		reasoningEffort: p.reasoningEffort,
 		timeout: p.timeout,
 		maxRetries: p.maxRetries,
-		ollamaURL: p.ollamaURL || 'http://localhost:11434'
+		ollamaURL: p.ollamaURL || 'http://localhost:11434',
+		activeModel: p.activeModel,
+		contextWindow: p.contextWindow
 	};
 }
 
@@ -96,7 +98,8 @@ export function readConfig(): AppConfig {
 			telegramBotToken: typeof parsed.telegramBotToken === 'string' ? parsed.telegramBotToken : '',
 			telegramAllowedUsers: typeof parsed.telegramAllowedUsers === 'string' ? parsed.telegramAllowedUsers : ''
 		};
-	} catch {
+	} catch (e) {
+		console.warn('配置文件损坏，使用默认配置:', (e as Error).message);
 		return structuredClone(defaultConfig);
 	}
 }
