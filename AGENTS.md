@@ -32,6 +32,7 @@ npm run test           # vitest run via packages/core (uses packages/core/vitest
 npx vitest run         # vitest run via root vitest.config.ts → src/**/*.test.ts
 npx vitest             # vitest watch mode (root config)
 npm run build          # vite build (packages/web only, not core/cli)
+npm run docs           # typedoc (packages/web)
 npm run release -- <version>   # bump → sync → build → pack
 ```
 
@@ -79,7 +80,7 @@ Server-side unless imported by `.svelte`. Only exceptions: `session-store.ts`, `
 
 `src/lib/index.ts` is a SvelteKit placeholder (not a barrel). Do not add exports to it.
 
-Real design documentation is in `design.md`, not `README.md` (which is Svelte scaffolding).
+Real design documentation is in `design.md`. `README.md` is the user-facing intro.
 
 ## Code style
 
