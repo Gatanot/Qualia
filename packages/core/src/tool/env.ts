@@ -12,13 +12,15 @@ export class ToolContext {
 	readonly root: string;
 	readonly sessionId?: string;
 	public messageId?: string;
+	readonly signal?: AbortSignal;
 
 	onUpdate?: (chunk: string) => void;
 
-	constructor(root: string, sessionId?: string, messageId?: string) {
+	constructor(root: string, sessionId?: string, messageId?: string, signal?: AbortSignal) {
 		this.root = root;
 		this.sessionId = sessionId;
 		this.messageId = messageId;
+		this.signal = signal;
 	}
 
 	/** 解析用户输入的路径，同时做安全检查 */

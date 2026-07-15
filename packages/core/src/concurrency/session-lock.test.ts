@@ -55,4 +55,26 @@ describe('SessionLock', () => {
 
 		expect(results).toHaveLength(2);
 	});
+
+	it('rejects waiter after timeout', async () => {
+		const lock = new SessionLock();
+		const release = await lock.acquire('s1');
+
+		await expect(lock.acquire('s1', 20)).rejects.toThrow('超时');
+
+		release();
+		const release2 = await lock.acquire('s1');
+		release2();
+	});
+
+	it('waiter with timeout still acquires when released in time', async () => {
+		const lock = new SessionLock();
+		const release = await lock.acquire('s1');
+
+		const pending = lock.acquire('s1', 1000);
+		release();
+
+		const release2 = await pending;
+		release2();
+	});
 });

@@ -110,7 +110,7 @@ export class AgentLoop {
 		this.onConfirm = onConfirm;
 		this.signal = signal;
 		this.hooks = hooks;
-		this.toolContext = new ToolContext(process.cwd());
+		this.toolContext = new ToolContext(process.cwd(), undefined, undefined, signal);
 		this.compressionMode = compressionMode;
 		this.compressionThreshold = compressionThreshold;
 	}
@@ -131,7 +131,7 @@ export class AgentLoop {
 		this.state = AgentState.INIT;
 
 		const session = await this.storage.getSession(sessionId);
-		this.toolContext = new ToolContext(session?.workspace || process.cwd(), sessionId);
+		this.toolContext = new ToolContext(session?.workspace || process.cwd(), sessionId, undefined, this.signal);
 
 		pendingSteering.delete(sessionId);
 
@@ -305,6 +305,10 @@ export class AgentLoop {
 		await this.hooks.onLlmRetry?.(this.attempt + 1, MAX_LLM_RETRIES, new Error('LLM call failed'));
 		yield { type: 'retrying', attempt: this.attempt + 1, maxRetries: MAX_LLM_RETRIES };
 		await sleep(RETRY_BASE_DELAY * Math.pow(2, this.attempt));
+		if (this.signal?.aborted) {
+			this.state = AgentState.DONE;
+			return;
+		}
 		this.attempt++;
 		this.state = AgentState.LLM_STREAMING;
 	}
@@ -512,18 +516,25 @@ export class AgentLoop {
 
 		yield { type: 'confirm_required', confirmId, confirmation: error };
 
-		let abortCleanup: (() => void) | undefined;
-		const approved = await Promise.race([
-			this.onConfirm(error, confirmId),
-			new Promise<boolean>((resolve) => {
-				if (this.signal) {
-					const onAbort = () => resolve(false);
-					this.signal.addEventListener('abort', onAbort, { once: true });
-					abortCleanup = () => this.signal?.removeEventListener('abort', onAbort);
-				}
-			})
-		]);
-		abortCleanup?.();
+		let approved: boolean;
+		if (this.signal) {
+			let abortCleanup: (() => void) | undefined;
+			approved = await Promise.race([
+				this.onConfirm(error, confirmId),
+				new Promise<boolean>((resolve) => {
+					if (this.signal!.aborted) {
+						resolve(false);
+					} else {
+						const onAbort = () => resolve(false);
+						this.signal!.addEventListener('abort', onAbort, { once: true });
+						abortCleanup = () => this.signal?.removeEventListener('abort', onAbort);
+					}
+				})
+			]);
+			abortCleanup?.();
+		} else {
+			approved = await this.onConfirm(error, confirmId);
+		}
 
 		if (approved) {
 			try {

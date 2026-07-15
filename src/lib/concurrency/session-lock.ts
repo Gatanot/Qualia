@@ -15,7 +15,7 @@ export class SessionLock {
 		};
 	}
 
-	async acquire(sessionId: string): Promise<() => void> {
+	async acquire(sessionId: string, timeoutMs?: number): Promise<() => void> {
 		let entry = this.sessions.get(sessionId);
 		if (!entry) {
 			entry = { locked: false, waiters: [] };
@@ -28,7 +28,22 @@ export class SessionLock {
 		}
 
 		return new Promise((resolve, reject) => {
-			entry!.waiters.push({ resolve, reject });
+			const waiter: SessionWaiter = { resolve, reject };
+			entry!.waiters.push(waiter);
+
+			if (timeoutMs !== undefined) {
+				const timer = setTimeout(() => {
+					const idx = entry!.waiters.indexOf(waiter);
+					if (idx !== -1) {
+						entry!.waiters.splice(idx, 1);
+						reject(new Error(`SessionLock: acquire "${sessionId}" 超时（${timeoutMs}ms）`));
+					}
+				}, timeoutMs);
+				waiter.resolve = (release) => {
+					clearTimeout(timer);
+					resolve(release);
+				};
+			}
 		});
 	}
 

@@ -5,6 +5,7 @@ import { getAllChatIds } from '$lib/gateway';
 import { startScheduler, stopScheduler, setTaskNotificationHandler } from '$lib/task';
 import type { GatewayNotification } from '$lib/gateway';
 import { acquireServerLock } from '$lib/server';
+import { closeStorage } from '$lib/storage';
 
 let gateway: GatewayDispatcher | null = null;
 const summarize = createSummarizeWorker(notifyAll);
@@ -37,7 +38,12 @@ function shutdown() {
 		gateway.stop();
 		gateway = null;
 	}
+	closeStorage();
 }
+
+process.on('exit', () => {
+	closeStorage();
+});
 
 // 后台服务（summarizer/scheduler/gateway）只在持有后端单例锁的进程里启动，
 // 避免多个 serve/dev 进程各自扫描同一份 ~/.qualia 数据、重复跑定时任务与 telegram 轮询。

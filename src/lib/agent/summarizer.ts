@@ -4,6 +4,7 @@ import { readConfig } from '$lib/config';
 import { ToolRegistry, CORE_TOOLS, ToolContext } from '$lib/tool';
 import { PendingConfirmation } from '$lib/tool';
 import { DEFAULT_SYSTEM_PROMPT } from './prompts';
+import { sanitizeMessages } from './message-sanitizer';
 
 function parseStoredContent(content: string): string | ContentPart[] {
 	if (content.startsWith('[')) {
@@ -62,7 +63,7 @@ export async function completeWithToolLoop(
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const response = await provider.chat({
-			messages,
+			messages: sanitizeMessages(messages),
 			tools: tools.length > 0 ? tools : undefined,
 			max_tokens: maxTokens,
 			temperature
