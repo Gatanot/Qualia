@@ -431,6 +431,7 @@ export class AgentLoop {
 		while (!toolDone) {
 			if (this.signal?.aborted) {
 				this.toolContext.onUpdate = undefined;
+				await execPromise.catch(() => {});
 				yield { type: 'error', message: '操作已取消' };
 				this.state = AgentState.ERROR;
 				return;
