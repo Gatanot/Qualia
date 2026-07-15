@@ -23,13 +23,30 @@ function mergeContent(a: string | ContentPart[], b: string | ContentPart[]): str
 	];
 }
 
-// 仅替换「孤立」代理码元（不成对的），保留合法 surrogate pair（emoji / CJK 扩展等非 BMP 字符）：
-// - 高代理后未紧跟低代理 → 孤立
-// - 低代理前无高代理 → 孤立
-const SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
-
+// 手写字符级扫描：仅替换「孤立」代理码元，保留合法 surrogate pair
+// （emoji / CJK 扩展等非 BMP 字符）。
+// - 高代理 (D800–DBFF) 后紧跟低代理 (DC00–DFFF) → 合法 pair，整对保留
+// - 高代理后未跟低代理 → 孤立高代理 → 替换
+// - 未被前面高代理消费的低代理 → 孤立低代理 → 替换
 function stripSurrogates(text: string): string {
-	return text.replace(SURROGATE_RE, '\uFFFD');
+	let result = '';
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		if (code >= 0xd800 && code <= 0xdbff) {
+			const next = i + 1 < text.length ? text.charCodeAt(i + 1) : 0;
+			if (next >= 0xdc00 && next <= 0xdfff) {
+				result += text[i] + text[i + 1];
+				i++;
+			} else {
+				result += '\uFFFD';
+			}
+		} else if (code >= 0xdc00 && code <= 0xdfff) {
+			result += '\uFFFD';
+		} else {
+			result += text[i];
+		}
+	}
+	return result;
 }
 
 function cleanContent(content: string | ContentPart[]): string | ContentPart[] {
