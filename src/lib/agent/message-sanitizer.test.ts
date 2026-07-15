@@ -38,6 +38,24 @@ describe('sanitizeMessages', () => {
 		expect(result[1].content).toBe('hello \uFFFD world');
 	});
 
+	it('preserves valid surrogate pairs (emoji / non-BMP)', () => {
+		const input: Message[] = [
+			msg('system', 'sys'),
+			msg('user', 'hi 😀 测试𝠀 end'),
+		];
+		const result = sanitizeMessages(input);
+		expect(result[1].content).toBe('hi 😀 测试𝠀 end');
+	});
+
+	it('strips lone low surrogate but keeps adjacent valid pair', () => {
+		const input: Message[] = [
+			msg('system', 'sys'),
+			msg('user', '😀\uDC00x'),
+		];
+		const result = sanitizeMessages(input);
+		expect(result[1].content).toBe('😀\uFFFDx');
+	});
+
 	it('merges consecutive user messages', () => {
 		const input: Message[] = [
 			msg('system', 'sys'),
