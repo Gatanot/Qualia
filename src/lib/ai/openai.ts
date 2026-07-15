@@ -52,15 +52,15 @@ export class OpenAIProvider implements AIProvider {
 			this.maxRetries
 		);
 
+		const raw = await response.text();
 		let json: Record<string, unknown>;
 		try {
-			json = await response.json();
-		} catch (e) {
-			const text = await response.clone().text().catch(() => '');
+			json = JSON.parse(raw);
+		} catch {
 			throw new ProviderError(
-				`Non-JSON response (status ${response.status}): ${text.slice(0, 500)}`,
+				`Non-JSON response (status ${response.status}): ${raw.slice(0, 500)}`,
 				response.status,
-				text
+				raw
 			);
 		}
 		return this.parseResponse(json);

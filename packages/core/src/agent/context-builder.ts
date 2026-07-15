@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync } from 'node:fs';
+﻿import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Message, ImageContent, ContentPart } from '../ai/index.js';
 import type { Storage } from '../storage/index.js';
@@ -8,12 +8,11 @@ import { MemoryService } from '../memory/index.js';
 
 const DEFAULT_CONTEXT_WINDOW = 1_048_576;
 
-function readAgentsMd(workspace: string): string {
+async function readAgentsMd(workspace: string): Promise<string> {
 	const root = workspace || process.cwd();
 	const agentsPath = join(root, 'AGENTS.md');
-	if (!existsSync(agentsPath)) return '';
 	try {
-		return readFileSync(agentsPath, 'utf-8').trim();
+		return (await readFile(agentsPath, 'utf-8')).trim();
 	} catch {
 		return '';
 	}
@@ -124,7 +123,7 @@ export class ContextBuilder {
 			}))
 		);
 
-		const agentsContent = readAgentsMd(workspace);
+		const agentsContent = await readAgentsMd(workspace);
 		fullSystem += formatAgentsSection(agentsContent);
 
 		messages.push({ role: 'system', content: fullSystem });

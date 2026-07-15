@@ -20,10 +20,15 @@ function killProcessTree(pid: number | undefined): boolean {
 		}
 	}
 	try {
-		process.kill(pid, 'SIGKILL');
+		process.kill(-pid, 'SIGKILL');
 		return true;
 	} catch {
-		return false;
+		try {
+			process.kill(pid, 'SIGKILL');
+			return true;
+		} catch {
+			return false;
+		}
 	}
 }
 
@@ -98,11 +103,13 @@ export const execTool: ToolDef = {
 			const stderrChunks: Buffer[] = [];
 			let resolved = false;
 			let totalOutput = 0;
+			let abortCleanup: (() => void) | undefined;
 
 			const resolveResult = (success: boolean, error?: string) => {
 				if (resolved) return;
 				resolved = true;
 				clearTimeout(timer);
+				abortCleanup?.();
 				const out = Buffer.concat(stdoutChunks).toString();
 				const err = Buffer.concat(stderrChunks).toString();
 
@@ -138,8 +145,25 @@ export const execTool: ToolDef = {
 				child = spawn(command, [], {
 					shell: '/bin/bash',
 					cwd: ctx.root,
-					stdio: ['ignore', 'pipe', 'pipe']
+					stdio: ['ignore', 'pipe', 'pipe'],
+					detached: true
 				});
+			}
+
+			if (ctx.signal) {
+				const onAbort = () => {
+					if (resolved) return;
+					if (!killProcessTree(child.pid)) {
+						try { child.kill(); } catch { /* 忽略二次杀死失败 */ }
+					}
+					resolveResult(false, '命令已取消');
+				};
+				if (ctx.signal.aborted) {
+					queueMicrotask(onAbort);
+				} else {
+					ctx.signal.addEventListener('abort', onAbort, { once: true });
+					abortCleanup = () => ctx.signal?.removeEventListener('abort', onAbort);
+				}
 			}
 
 			child.stdout?.on('data', (data: Buffer) => {

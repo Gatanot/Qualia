@@ -88,6 +88,11 @@ export class SQLiteStorage implements Storage {
 		this.stmts = this.prepareStatements();
 	}
 
+	/** 关闭数据库连接（释放文件锁，checkpoint WAL）。关闭后实例不可再用。 */
+	close(): void {
+		this.db.close();
+	}
+
 	private initTables(): void {
 		this.db.exec(`
 		CREATE TABLE IF NOT EXISTS sessions (
