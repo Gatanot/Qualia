@@ -9,6 +9,8 @@ import type { AgentEvent, ConfirmFn } from '@gatanot/qualia_core/agent';
 import { pendingConfirms } from '@gatanot/qualia_core/chat-confirm';
 import { sessionLock } from '@gatanot/qualia_core/concurrency';
 
+const SESSION_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
+
 export async function POST({ request }: { request: Request }) {
 	try {
 		const body = await request.json();
@@ -119,7 +121,7 @@ export async function POST({ request }: { request: Request }) {
 				let release: (() => void) | undefined;
 
 				try {
-					release = await sessionLock.acquire(sid!);
+					release = await sessionLock.acquire(sid!, SESSION_LOCK_TIMEOUT_MS);
 					for await (const event of agent.run(sid!, storageContent, buildResult, clientMessageId)) {
 						if (event.type === 'done') {
 							send({ ...event, contextWindow });
@@ -128,7 +130,8 @@ export async function POST({ request }: { request: Request }) {
 						}
 					}
 				} catch (e) {
-					send({ type: 'error', message: (e as Error).message || '未知错误' });
+					const msg = (e as Error).message || '未知错误';
+					send({ type: 'error', message: msg.includes('超时') ? '该会话正在处理中，请稍后再试' : msg });
 				} finally {
 					if (release) release();
 				}

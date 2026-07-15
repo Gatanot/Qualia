@@ -7,9 +7,9 @@ interface SearchResult {
 	snippet: string;
 }
 
-async function searchSearXNG(query: string, num: number, baseURL: string): Promise<SearchResult[]> {
+async function searchSearXNG(query: string, num: number, baseURL: string, signal?: AbortSignal): Promise<SearchResult[]> {
 	const url = `${baseURL.replace(/\/+$/, '')}/search?format=json&q=${encodeURIComponent(query)}`;
-	const res = await fetch(url);
+	const res = await fetch(url, { signal });
 	if (!res.ok) {
 		throw new Error(`SearXNG returned ${res.status}`);
 	}
@@ -22,11 +22,12 @@ async function searchSearXNG(query: string, num: number, baseURL: string): Promi
 	}));
 }
 
-async function searchTavily(query: string, num: number, apiKey: string): Promise<SearchResult[]> {
+async function searchTavily(query: string, num: number, apiKey: string, signal?: AbortSignal): Promise<SearchResult[]> {
 	const res = await fetch('https://api.tavily.com/search', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-		body: JSON.stringify({ query, max_results: num, include_answer: false })
+		body: JSON.stringify({ query, max_results: num, include_answer: false }),
+		signal
 	});
 	if (!res.ok) {
 		throw new Error(`Tavily returned ${res.status}`);
@@ -58,7 +59,7 @@ export const webSearchTool: ToolDef = {
 		required: ['query']
 	},
 
-	async execute(args: Record<string, unknown>, _ctx: import('../env').ToolContext): Promise<ToolResult> {
+	async execute(args: Record<string, unknown>, ctx: import('../env').ToolContext): Promise<ToolResult> {
 		const query = (args.query as string)?.trim();
 		if (!query) {
 			return { success: false, output: '', error: '缺少参数: query' };
@@ -83,10 +84,10 @@ export const webSearchTool: ToolDef = {
 				if (!config.tavilyApiKey) {
 					return { success: false, output: '', error: '未配置 Tavily API Key，请在设置中填写' };
 				}
-				results = await searchTavily(query, num, config.tavilyApiKey);
+				results = await searchTavily(query, num, config.tavilyApiKey, ctx.signal);
 			} else {
 				const searxngURL = config.searxngURL || 'http://localhost:8080';
-				results = await searchSearXNG(query, num, searxngURL);
+				results = await searchSearXNG(query, num, searxngURL, ctx.signal);
 			}
 
 			if (results.length === 0) {
