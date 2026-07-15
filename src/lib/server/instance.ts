@@ -122,10 +122,20 @@ export function acquireServerLock(info: { host: string; port: number }): Acquire
 		if (existing) {
 			return { acquired: false, existing };
 		}
-		// 陈旧锁（持有者已死）：清理后重试一次
-		cleanup(lockPath);
+		// 陈旧锁（持有者已死）：用原子 rename「夺取」锁文件，串行化清理，避免
+		// 多个进程同时 cleanup + create 各自把对方新建的锁删掉、双双获取（TOCTOU）。
+		// renameSync 对同一源文件并发只会有一个成功，其余抛 ENOENT。
+		const stalePath = `${lockPath}.stale.${process.pid}.${Date.now()}`;
+		try {
+			renameSync(lockPath, stalePath);
+		} catch {
+			// 未能夺取：要么被别的进程抢先夺走，要么已有活后端重建了锁
+			return { acquired: false, existing: getRunningServer() ?? readServerInfo() };
+		}
+		try { rmSync(stalePath, { force: true }); } catch { /* ignore */ }
+		try { rmSync(getServerInfoPath(), { force: true }); } catch { /* ignore */ }
 		if (!tryCreateLock(lockPath)) {
-			return { acquired: false, existing: readServerInfo() };
+			return { acquired: false, existing: getRunningServer() ?? readServerInfo() };
 		}
 	}
 

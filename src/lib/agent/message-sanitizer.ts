@@ -23,7 +23,10 @@ function mergeContent(a: string | ContentPart[], b: string | ContentPart[]): str
 	];
 }
 
-const SURROGATE_RE = /[\uD800-\uDFFF]/g;
+// 仅替换「孤立」代理码元（不成对的），保留合法 surrogate pair（emoji / CJK 扩展等非 BMP 字符）：
+// - 高代理后未紧跟低代理 → 孤立
+// - 低代理前无高代理 → 孤立
+const SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 
 function stripSurrogates(text: string): string {
 	return text.replace(SURROGATE_RE, '\uFFFD');
