@@ -51,7 +51,7 @@ export function createCommands(): SlashCommand[] {
 		modelCommand(),
 		{ name: 'new', description: 'New conversation' },
 		sessionCommand(),
-		{ name: 'provider', description: 'Add provider API key', argumentHint: '<type> <key>' },
+		{ name: 'provider', description: 'Add provider API key' },
 		{ name: 'undo', description: 'Undo last input' },
 		{ name: 'exit', description: 'Exit' },
 		{ name: 'end', description: 'Exit and stop the Qualia backend' },
@@ -84,7 +84,7 @@ export function parseSlashCommand(text: string): SlashResult {
 		case 'session':
 			return { type: 'command', action: 'session', arg: arg || undefined };
 		case 'provider':
-			return { type: 'command', action: 'provider', arg: arg || undefined };
+			return { type: 'command', action: 'provider' };
 		case 'undo':
 			return { type: 'command', action: 'undo' };
 		case 'end':

@@ -62,7 +62,7 @@ export class TuiApp {
 	private confirmResolver: ((approved: boolean) => void) | null = null;
 	private chatSnapshot = -1;
 	private lastSentText = '';
-	private _pendingProviderBaseURL: string | undefined;
+	private _providerPrompt: { type: string; defaultBaseURL: string } | undefined;
 
 	constructor(private readonly o: TuiAppOptions) {
 		this.sessionId = o.newSession ? undefined : o.sessionId;
@@ -108,6 +108,22 @@ export class TuiApp {
 		if (!t) return;
 		this.editor.setText('');
 		if (t === '/exit' || t === '/quit') { this.ui.stop(); process.exit(0); }
+
+		if (this._providerPrompt) {
+			const p = this._providerPrompt;
+			this._providerPrompt = undefined;
+			const apiKey = t;
+			try {
+				const name = `${p.type}-${Date.now().toString(36)}`;
+				addProvider({ type: p.type as 'openai' | 'deepseek' | 'xiaomi' | 'ollama', name, apiKey, baseURL: p.defaultBaseURL });
+				this.chat.addChild(new Text(`已添加供应商: ${p.type} (${name})`));
+			} catch (err) {
+				this.chat.addChild(new Text(`添加失败: ${(err as Error).message}`));
+			}
+			this.ui.requestRender();
+			return;
+		}
+
 		if (this.sending) return;
 
 		const parsed = parseSlashCommand(t);
@@ -135,7 +151,7 @@ export class TuiApp {
 				await this.cmdSession();
 				break;
 			case 'provider':
-				this.cmdProvider(arg);
+				this.cmdProvider();
 				break;
 			case 'undo':
 				this.cmdUndo();
@@ -234,36 +250,8 @@ export class TuiApp {
 		}
 	}
 
-	private cmdProvider(arg?: string): void {
-		if (!arg) {
-			void this.cmdProviderInteractive();
-			return;
-		}
-		const parts = arg.split(/\s+/);
-		const type = parts[0] as 'openai' | 'deepseek' | 'xiaomi' | 'ollama';
-		const apiKey = parts.slice(1).join(' ');
-		if (!['openai', 'deepseek', 'xiaomi', 'ollama'].includes(type)) {
-			this.chat.addChild(newTextError(this.mkTheme, `Unsupported provider type: ${type}`));
-			return;
-		}
-		if (!apiKey) {
-			this.chat.addChild(newTextError(this.mkTheme, 'API Key required'));
-			return;
-		}
-		try {
-			const name = `${type}-${Date.now().toString(36)}`;
-			const baseURL = this._pendingProviderBaseURL ?? '';
-			this._pendingProviderBaseURL = undefined;
-			addProvider({
-				type,
-				name,
-				apiKey,
-				baseURL,
-			});
-			this.chat.addChild(newTextError(this.mkTheme, `Provider added: ${type} (${name})`));
-		} catch (err) {
-			this.chat.addChild(newTextError(this.mkTheme, `Add failed: ${(err as Error).message}`));
-		}
+	private cmdProvider(): void {
+		void this.cmdProviderInteractive();
 	}
 
 	private async cmdProviderInteractive(): Promise<void> {
@@ -281,11 +269,11 @@ export class TuiApp {
 		list.onSelect = (item) => {
 			this.ui.hideOverlay();
 			this.ui.setFocus(this.editor);
-			const preset = types.find((t) => t.type === item.value);
-			const editorText = `/provider ${item.value} `;
-			this.editor.setText(editorText);
-			// Store the defaultBaseURL temporarily so cmdProvider uses it on submission
-			this._pendingProviderBaseURL = preset?.defaultBaseURL ?? '';
+			const preset = types.find((t) => t.type === item.value)!;
+			this.chat.addChild(new Text(`添加 ${preset.label} 供应商，请输入 API Key 后回车：`));
+			this.editor.setText('');
+			this._providerPrompt = preset;
+			this.ui.requestRender();
 		};
 		list.onCancel = () => {
 			this.ui.hideOverlay();
