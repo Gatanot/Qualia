@@ -87,6 +87,10 @@ function isDangerousCommand(command: string): boolean {
 }
 
 function isReadonlyCommand(command: string): boolean {
+	// 含输出重定向的命令不算纯只读——交由后续路径检查处理，避免
+	// `echo x > ~/.bashrc`、`cat /etc/passwd > ~/out.txt` 这类只读命令 + 重定向
+	// 绕过「工作区外需确认」。重定向目标由 extractPaths 提取后判定。
+	if (command.includes('>')) return false;
 	for (const segment of command.split('|')) {
 		if (!READONLY_PATTERNS.some((pattern) => pattern.test(segment))) {
 			return false;
