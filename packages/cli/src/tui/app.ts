@@ -100,6 +100,7 @@ export class TuiApp {
 		if (this.chat.children.length === 0) {
 			this.showWelcome();
 		}
+		this.chatSnapshot = this.chat.children.length;
 		this.ui.requestRender();
 	}
 
@@ -197,9 +198,9 @@ export class TuiApp {
 	private cmdNew(): void {
 		this.sessionId = undefined;
 		this.chat.clear();
-		this.chatSnapshot = -1;
-		this.lastSentText = '';
 		this.chat.addChild(newTextError(this.mkTheme, 'New conversation started'));
+		this.chatSnapshot = this.chat.children.length;
+		this.lastSentText = '';
 	}
 
 	private async cmdSession(): Promise<void> {
@@ -241,9 +242,9 @@ export class TuiApp {
 			}
 			this.sessionId = id;
 			this.chat.clear();
-			this.chatSnapshot = -1;
-			this.lastSentText = '';
 			await this.loadHistory();
+			this.chatSnapshot = this.chat.children.length;
+			this.lastSentText = '';
 			this.ui.requestRender();
 		} catch {
 			this.chat.addChild(newTextError(this.mkTheme, 'Session switch failed'));
