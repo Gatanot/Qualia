@@ -164,7 +164,7 @@ AI schedules one-shot tasks. `schedule_task` requires reading current time via `
 ## Git
 
 - Branch: `feature/<name>`, `fix/<name>`, `release/<version>`. Never commit to `main`.
-- Feature/fix branches merged to `main` after stable. Release branches are **not** merged to `main` (immutable publishing snapshots).
+- Feature/fix branches merged to `main` after stable. Release branches are merged back to `main` after publish (version bump flows to main); the `release/<version>` branch + `v<version>` tag remain as the publishing snapshot.
 - Commit messages: `prefix: short description`.
 - Run `npm run check` before committing.
 
