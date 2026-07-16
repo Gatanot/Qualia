@@ -62,6 +62,7 @@ export class TuiApp {
 	private confirmResolver: ((approved: boolean) => void) | null = null;
 	private chatSnapshot = -1;
 	private lastSentText = '';
+	private _pendingProviderBaseURL: string | undefined;
 
 	constructor(private readonly o: TuiAppOptions) {
 		this.sessionId = o.newSession ? undefined : o.sessionId;
@@ -235,8 +236,7 @@ export class TuiApp {
 
 	private cmdProvider(arg?: string): void {
 		if (!arg) {
-			this.chat.addChild(newTextError(this.mkTheme,
-				'Usage: /provider <type> <API Key>\nTypes: openai, deepseek, xiaomi, ollama\nExample: /provider openai sk-xxx'));
+			void this.cmdProviderInteractive();
 			return;
 		}
 		const parts = arg.split(/\s+/);
@@ -252,16 +252,46 @@ export class TuiApp {
 		}
 		try {
 			const name = `${type}-${Date.now().toString(36)}`;
+			const baseURL = this._pendingProviderBaseURL ?? '';
+			this._pendingProviderBaseURL = undefined;
 			addProvider({
 				type,
 				name,
 				apiKey,
-				baseURL: '',
+				baseURL,
 			});
 			this.chat.addChild(newTextError(this.mkTheme, `Provider added: ${type} (${name})`));
 		} catch (err) {
 			this.chat.addChild(newTextError(this.mkTheme, `Add failed: ${(err as Error).message}`));
 		}
+	}
+
+	private async cmdProviderInteractive(): Promise<void> {
+		const types: { type: string; label: string; defaultBaseURL: string }[] = [
+			{ type: 'openai', label: 'OpenAI (api.openai.com)', defaultBaseURL: 'https://api.openai.com/v1' },
+			{ type: 'deepseek', label: 'DeepSeek (api.deepseek.com)', defaultBaseURL: 'https://api.deepseek.com/v1' },
+			{ type: 'xiaomi', label: 'Xiaomi MiMo (api.xiaomi.com)', defaultBaseURL: 'https://api.xiaomi.com/v1' },
+			{ type: 'ollama', label: 'Ollama (localhost:11434)', defaultBaseURL: '' },
+		];
+		const items: SelectItem[] = types.map((t) => ({
+			value: t.type,
+			label: t.label,
+		}));
+		const list = new SelectList(items, Math.min(4, items.length), selectListTheme, { bordered: true, title: 'Select Provider Type' });
+		list.onSelect = (item) => {
+			this.ui.hideOverlay();
+			this.ui.setFocus(this.editor);
+			const preset = types.find((t) => t.type === item.value);
+			const editorText = `/provider ${item.value} `;
+			this.editor.setText(editorText);
+			// Store the defaultBaseURL temporarily so cmdProvider uses it on submission
+			this._pendingProviderBaseURL = preset?.defaultBaseURL ?? '';
+		};
+		list.onCancel = () => {
+			this.ui.hideOverlay();
+			this.ui.setFocus(this.editor);
+		};
+		this.ui.showOverlay(list, { anchor: 'center', width: '60%', maxHeight: '50%', margin: 1 });
 	}
 
 	private cmdUndo(): void {
