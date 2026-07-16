@@ -63,7 +63,8 @@ export async function POST({ request }: { request: Request }) {
 			'searchEnabled', 'searchProvider', 'searxngURL', 'tavilyApiKey',
 			'emailNotifications', 'emailSmtpHost', 'emailSmtpPort', 'emailSmtpSecure',
 			'emailSmtpUser', 'emailSmtpPass', 'emailFrom', 'emailTo',
-			'telegramEnabled', 'telegramBotToken', 'telegramAllowedUsers'
+			'telegramEnabled', 'telegramBotToken', 'telegramAllowedUsers',
+			'defaultWorkspace'
 		];
 
 		for (const key of topLevelKeys) {
