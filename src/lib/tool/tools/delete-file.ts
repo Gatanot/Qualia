@@ -33,16 +33,16 @@ export const deleteFileTool: ToolDef = {
 		const resolved = ctx.resolvePath(userPath);
 		const { path: filePath, classification } = resolved;
 
+		if (classification === 'reject') {
+			return { success: false, output: '', error: `拒绝删除系统路径: ${userPath}` };
+		}
+
 		if (!args.__confirmed) {
 			throw new PendingConfirmation(
 				'delete_file',
 				{ path: userPath },
 				`确认删除 "${userPath}"？此操作不可恢复。`
 			);
-		}
-
-		if (classification === 'reject') {
-			return { success: false, output: '', error: `拒绝删除系统路径: ${userPath}` };
 		}
 
 		try {
