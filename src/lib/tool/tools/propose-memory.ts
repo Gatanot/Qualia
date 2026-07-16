@@ -59,7 +59,7 @@ export const proposeMemoryTool: ToolDef = {
 	async execute(args: Record<string, unknown>, ctx: import('../env').ToolContext): Promise<ToolResult> {
 		const type = args.type as string;
 		const content = (args.content as string) || '';
-		const confidence = (args.confidence as number) ?? 1.0;
+		const rawConfidence = (args.confidence as number) ?? 1.0;
 
 		const validTypes = ['fact', 'preference', 'rule', 'event'];
 		if (!type || !validTypes.includes(type)) {
@@ -68,6 +68,10 @@ export const proposeMemoryTool: ToolDef = {
 		if (!content.trim()) {
 			return { success: false, output: '', error: 'content 不能为空' };
 		}
+		if (typeof rawConfidence !== 'number' || !Number.isFinite(rawConfidence)) {
+			return { success: false, output: '', error: `confidence 必须是 0-1 之间的数字，收到: ${args.confidence}` };
+		}
+		const confidence = Math.min(1, Math.max(0, rawConfidence));
 
 		const trimmed = content.trim();
 		const label = TYPE_LABELS[type] || type;
