@@ -54,6 +54,7 @@ export function createCommands(): SlashCommand[] {
 		{ name: 'provider', description: 'Add provider API key', argumentHint: '<type> <key>' },
 		{ name: 'undo', description: 'Undo last input' },
 		{ name: 'exit', description: 'Exit' },
+		{ name: 'end', description: 'Exit and stop the Qualia backend' },
 	];
 }
 
@@ -86,6 +87,8 @@ export function parseSlashCommand(text: string): SlashResult {
 			return { type: 'command', action: 'provider', arg: arg || undefined };
 		case 'undo':
 			return { type: 'command', action: 'undo' };
+		case 'end':
+			return { type: 'command', action: 'end' };
 		default:
 			return { type: 'send', value: text };
 	}

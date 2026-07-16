@@ -138,6 +138,13 @@
 		}
 	}
 
+	async function shutdownBackend() {
+		if (!confirm('确认关闭 Qualia 后端？Web 界面将断开连接。')) return;
+		try {
+			await fetch('/api/shutdown', { method: 'POST' });
+		} catch { /* server may die before response */ }
+	}
+
 	function exportConfig() {
 		const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
 		const url = URL.createObjectURL(blob);
@@ -218,7 +225,7 @@
 						<p class="import-msg" class:ok={importOk}>{importMessage}</p>
 					{/if}
 				</section>
-			<section class="section">
+				<section class="section">
 					<h2>默认工作区</h2>
 					<p class="section-desc">后台任务（摘要等）使用的工作区路径。留空则使用启动时的当前目录。注意：日记固定使用 ~/.qualia/data/ 路径，不受此设置影响。</p>
 					<input
@@ -228,6 +235,11 @@
 						placeholder="例如 /home/user/project（留空 = 当前目录）"
 						onchange={() => saveConfig()}
 					/>
+				</section>
+				<section class="section">
+					<h2>系统</h2>
+					<p class="section-desc">关闭 Qualia 后端进程。Web 界面运行在后端进程中，确认后将断开连接。</p>
+					<button class="action-btn danger-btn" onclick={shutdownBackend}>关闭后端</button>
 				</section>
 			{:else if activeTab === 'provider'}
 				<ProviderManager

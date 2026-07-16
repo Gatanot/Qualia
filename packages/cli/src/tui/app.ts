@@ -139,6 +139,9 @@ export class TuiApp {
 			case 'undo':
 				this.cmdUndo();
 				break;
+			case 'end':
+				await this.cmdEnd();
+				return;
 		}
 		this.ui.requestRender();
 	}
@@ -270,6 +273,16 @@ export class TuiApp {
 		this.chatSnapshot = -1;
 		this.lastSentText = '';
 		this.ui.requestRender();
+	}
+
+	private async cmdEnd(): Promise<void> {
+		try {
+			await fetch(`${this.o.baseURL}/api/shutdown`, { method: 'POST' });
+		} catch {
+			// back end may already be gone
+		}
+		this.ui.stop();
+		process.exit(0);
 	}
 
 	private showWelcome(): void {
