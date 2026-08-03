@@ -4,9 +4,12 @@ Qualia — local personal AI companion. SvelteKit full-stack app (Node.js + brow
 
 ## CRITICAL: Sync before check/build
 
-Root `src/` is the source of truth. `packages/*/src/` are snapshots for npm publishing. **Never edit them directly.**
+Root `src/` is the source of truth. `sync` copies root `src/` → `packages/core/src/` + `packages/web/src/` (import rewriting). **Never edit `packages/core/src/` or `packages/web/src/` directly** — edits get overwritten. Edit root `src/lib/` and `src/routes/` instead.
 
-`npm run dev`, `npm run check`, and `npm run build` all run inside `packages/web/`, which uses the snapshot. After editing root `src/`, you **must** run `npm run sync` (or `npm run sync:web` / `npm run sync:core`) first — it copies root → packages with import rewriting.
+- `sync` covers **core + web only**. `packages/cli/src/` is **hand-maintained** (no root counterpart, never synced) — edit it directly.
+- After editing root `src/`, **must** run `npm run sync` (or `sync:core` / `sync:web`) before `check`/`build`, or your changes won't be seen.
+
+`npm run dev`, `npm run check`, and `npm run build` all run inside `packages/web/`, which uses the snapshot. `npm run check` checks web only; `npm run check:core` checks core; CLI has **no root script** — run `npm run check -w @gatanot/qualia` for it.
 
 Note: `svelte-kit sync` (in `packages/web/package.json` prepare) generates `.svelte-kit/` and is unrelated.
 
