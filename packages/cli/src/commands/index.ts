@@ -1,4 +1,7 @@
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { runServe } from './serve.js';
 import { runPrompt } from './prompt.js';
 import { runChat } from './chat.js';
@@ -21,7 +24,14 @@ export interface ParsedArgs {
 	flags: Map<string, string | boolean>;
 }
 
-export const VERSION = '0.1.4';
+export const VERSION: string = (
+	JSON.parse(
+		readFileSync(
+			join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'),
+			'utf8'
+		)
+	) as { version: string }
+).version;
 
 const HELP = `Qualia CLI
 

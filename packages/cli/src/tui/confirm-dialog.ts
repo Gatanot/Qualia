@@ -2,7 +2,7 @@ import type { PendingConfirmation } from '@gatanot/qualia_core/tool';
 import type { Component } from './tui.js';
 import { theme } from './theme.js';
 import { decodeKittyPrintable } from './keys.js';
-import { visibleWidth } from './utils.js';
+import { truncateToWidth, visibleWidth } from './utils.js';
 
 /**
  * ConfirmInline — a single-line confirm prompt rendered inline above the editor.
@@ -54,8 +54,13 @@ export class ConfirmInline implements Component {
 			const pad = width - leftWidth - minHintWidth;
 			line = left + ' '.repeat(Math.max(0, pad)) + hint;
 		} else {
-			const shortReason = fg('muted', this.confirmation.reason.slice(0, availForLeft - visibleWidth(` ${label} ${tool}: `) - 2));
-			line = ` ${label} ${tool}: ${shortReason}…` + hint;
+			const prefix = ` ${label} ${tool}: `;
+			const prefixWidth = visibleWidth(prefix);
+			const ellipsis = '…';
+			const reasonMaxWidth = Math.max(0, availForLeft - prefixWidth - visibleWidth(ellipsis));
+			const rawReason = this.confirmation.reason.split('\n')[0] ?? '';
+			const shortReason = fg('muted', truncateToWidth(rawReason, reasonMaxWidth));
+			line = prefix + shortReason + ellipsis + hint;
 		}
 
 		const vw = visibleWidth(line);
